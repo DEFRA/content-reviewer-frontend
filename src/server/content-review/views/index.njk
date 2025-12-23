@@ -1,0 +1,83 @@
+{% extends "layouts/page.njk" %}
+
+{% block content %}
+  <script>
+    window.BACKEND_API_URL = '{{ backendApiUrl }}';
+  </script>
+  
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-full">
+      <!-- Sidebar for conversation history -->
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+          <h2 class="sidebar-title">Conversations</h2>
+          <button class="govuk-button sidebar-new-chat-btn" id="newChatBtn">
+            + New chat
+          </button>
+        </div>
+        <div class="sidebar-conversations" id="conversationList">
+          <!-- Conversation items will be added here dynamically -->
+        </div>
+      </aside>
+
+      <div class="chat-container">
+        <div class="chat-header">
+          <h1 class="govuk-heading-l">Content Review Assistant</h1>
+          <p class="govuk-body">
+            I can help you review content for clarity, formatting and compliance with GOV.UK standards.
+          </p>
+        </div>
+
+        <!-- Chat Messages Area -->
+        <div class="chat-messages" id="chatMessages">
+          <div class="message bot-message">
+            <div class="message-content">
+              <p>Hello! I'm here to help you review content for GOV.UK websites.</p>
+              <p>You can:</p>
+              <ul>
+                <li>Paste content for me to review</li>
+                <li>Ask about GOV.UK content standards</li>
+                <li>Check formatting and readability</li>
+                <li>Get suggestions for improvement</li>
+              </ul>
+              <p>How can I help you today?</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="chat-input-container">
+          <form id="chatForm" class="chat-form">
+            <div class="input-wrapper">
+              <textarea 
+                id="userInput" 
+                class="govuk-textarea chat-input" 
+                rows="3" 
+                placeholder="Type your message or paste content to review..."
+                aria-label="Chat message input"
+              ></textarea>
+              <button 
+                type="submit" 
+                class="govuk-button chat-submit-btn"
+                id="sendButton"
+              >
+                Send
+              </button>
+            </div>
+            <div class="input-hints">
+              <button type="button" class="suggestion-chip" data-suggestion="Review this content for GOV.UK standards">
+                Review content
+              </button>
+              <button type="button" class="suggestion-chip" data-suggestion="Check readability and plain English">
+                Check readability
+              </button>
+              <button type="button" class="suggestion-chip" data-suggestion="What are the GOV.UK content standards?">
+                Content standards
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

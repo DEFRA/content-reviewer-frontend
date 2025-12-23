@@ -46,6 +46,12 @@ export const config = convict({
     format: String,
     default: 'content-reviewer-frontend'
   },
+  backendApiUrl: {
+    doc: 'Backend API URL for content review service',
+    format: String,
+    default: 'http://localhost:5000',
+    env: 'BACKEND_API_URL'
+  },
   root: {
     doc: 'Project root',
     format: String,
@@ -218,6 +224,14 @@ export const config = convict({
       format: String,
       default: 'x-cdp-request-id',
       env: 'TRACING_HEADER'
+    }
+  },
+  contentReview: {
+    backendUrl: {
+      doc: 'Backend API URL for content review service',
+      format: String,
+      default: 'http://localhost:5000',
+      env: 'CONTENT_REVIEW_BACKEND_URL'
     }
   }
 })

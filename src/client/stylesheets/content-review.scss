@@ -1,0 +1,450 @@
+/* Custom Chat Interface Styling for GOV.UK Content Review Tool */
+/* GOV.UK Frontend handles header, footer, and base styles */
+
+/* Full-width header and footer with GOV.UK standard padding */
+.govuk-header__container {
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding-left: 225px !important;
+  padding-right: 15px !important;
+}
+
+/* Align logo and service name vertically */
+.govuk-header__content {
+  padding-top: 5px !important;
+}
+
+/* Shift logo right without moving service name */
+.govuk-header__logo {
+  padding-left: 15px !important;
+}
+
+.govuk-footer .govuk-width-container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding-left: 15px;
+  padding-right: 15px;
+}
+
+@media (min-width: 641px) {
+  .govuk-header__container,
+  .govuk-footer .govuk-width-container {
+    padding-left: 30px;
+    padding-right: 30px;
+  }
+}
+
+/* Override base styles if needed */
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Container adjustments */
+.govuk-width-container {
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.govuk-main-wrapper {
+  flex: 1;
+  padding: 0;
+  margin: 0;
+  background-color: #f3f2f1;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 200px;
+  background-color: #0b0c0c;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #b1b4b6;
+  flex-shrink: 0;
+
+  &-header {
+    padding: 20px 15px;
+    border-bottom: 1px solid #505a5f;
+  }
+
+  &-title {
+    font-size: 19px;
+    font-weight: 700;
+    margin: 0 0 15px 0;
+    color: #ffffff;
+    font-family: "GDS Transport", arial, sans-serif;
+  }
+
+  &-new-chat-btn {
+    width: 100%;
+    margin: 0;
+    font-size: 16px;
+    padding: 10px 15px;
+  }
+
+  &-conversations {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 0;
+  }
+}
+
+.conversation-item {
+  padding: 12px 15px;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  transition: all 0.2s;
+  color: #ffffff;
+  font-size: 16px;
+  font-family: "GDS Transport", arial, sans-serif;
+  line-height: 1.4;
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  &:hover {
+    background-color: #1d1d1d;
+    border-left-color: #1d70b8;
+
+    .conversation-delete-btn {
+      display: block;
+    }
+  }
+
+  &.active {
+    background-color: #2d2d2d;
+    border-left-color: #1d70b8;
+  }
+
+  &-title {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding-right: 10px;
+  }
+
+  &-date {
+    font-size: 14px;
+    color: #b1b4b6;
+  }
+}
+
+.conversation-delete-btn {
+  background: none;
+  border: none;
+  color: #b1b4b6;
+  cursor: pointer;
+  padding: 5px 8px;
+  font-size: 16px;
+  display: none;
+  transition: color 0.2s;
+
+  &:hover {
+    color: #d4351c;
+  }
+
+  &:focus {
+    outline: 3px solid #ffdd00;
+    outline-offset: 0;
+    background-color: #ffdd00;
+    color: #0b0c0c;
+  }
+}
+
+/* Chat Container */
+.chat-container {
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: calc(100vh - 150px);
+}
+
+.chat-header {
+  padding: 30px 30px 20px 35px;
+  border-bottom: 1px solid #b1b4b6;
+  background-color: #ffffff;
+}
+
+.govuk-heading-l {
+  font-size: 48px;
+  font-weight: 700;
+  line-height: 1.09375;
+  margin-bottom: 20px;
+  color: #0b0c0c;
+}
+
+.govuk-body {
+  font-size: 19px;
+  line-height: 1.31579;
+  color: #0b0c0c;
+  margin: 0;
+}
+
+/* Chat Messages Area */
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background-color: #f3f2f1;
+
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: #f3f2f1;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #b1b4b6;
+    border-radius: 4px;
+
+    &:hover {
+      background: #505a5f;
+    }
+  }
+}
+
+.message {
+  display: flex;
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message-content {
+  padding: 16px 20px;
+  border-radius: 8px;
+  max-width: 80%;
+  word-wrap: break-word;
+  font-family: "GDS Transport", arial, sans-serif;
+  font-size: 19px;
+  line-height: 1.31579;
+
+  p {
+    margin-bottom: 12px;
+    font-size: 19px;
+    line-height: 1.31579;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  ul {
+    margin-left: 20px;
+    margin-bottom: 12px;
+  }
+
+  li {
+    margin-bottom: 6px;
+    font-size: 19px;
+    line-height: 1.31579;
+  }
+}
+
+.bot-message .message-content {
+  background-color: #ffffff;
+  border-left: 5px solid #1d70b8;
+  margin-right: auto;
+  box-shadow: 0 0 0 1px #b1b4b6;
+  color: #0b0c0c;
+}
+
+.user-message .message-content {
+  background-color: #1d70b8;
+  color: #ffffff;
+  margin-left: auto;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+  ul,
+  li {
+    color: #ffffff;
+  }
+}
+
+/* Typing indicator */
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 20px;
+  background-color: #ffffff;
+  border-left: 5px solid #1d70b8;
+  border-radius: 8px;
+  max-width: 80px;
+  box-shadow: 0 0 0 1px #b1b4b6;
+
+  span {
+    width: 8px;
+    height: 8px;
+    background-color: #505a5f;
+    border-radius: 50%;
+    animation: typing 1.4s infinite;
+
+    &:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    &:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+  }
+}
+
+@keyframes typing {
+  0%, 60%, 100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Chat Input Area */
+.chat-input-container {
+  border-top: 1px solid #b1b4b6;
+  padding: 20px 30px;
+  background-color: #ffffff;
+}
+
+.chat-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.input-wrapper {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.govuk-textarea {
+  flex: 1;
+}
+
+.chat-submit-btn {
+  flex-shrink: 0;
+}
+
+/* Suggestion chips */
+.input-hints {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.suggestion-chip {
+  background-color: #f3f2f1;
+  border: 2px solid #0b0c0c;
+  color: #0b0c0c;
+  padding: 8px 15px;
+  border-radius: 0;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: "GDS Transport", Arial, sans-serif;
+  font-weight: 400;
+
+  &:hover {
+    background-color: #0b0c0c;
+    color: #ffffff;
+  }
+
+  &:focus {
+    outline: 3px solid #ffdd00;
+    outline-offset: 0;
+    background-color: #ffdd00;
+    color: #0b0c0c;
+  }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .govuk-main-wrapper {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    max-height: 200px;
+    border-right: none;
+    border-bottom: 1px solid #b1b4b6;
+  }
+
+  .govuk-heading-l {
+    font-size: 32px;
+    line-height: 1.09375;
+  }
+
+  .govuk-body {
+    font-size: 16px;
+  }
+
+  .message-content {
+    max-width: 90%;
+  }
+
+  .chat-header {
+    padding: 20px;
+  }
+
+  .chat-messages {
+    padding: 20px;
+  }
+
+  .chat-input-container {
+    padding: 15px 20px;
+  }
+
+  .input-wrapper {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .govuk-button {
+    width: 100%;
+  }
+
+  .suggestion-chip {
+    font-size: 14px;
+    padding: 6px 12px;
+  }
+}
+
+/* Accessibility improvements */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}

@@ -14,3 +14,6 @@ createAll(ErrorSummary)
 createAll(Header)
 createAll(Radios)
 createAll(SkipLink)
+
+// Import content review chat interface
+import './content-review.js'
