@@ -18,7 +18,7 @@ createAll(SkipLink)
 // Initialize ChatBot for content review page
 document.addEventListener('DOMContentLoaded', () => {
   const chatForm = document.getElementById('chatForm')
-  
+
   if (chatForm) {
     // Import and initialize the ChatBot class
     import('./content-review.js').then(() => {
