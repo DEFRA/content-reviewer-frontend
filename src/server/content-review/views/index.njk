@@ -1,14 +1,8 @@
 {% extends "layouts/page.njk" %}
 
 {% block content %}
-  <script>
-    window.BACKEND_API_URL = '{{ backendApiUrl }}';
-  </script>
-  
-  <div class="govuk-grid-row">
-    <div class="govuk-grid-column-full">
-      <!-- Sidebar for conversation history -->
-      <aside class="sidebar" id="sidebar">
+  <!-- Sidebar for conversation history -->
+  <aside class="sidebar" id="sidebar" data-backend-url="{{ backendApiUrl }}">
         <div class="sidebar-header">
           <h2 class="sidebar-title">Conversations</h2>
           <button class="govuk-button sidebar-new-chat-btn" id="newChatBtn">
@@ -78,6 +72,4 @@
           </form>
         </div>
       </div>
-    </div>
-  </div>
 {% endblock %}

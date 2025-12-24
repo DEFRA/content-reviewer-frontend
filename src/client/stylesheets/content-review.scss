@@ -1,11 +1,52 @@
 /* Custom Chat Interface Styling for GOV.UK Content Review Tool */
 /* GOV.UK Frontend handles header, footer, and base styles */
 
-/* Full-width header and footer with GOV.UK standard padding */
+/* Override base styles for full-width layout */
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+/* Hide the service navigation for content review page */
+.govuk-service-navigation {
+  display: none !important;
+}
+
+/* Make the main wrapper full width and remove padding */
+.govuk-main-wrapper {
+  flex: 1;
+  padding: 0 !important;
+  margin: 0 !important;
+  max-width: 100% !important;
+  background-color: #f3f2f1;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: stretch;
+  width: 100% !important;
+}
+
+/* Override govuk-width-container for this page */
+body .govuk-width-container {
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+}
+
+/* Make main content area full width */
+.govuk-main-wrapper .govuk-width-container {
+  display: flex !important;
+  flex-direction: row !important;
+  flex: 1;
+}
+
+/* Full-width header with GOV.UK standard padding */
 .govuk-header__container {
   max-width: 100% !important;
   margin: 0 !important;
-  padding-left: 225px !important;
+  padding-left: 15px !important;
   padding-right: 15px !important;
 }
 
@@ -19,46 +60,29 @@
   padding-left: 15px !important;
 }
 
+/* Footer should have normal margins/padding */
+.govuk-footer {
+  width: 100%;
+  margin: 0;
+}
+
 .govuk-footer .govuk-width-container {
-  max-width: 960px;
-  margin: 0 auto;
-  padding-left: 15px;
-  padding-right: 15px;
+  max-width: 960px !important;
+  margin: 0 auto !important;
+  padding-left: 15px !important;
+  padding-right: 15px !important;
 }
 
 @media (min-width: 641px) {
-  .govuk-header__container,
-  .govuk-footer .govuk-width-container {
+  .govuk-header__container {
     padding-left: 30px;
     padding-right: 30px;
   }
-}
-
-/* Override base styles if needed */
-body {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Container adjustments */
-.govuk-width-container {
-  max-width: 100%;
-  margin: 0;
-  padding: 0;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.govuk-main-wrapper {
-  flex: 1;
-  padding: 0;
-  margin: 0;
-  background-color: #f3f2f1;
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
+  
+  .govuk-footer .govuk-width-container {
+    padding-left: 30px !important;
+    padding-right: 30px !important;
+  }
 }
 
 /* Sidebar */

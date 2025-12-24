@@ -9,11 +9,6 @@ const contentReview = {
           method: 'GET',
           path: '/',
           ...contentReviewController
-        },
-        {
-          method: 'GET',
-          path: '/content-review',
-          ...contentReviewController
         }
       ])
     }

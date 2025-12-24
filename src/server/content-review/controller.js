@@ -1,4 +1,4 @@
-import { config } from '~/src/config/index.js'
+import { config } from '../../config/config.js'
 
 const contentReviewController = {
   handler: (request, h) => {
@@ -6,15 +6,7 @@ const contentReviewController = {
       pageTitle: 'Content Review Tool',
       heading: 'Content Review Assistant',
       backendApiUrl: config.get('backendApiUrl'),
-      breadcrumbs: [
-        {
-          text: 'Home',
-          href: '/'
-        },
-        {
-          text: 'Content Review Tool'
-        }
-      ]
+      breadcrumbs: []
     })
   }
 }

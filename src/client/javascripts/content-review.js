@@ -1,6 +1,8 @@
 // GOV.UK Content Review Tool - Chat Interface
 // Handles chat UI and API communication with backend
 
+(function() {
+
 class ChatBot {
   constructor() {
     this.chatMessages = document.getElementById('chatMessages')
@@ -9,9 +11,10 @@ class ChatBot {
     this.sendButton = document.getElementById('sendButton')
     this.conversationList = document.getElementById('conversationList')
     this.newChatBtn = document.getElementById('newChatBtn')
+    this.sidebar = document.getElementById('sidebar')
 
-    // Get backend API URL from config (will be set by server)
-    this.apiUrl = window.BACKEND_API_URL || 'http://localhost:5000'
+    // Get backend API URL from data attribute
+    this.apiUrl = this.sidebar?.dataset.backendUrl || 'http://localhost:5000'
 
     this.currentConversationId = null
     this.conversations = this.loadConversations()
@@ -40,6 +43,8 @@ class ChatBot {
       e.preventDefault()
       this.handleSendMessage()
     })
+
+    console.log('ChatBot initialized successfully')
 
     // Auto-resize textarea
     this.userInput.addEventListener('input', () => {
@@ -126,7 +131,7 @@ class ChatBot {
       this.removeTypingIndicator()
 
       const errorMessage =
-        "I'm sorry, I'm having trouble connecting to the server. Please try again later."
+        "I'm sorry, the backend server isn't running yet. To fully test the chat feature, you'll need to start the backend service with MongoDB. For now, your message has been saved locally."
       this.addMessage(errorMessage, 'bot')
     } finally {
       this.setInputState(true)
@@ -354,6 +359,18 @@ How can I help you today?`
 }
 
 // Initialize the chatbot when the page loads
-document.addEventListener('DOMContentLoaded', () => {
-  new ChatBot()
-})
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    if (document.getElementById('chatForm')) {
+      new ChatBot()
+    }
+  })
+} else {
+  // DOM already loaded
+  if (document.getElementById('chatForm')) {
+    new ChatBot()
+  }
+}
+
+})() // End IIFE
+
