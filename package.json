@@ -18,7 +18,7 @@
     "frontend:watch": "cross-env NODE_ENV=development webpack --watch",
     "git:pre-commit-hook": "npm run security-audit && npm run format:check && npm run lint && npm test",
     "postinstall": "npm run setup:husky",
-    "lint": "run-s lint:js lint:scss",
+    "lint": "npm run lint:js && npm run lint:scss",
     "lint:js": "eslint .",
     "lint:js:fix": "eslint . --fix",
     "lint:scss": "stylelint \"src/**/*.scss\" --cache --cache-location .cache/stylelint --cache-strategy content --color --ignore-path .gitignore",
