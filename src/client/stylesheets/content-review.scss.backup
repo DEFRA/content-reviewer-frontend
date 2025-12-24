@@ -93,7 +93,7 @@ body .govuk-width-container {
   width: 200px;
   background-color: #0b0c0c;
   border-right: 1px solid #b1b4b6;
-  color: #ffffff;
+  color: #fff;
 
   &-header {
     padding: 20px 15px;
@@ -102,7 +102,7 @@ body .govuk-width-container {
 
   &-title {
     margin: 0 0 15px;
-    color: #ffffff;
+    color: #fff;
     font-weight: 700;
     font-size: 19px;
     font-family: "GDS Transport", arial, sans-serif;
@@ -129,7 +129,7 @@ body .govuk-width-container {
   justify-content: space-between;
   padding: 12px 15px;
   border-left: 3px solid transparent;
-  color: #ffffff;
+  color: #fff;
   font-size: 16px;
   font-family: "GDS Transport", arial, sans-serif;
   line-height: 1.4;
@@ -179,9 +179,9 @@ body .govuk-width-container {
   }
 
   &:focus {
-    outline: 3px solid #ffffdd;
+    outline: 3px solid #ffd;
     outline-offset: 0;
-    background-color: #ffffdd;
+    background-color: #ffd;
     color: #0b0c0c;
   }
 }
@@ -192,13 +192,13 @@ body .govuk-width-container {
   flex: 1;
   flex-direction: column;
   min-height: calc(100vh - 150px);
-  background: #ffffff;
+  background: #fff;
 }
 
 .chat-header {
   padding: 30px 30px 20px 35px;
   border-bottom: 1px solid #b1b4b6;
-  background-color: #ffffff;
+  background-color: #fff;
 }
 
 .govuk-heading-l {
@@ -295,7 +295,7 @@ body .govuk-width-container {
 .bot-message .message-content {
   margin-right: auto;
   border-left: 5px solid #1d70b8;
-  background-color: #ffffff;
+  background-color: #fff;
   box-shadow: 0 0 0 1px #b1b4b6;
   color: #0b0c0c;
 }
@@ -304,11 +304,11 @@ body .govuk-width-container {
   margin-left: auto;
   background-color: #1d70b8;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  color: #ffffff;
+  color: #fff;
 
   ul,
   li {
-    color: #ffffff;
+    color: #fff;
   }
 }
 
@@ -321,7 +321,7 @@ body .govuk-width-container {
   padding: 16px 20px;
   border-left: 5px solid #1d70b8;
   border-radius: 8px;
-  background-color: #ffffff;
+  background-color: #fff;
   box-shadow: 0 0 0 1px #b1b4b6;
 
   span {
@@ -357,7 +357,7 @@ body .govuk-width-container {
 .chat-input-container {
   padding: 20px 30px;
   border-top: 1px solid #b1b4b6;
-  background-color: #ffffff;
+  background-color: #fff;
 }
 
 .chat-form {
@@ -401,13 +401,13 @@ body .govuk-width-container {
 
   &:hover {
     background-color: #0b0c0c;
-    color: #ffffff;
+    color: #fff;
   }
 
   &:focus {
-    outline: 3px solid #ffffdd;
+    outline: 3px solid #ffd;
     outline-offset: 0;
-    background-color: #ffffdd;
+    background-color: #ffd;
     color: #0b0c0c;
   }
 }
