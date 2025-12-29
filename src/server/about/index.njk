@@ -3,14 +3,27 @@
 {% block content %}
   {{ appHeading({
     text: heading,
-    caption: "content-reviewer-frontend"
+    caption: "GOV.UK Content Review"
   }) }}
 
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
       <div class="govuk-body" data-testid="app-page-body">
-        <p>
+        <p class="govuk-body-l">
+          AI-powered content review tool to help ensure your content meets GOV.UK standards.
         </p>
+        
+        <h2 class="govuk-heading-m">What this tool does</h2>
+        <p>The Content Review Tool helps you:</p>
+        <ul class="govuk-list govuk-list--bullet">
+          <li>Review content for plain English and clarity</li>
+          <li>Check compliance with GOV.UK style guidelines</li>
+          <li>Identify areas for improvement in readability</li>
+          <li>Get AI-powered suggestions for better content</li>
+        </ul>
+
+        <h2 class="govuk-heading-m">How to use this tool</h2>
+        <p>Simply paste or type your content in the chat interface on the home page, and our AI assistant will review it against GOV.UK standards and provide feedback.</p>
       </div>
     </div>
   </div>
