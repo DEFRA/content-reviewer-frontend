@@ -44,7 +44,7 @@ export const config = convict({
   serviceName: {
     doc: 'Applications Service Name',
     format: String,
-    default: 'content-reviewer-frontend'
+    default: 'Content Review Tool'
   },
   root: {
     doc: 'Project root',
@@ -184,7 +184,7 @@ export const config = convict({
     keyPrefix: {
       doc: 'Redis cache key prefix name used to isolate the cached results across multiple clients',
       format: String,
-      default: 'content-reviewer-frontend:',
+      default: 'cdp-node-frontend-template:',
       env: 'REDIS_KEY_PREFIX'
     },
     useSingleInstanceCache: {
