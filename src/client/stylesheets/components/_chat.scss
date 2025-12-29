@@ -34,7 +34,7 @@
 .sidebar-title {
   font-size: 19px;
   font-weight: 700;
-  margin: 0 0 govuk-spacing(3) 0;
+  margin: 0 0 govuk-spacing(3);
   color: govuk-colour("white");
   font-family: $govuk-font-family;
 }
@@ -120,7 +120,7 @@
 .message {
   margin-bottom: govuk-spacing(4);
   display: flex;
-  animation: fadeIn 0.3s ease-in;
+  animation: fade-in 0.3s ease-in;
 }
 
 .message-content {
@@ -190,11 +190,12 @@
   }
 }
 
-@keyframes fadeIn {
+@keyframes fade-in {
   from {
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -225,10 +226,85 @@
 }
 
 @keyframes typing {
-  0%, 60%, 100% {
+  0%,
+  60%,
+  100% {
     opacity: 0.3;
   }
+
   30% {
     opacity: 1;
+  }
+}
+
+// Upload section in chat
+.upload-form {
+  margin-top: govuk-spacing(3);
+}
+
+.upload-option-card {
+  background-color: govuk-colour("light-grey");
+  border-radius: 4px;
+  padding: govuk-spacing(3);
+  margin-bottom: govuk-spacing(4);
+  
+  .govuk-details {
+    margin-bottom: 0;
+    border: none;
+    padding: 0;
+  }
+}
+
+.upload-icon {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: govuk-spacing(2);
+  color: govuk-colour("blue");
+}
+
+.govuk-details {
+  .govuk-details__summary {
+    cursor: pointer;
+    font-weight: 600;
+    
+    &:hover {
+      .govuk-details__summary-text {
+        color: govuk-colour("dark-blue");
+      }
+    }
+  }
+  
+  .govuk-details__text {
+    padding-top: govuk-spacing(3);
+    margin-top: govuk-spacing(2);
+  }
+}
+
+.divider-with-text {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: govuk-spacing(4) 0;
+  
+  &::before,
+  &::after {
+    content: '';
+    flex: 1;
+    border-bottom: 2px solid govuk-colour("mid-grey");
+  }
+  
+  span {
+    padding: 0 govuk-spacing(3);
+    color: govuk-colour("dark-grey");
+    font-weight: 600;
+    font-size: 16px;
+  }
+}
+
+.govuk-notification-banner--success {
+  border-color: govuk-colour("green");
+  
+  .govuk-notification-banner__header {
+    background-color: govuk-colour("green");
   }
 }

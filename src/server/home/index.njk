@@ -18,12 +18,103 @@
         <!-- Chat Container -->
         <div class="chat-container">
         
+        <!-- Upload Success Message -->
+        {% if uploadSuccess %}
+        <div class="govuk-notification-banner govuk-notification-banner--success" role="alert" aria-labelledby="upload-success-title" data-module="govuk-notification-banner">
+          <div class="govuk-notification-banner__header">
+            <h2 class="govuk-notification-banner__title" id="upload-success-title">
+              Success
+            </h2>
+          </div>
+          <div class="govuk-notification-banner__content">
+            <h3 class="govuk-notification-banner__heading">
+              Document uploaded successfully
+            </h3>
+            <p class="govuk-body">
+              <strong>{{ uploadSuccess.filename }}</strong> ({{ (uploadSuccess.size / 1024) | round(2) }} KB) has been uploaded and scanned.
+            </p>
+            <p class="govuk-body-s">
+              File ID: {{ uploadSuccess.fileId }}<br>
+              Storage: {{ uploadSuccess.s3Location }}
+            </p>
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Upload Error Message -->
+        {% if uploadError %}
+        <div class="govuk-error-summary" aria-labelledby="error-summary-title" role="alert" tabindex="-1" data-module="govuk-error-summary">
+          <h2 class="govuk-error-summary__title" id="error-summary-title">
+            Upload failed
+          </h2>
+          <div class="govuk-error-summary__body">
+            <p class="govuk-body">{{ uploadError }}</p>
+          </div>
+        </div>
+        {% endif %}
+        
         <!-- Welcome Message -->
         <div class="chat-welcome">
           <h2 class="govuk-heading-m">Content Review Assistant</h2>
           <p class="govuk-body">
             I can help you review content for clarity, formatting and compliance with GOV.UK standards.
           </p>
+          
+          <!-- Upload Section -->
+          <div class="govuk-!-margin-top-4 govuk-!-margin-bottom-4">
+            <div class="upload-option-card">
+              <details class="govuk-details" data-module="govuk-details">
+                <summary class="govuk-details__summary">
+                  <span class="govuk-details__summary-text">
+                    <svg class="upload-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M10 4L10 14M10 4L6 8M10 4L14 8M4 16H16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    Upload a document for review
+                  </span>
+                </summary>
+                <div class="govuk-details__text">
+                  <p class="govuk-body">Upload a PDF or Word document to have it analyzed and reviewed for content quality, readability, and GOV.UK compliance.</p>
+                  
+                  <dl class="govuk-summary-list govuk-summary-list--no-border">
+                    <div class="govuk-summary-list__row">
+                      <dt class="govuk-summary-list__key">
+                        Accepted formats
+                      </dt>
+                      <dd class="govuk-summary-list__value">
+                        PDF (.pdf), Word (.doc, .docx)
+                      </dd>
+                    </div>
+                    <div class="govuk-summary-list__row">
+                      <dt class="govuk-summary-list__key">
+                        Maximum size
+                      </dt>
+                      <dd class="govuk-summary-list__value">
+                        10MB
+                      </dd>
+                    </div>
+                    <div class="govuk-summary-list__row">
+                      <dt class="govuk-summary-list__key">
+                        Processing
+                      </dt>
+                      <dd class="govuk-summary-list__value">
+                        Files are scanned for viruses before analysis
+                      </dd>
+                    </div>
+                  </dl>
+
+                  <form class="upload-form" action="/upload/initiate" method="post">
+                    <button type="submit" class="govuk-button" data-module="govuk-button">
+                      Choose and Upload Document
+                    </button>
+                  </form>
+                </div>
+              </details>
+            </div>
+            
+            <div class="divider-with-text">
+              <span>or type your message below</span>
+            </div>
+          </div>
         </div>
 
         <!-- Chat Messages Area -->
@@ -33,7 +124,8 @@
               <p>Hello! I'm here to help you review content for GOV.UK websites.</p>
               <p>You can:</p>
               <ul>
-                <li>Paste content for me to review</li>
+                <li>Type or paste content for me to review</li>
+                <li>Upload a PDF or Word document using the option above</li>
                 <li>Ask about GOV.UK content standards</li>
                 <li>Check formatting and readability</li>
                 <li>Get suggestions for improvement</li>

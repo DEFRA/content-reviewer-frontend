@@ -1,0 +1,104 @@
+{% extends "layouts/page.njk" %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <h1 class="govuk-heading-l">{{ heading }}</h1>
+
+      <div class="govuk-panel govuk-panel--confirmation" style="display: none;" id="processing-panel">
+        <h2 class="govuk-panel__title">Processing</h2>
+        <div class="govuk-panel__body">
+          <span class="govuk-!-font-size-27">
+            Scanning your document...
+          </span>
+        </div>
+      </div>
+
+      <div class="govuk-inset-text" id="status-message">
+        <p class="govuk-body">
+          Please wait while we process your document. This may take a few moments.
+        </p>
+      </div>
+
+      <div class="spinner" style="display: none;" id="spinner">
+        <div class="govuk-!-margin-bottom-4">
+          <p class="govuk-body">Checking upload status...</p>
+        </div>
+      </div>
+
+      <div id="error-container" style="display: none;">
+        <div class="govuk-error-summary" aria-labelledby="error-summary-title" role="alert">
+          <h2 class="govuk-error-summary__title" id="error-summary-title">
+            There is a problem
+          </h2>
+          <div class="govuk-error-summary__body">
+            <p class="govuk-body" id="error-message"></p>
+          </div>
+        </div>
+        <p class="govuk-body">
+          <a href="/upload" class="govuk-link">Try again</a>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script nonce="{{ cspNonce }}">
+    (function() {
+      const uploadId = '{{ uploadId }}';
+      const maxAttempts = 30;
+      const pollInterval = 2000; // 2 seconds
+      let attempts = 0;
+
+      function showError(message) {
+        document.getElementById('spinner').style.display = 'none';
+        document.getElementById('processing-panel').style.display = 'none';
+        document.getElementById('status-message').style.display = 'none';
+        document.getElementById('error-message').textContent = message;
+        document.getElementById('error-container').style.display = 'block';
+      }
+
+      function pollStatus() {
+        fetch('/upload/status/' + uploadId)
+          .then(response => {
+            if (!response.ok) {
+              throw new Error('Failed to check upload status');
+            }
+            return response.json();
+          })
+          .then(data => {
+            if (data.uploadStatus === 'ready') {
+              // Upload complete, redirect to completion page
+              window.location.href = '/upload/complete';
+            } else if (data.uploadStatus === 'rejected') {
+              showError('Your document was rejected. Please check the file and try again.');
+            } else if (data.uploadStatus === 'pending') {
+              // Still processing
+              attempts++;
+              if (attempts < maxAttempts) {
+                document.getElementById('processing-panel').style.display = 'block';
+                document.getElementById('spinner').style.display = 'block';
+                setTimeout(pollStatus, pollInterval);
+              } else {
+                showError('Upload processing timed out. Please try again.');
+              }
+            } else {
+              // Initiated or other status, keep polling
+              attempts++;
+              if (attempts < maxAttempts) {
+                setTimeout(pollStatus, pollInterval);
+              } else {
+                showError('Upload processing timed out. Please try again.');
+              }
+            }
+          })
+          .catch(error => {
+            console.error('Error polling status:', error);
+            showError('An error occurred while checking upload status.');
+          });
+      }
+
+      // Start polling after a short delay
+      setTimeout(pollStatus, 1000);
+    })();
+  </script>
+{% endblock %}

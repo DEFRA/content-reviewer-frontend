@@ -1,0 +1,78 @@
+{% extends "layouts/page.njk" %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <div class="govuk-panel govuk-panel--confirmation">
+        <h1 class="govuk-panel__title">{{ heading }}</h1>
+        <div class="govuk-panel__body">
+          Your document has been uploaded and scanned successfully
+        </div>
+      </div>
+
+      <h2 class="govuk-heading-m">File Details</h2>
+      
+      <dl class="govuk-summary-list">
+        {% if fileDetails.filename %}
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">Filename</dt>
+          <dd class="govuk-summary-list__value">{{ fileDetails.filename }}</dd>
+        </div>
+        {% endif %}
+
+        {% if fileDetails.contentLength %}
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">File Size</dt>
+          <dd class="govuk-summary-list__value">{{ (fileDetails.contentLength / 1024) | round(2) }} KB</dd>
+        </div>
+        {% endif %}
+
+        {% if fileDetails.detectedContentType %}
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">File Type</dt>
+          <dd class="govuk-summary-list__value">{{ fileDetails.detectedContentType }}</dd>
+        </div>
+        {% endif %}
+
+        {% if fileDetails.fileStatus %}
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">Status</dt>
+          <dd class="govuk-summary-list__value">
+            <strong class="govuk-tag govuk-tag--green">{{ fileDetails.fileStatus }}</strong>
+          </dd>
+        </div>
+        {% endif %}
+
+        {% if fileDetails.fileId %}
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">File ID</dt>
+          <dd class="govuk-summary-list__value">{{ fileDetails.fileId }}</dd>
+        </div>
+        {% endif %}
+
+        {% if fileDetails.s3Bucket and fileDetails.s3Key %}
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">Storage Location</dt>
+          <dd class="govuk-summary-list__value">
+            {{ fileDetails.s3Bucket }}/{{ fileDetails.s3Key }}
+          </dd>
+        </div>
+        {% endif %}
+      </dl>
+
+      <div class="govuk-inset-text">
+        <p class="govuk-body">
+          Your document has been scanned for viruses and is now ready for content review.
+        </p>
+      </div>
+
+      <p class="govuk-body">
+        <a href="/upload" class="govuk-button" data-module="govuk-button">Upload Another Document</a>
+      </p>
+
+      <p class="govuk-body">
+        <a href="/" class="govuk-link">Back to home</a>
+      </p>
+    </div>
+  </div>
+{% endblock %}

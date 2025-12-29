@@ -9,6 +9,7 @@
 }
 
 // Override width container ONLY for the main content area when it contains chat interface
+// stylelint-disable declaration-no-important
 .govuk-width-container:has(.app-main-container) {
   max-width: none !important;
   padding-left: 0 !important;
@@ -27,6 +28,7 @@
   padding-top: 0 !important;
   padding-bottom: 0 !important;
 }
+// stylelint-enable declaration-no-important
 
 // Ensure footer has proper margins
 .govuk-footer .govuk-width-container {
