@@ -17,6 +17,16 @@ const upload = {
         },
         {
           method: 'GET',
+          path: '/upload/form',
+          handler: (request, h) => {
+            return h.view('upload/upload-form', {
+              pageTitle: 'Upload Document',
+              heading: 'Upload Your Document'
+            })
+          }
+        },
+        {
+          method: 'GET',
           path: '/upload/status-poller',
           handler: uploadController.statusPoller
         },
@@ -33,12 +43,7 @@ const upload = {
         {
           method: 'POST',
           path: '/upload/callback',
-          handler: uploadController.handleCallback,
-          options: {
-            payload: {
-              parse: true
-            }
-          }
+          handler: uploadController.handleCallback
         }
       ])
     }

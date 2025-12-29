@@ -8,6 +8,9 @@ import {
   SkipLink
 } from 'govuk-frontend'
 
+// Import upload handler
+import './upload-handler.js'
+
 createAll(Button)
 createAll(Checkboxes)
 createAll(ErrorSummary)
@@ -60,6 +63,19 @@ class ConversationManager {
   }
 
   createNewConversation() {
+    // Clear the chat window
+    const chatMessages = document.getElementById('chatMessages')
+    if (chatMessages) {
+      chatMessages.innerHTML = `
+        <div class="message bot-message">
+          <div class="message-content">
+            <p>Hello! I'm ready to help you review content for GOV.UK compliance. You can paste any text for me to review, or ask me about specific content standards.</p>
+          </div>
+        </div>
+      `
+    }
+
+    // Create new conversation
     const id = 'conv_' + Date.now()
     const conversation = {
       id,
@@ -69,9 +85,9 @@ class ConversationManager {
     }
 
     this.conversations.unshift(conversation)
+    this.currentConversationId = id
     this.saveConversations()
     this.renderConversationList()
-    this.loadConversation(id)
   }
 
   loadConversation(id) {
@@ -108,7 +124,9 @@ class ConversationManager {
 
   addMessageToUI(content, role) {
     const chatMessages = document.getElementById('chatMessages')
-    if (!chatMessages) return
+    if (!chatMessages) {
+      return
+    }
 
     const messageDiv = document.createElement('div')
     messageDiv.className = `message ${role}-message`
@@ -144,6 +162,26 @@ class ConversationManager {
 
       this.saveConversations()
       this.renderConversationList()
+    } else {
+      // If no conversation exists, create one
+      this.createNewConversation()
+      // Retry saving the message
+      const newConversation = this.conversations.find(
+        (c) => c.id === this.currentConversationId
+      )
+      if (newConversation) {
+        newConversation.messages.push({
+          content,
+          role,
+          timestamp: new Date().toISOString()
+        })
+        if (role === 'user') {
+          newConversation.title =
+            content.substring(0, 50) + (content.length > 50 ? '...' : '')
+        }
+        this.saveConversations()
+        this.renderConversationList()
+      }
     }
   }
 
@@ -151,12 +189,16 @@ class ConversationManager {
     e.preventDefault()
 
     const userInput = document.getElementById('userInput')
-    if (!userInput) return
+    if (!userInput) {
+      return
+    }
 
     const message = userInput.value.trim()
-    if (!message) return
+    if (!message) {
+      return
+    }
 
-    // Clear input
+    // Clear input FIRST
     userInput.value = ''
 
     // Add user message to UI and save
@@ -171,7 +213,6 @@ class ConversationManager {
       // For now, just show a placeholder response
       await this.simulateAPICall(message)
     } catch (error) {
-      console.error('Error sending message:', error)
       this.hideTypingIndicator()
       this.addMessageToUI(
         'Sorry, there was an error processing your message. Please try again.',
@@ -226,11 +267,27 @@ class ConversationManager {
 
   renderConversationList() {
     const listContainer = document.getElementById('conversationList')
-    if (!listContainer) return
+    if (!listContainer) {
+      // Element not found - add visual debug
+      const newChatBtn = document.getElementById('newChatBtn')
+      if (newChatBtn) {
+        newChatBtn.textContent = '+ ERROR: List not found'
+      }
+      return
+    }
 
     listContainer.innerHTML = ''
 
-    this.conversations.forEach((conv) => {
+    // Limit to last 10 conversations
+    const conversationsToShow = this.conversations.slice(0, 10)
+
+    if (conversationsToShow.length === 0) {
+      // No conversations - show placeholder
+      listContainer.innerHTML =
+        '<p style="padding: 10px; color: #888;">No conversations yet</p>'
+    }
+
+    conversationsToShow.forEach((conv) => {
       const item = document.createElement('div')
       item.className = 'conversation-item'
       if (conv.id === this.currentConversationId) {
@@ -240,12 +297,30 @@ class ConversationManager {
       const preview = document.createElement('p')
       preview.className = 'conversation-preview'
       preview.textContent = conv.title
+      preview.title = conv.title // Show full title on hover
 
       item.appendChild(preview)
       item.addEventListener('click', () => this.loadConversation(conv.id))
 
       listContainer.appendChild(item)
     })
+
+    // Show message if there are more than 10 conversations
+    if (this.conversations.length > 10) {
+      const moreItem = document.createElement('div')
+      moreItem.className = 'conversation-item-info'
+      const moreText = document.createElement('p')
+      moreText.className = 'conversation-preview conversation-count'
+      moreText.textContent = `+${this.conversations.length - 10} older conversations`
+      moreItem.appendChild(moreText)
+      listContainer.appendChild(moreItem)
+    }
+
+    // Visual debug - update button to show count
+    const newChatBtn = document.getElementById('newChatBtn')
+    if (newChatBtn && this.conversations.length > 0) {
+      newChatBtn.textContent = `+ New chat (${this.conversations.length})`
+    }
   }
 
   escapeHtml(text) {
