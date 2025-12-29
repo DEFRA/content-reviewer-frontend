@@ -1,10 +1,13 @@
 import { config } from '../../../config/config.js'
 import { statusCodes } from '../constants/status-codes.js'
+import path from 'node:path'
 
 export const serveStaticFiles = {
   plugin: {
     name: 'staticFiles',
     register(server) {
+      const publicPath = path.join(config.get('root'), '.public')
+
       server.route([
         {
           options: {
@@ -32,7 +35,7 @@ export const serveStaticFiles = {
           path: `${config.get('assetPath')}/{param*}`,
           handler: {
             directory: {
-              path: '.',
+              path: publicPath,
               redirectToSlash: true
             }
           }

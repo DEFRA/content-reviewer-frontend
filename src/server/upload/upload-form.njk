@@ -1,0 +1,81 @@
+{% extends "layouts/page.njk" %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <h1 class="govuk-heading-l">{{ heading }}</h1>
+
+      <!-- Error Summary (hidden by default) -->
+      <div id="uploadError" class="govuk-error-summary" hidden aria-labelledby="error-summary-title" role="alert" data-module="govuk-error-summary">
+        <h2 class="govuk-error-summary__title" id="error-summary-title">
+          There is a problem
+        </h2>
+        <div class="govuk-error-summary__body">
+          <p class="govuk-body" id="errorMessage"></p>
+        </div>
+      </div>
+
+      <!-- Success Message (hidden by default) -->
+      <div id="uploadSuccess" class="govuk-notification-banner govuk-notification-banner--success" hidden role="alert" aria-labelledby="upload-success-title" data-module="govuk-notification-banner">
+        <div class="govuk-notification-banner__header">
+          <h2 class="govuk-notification-banner__title" id="upload-success-title">
+            Success
+          </h2>
+        </div>
+        <div class="govuk-notification-banner__content">
+          <h3 class="govuk-notification-banner__heading">
+            File uploaded successfully
+          </h3>
+          <p class="govuk-body" id="successMessage"></p>
+          <p class="govuk-body">
+            <a href="/" class="govuk-link">Go to home page</a> or upload another document below.
+          </p>
+        </div>
+      </div>
+
+      <p class="govuk-body">
+        Upload a PDF or Word document for content review. The file will be uploaded to secure storage and analyzed.
+      </p>
+
+      <div class="govuk-inset-text">
+        <p class="govuk-body">
+          <strong>Accepted file types:</strong> PDF (.pdf), Word (.doc, .docx)
+        </p>
+        <p class="govuk-body">
+          <strong>Maximum file size:</strong> 10MB
+        </p>
+      </div>
+
+      <form id="uploadForm">
+        <div class="govuk-form-group" id="fileFormGroup">
+          <label class="govuk-label govuk-label--m" for="file-upload">
+            Choose file
+          </label>
+          <input class="govuk-file-upload" id="file-upload" name="file" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+        </div>
+
+        <button type="submit" class="govuk-button" data-module="govuk-button" id="uploadButton">
+          Upload Document
+        </button>
+
+        <!-- Upload Progress (hidden by default) -->
+        <div id="uploadProgress" class="govuk-!-margin-top-4" hidden>
+          <p class="govuk-body" id="uploadStatusText">Uploading... Please wait.</p>
+          <div class="upload-progress-container">
+            <div id="progressBar" class="upload-progress-bar" data-progress="0"></div>
+          </div>
+          <p class="govuk-body-s govuk-!-margin-top-2" id="uploadProgressText">0%</p>
+        </div>
+      </form>
+
+      <p class="govuk-body govuk-!-margin-top-4">
+        <a href="/" class="govuk-link">Back to home</a>
+      </p>
+    </div>
+  </div>
+{% endblock %}
+
+{% block bodyEnd %}
+  {{ super() }}
+  <!-- Upload functionality is handled in upload-handler.js -->
+{% endblock %}

@@ -219,6 +219,42 @@ export const config = convict({
       default: 'x-cdp-request-id',
       env: 'TRACING_HEADER'
     }
+  },
+  cdpUploader: {
+    url: {
+      doc: 'CDP Uploader service URL',
+      format: String,
+      default: 'http://localhost:7337',
+      env: 'CDP_UPLOADER_URL'
+    },
+    s3Bucket: {
+      doc: 'S3 bucket for uploaded files',
+      format: String,
+      default: 'my-bucket',
+      env: 'CDP_UPLOADER_S3_BUCKET'
+    },
+    s3Path: {
+      doc: 'S3 path prefix for uploaded files',
+      format: String,
+      default: 'content-uploads',
+      env: 'CDP_UPLOADER_S3_PATH'
+    },
+    maxFileSize: {
+      doc: 'Maximum file size in bytes (10MB default)',
+      format: Number,
+      default: 10 * 1000 * 1000,
+      env: 'CDP_UPLOADER_MAX_FILE_SIZE'
+    },
+    allowedMimeTypes: {
+      doc: 'Allowed MIME types for uploads',
+      format: Array,
+      default: [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      ],
+      env: 'CDP_UPLOADER_MIME_TYPES'
+    }
   }
 })
 

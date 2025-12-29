@@ -4,7 +4,22 @@
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=DEFRA_content-reviewer-frontend&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=DEFRA_content-reviewer-frontend)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=DEFRA_content-reviewer-frontend&metric=coverage)](https://sonarcloud.io/summary/new_code?id=DEFRA_content-reviewer-frontend)
 
-Core delivery platform Node.js Frontend Template.
+A GOV.UK Design System compliant web application for AI-powered content review with integrated chat and document upload capabilities.
+
+## 📚 Complete Documentation
+
+For comprehensive documentation including features, architecture, upload system, configuration, and troubleshooting, see:
+
+**[DOCUMENTATION.md](./DOCUMENTATION.md)** - Complete project documentation
+
+## Quick Links
+
+- [Quick Start](#local-development)
+- [Features & Capabilities](./DOCUMENTATION.md#features)
+- [File Upload System](./DOCUMENTATION.md#file-upload-system)
+- [Configuration](./DOCUMENTATION.md#configuration)
+- [API Reference](./DOCUMENTATION.md#api-reference)
+- [Troubleshooting](./DOCUMENTATION.md#troubleshooting)
 
 - [Requirements](#requirements)
   - [Node.js](#nodejs)
