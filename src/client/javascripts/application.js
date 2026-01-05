@@ -23,6 +23,7 @@ class ConversationManager {
   constructor() {
     this.conversations = this.loadConversations()
     this.currentConversationId = null
+    this.selectedFile = null // Track selected file for upload
     this.init()
   }
 
@@ -39,6 +40,9 @@ class ConversationManager {
       chatForm.addEventListener('submit', (e) => this.handleSendMessage(e))
     }
 
+    // File upload handlers
+    this.initFileUpload()
+
     // Load existing conversations in sidebar
     this.renderConversationList()
 
@@ -48,6 +52,138 @@ class ConversationManager {
     } else {
       // Load the most recent conversation
       this.loadConversation(this.conversations[0].id)
+    }
+  }
+
+  initFileUpload() {
+    const attachButton = document.getElementById('attachButton')
+    const fileInput = document.getElementById('fileInput')
+    const removeFileBtn = document.getElementById('removeFile')
+
+    if (!attachButton || !fileInput) {
+      return
+    }
+
+    // Attach button click - open file picker
+    attachButton.addEventListener('click', () => {
+      fileInput.click()
+    })
+
+    // File selected
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0]
+      if (file) {
+        this.handleFileSelected(file)
+      }
+    })
+
+    // Remove file button
+    if (removeFileBtn) {
+      removeFileBtn.addEventListener('click', () => {
+        this.clearSelectedFile()
+      })
+    }
+  }
+
+  handleFileSelected(file) {
+    // Validate file size (10MB)
+    const maxSize = 10 * 1024 * 1024
+    if (file.size > maxSize) {
+      this.showErrorNotification(
+        'File too large',
+        `Maximum file size is 10MB. Your file is ${(file.size / 1024 / 1024).toFixed(2)}MB.`
+      )
+      this.clearSelectedFile()
+      return
+    }
+
+    // Validate file type
+    const allowedTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ]
+
+    const extension = file.name.split('.').pop().toLowerCase()
+    const allowedExtensions = ['pdf', 'doc', 'docx']
+
+    if (
+      !allowedTypes.includes(file.type) &&
+      !allowedExtensions.includes(extension)
+    ) {
+      this.showErrorNotification(
+        'Invalid file type',
+        'Please upload a PDF or Word document (.pdf, .doc, .docx).'
+      )
+      this.clearSelectedFile()
+      return
+    }
+
+    // Store file and show preview
+    this.selectedFile = file
+    this.showFilePreview(file)
+  }
+
+  showFilePreview(file) {
+    const filePreview = document.getElementById('filePreview')
+    const fileName = document.getElementById('fileName')
+    const fileSize = document.getElementById('fileSize')
+
+    if (filePreview && fileName && fileSize) {
+      fileName.textContent = file.name
+      fileSize.textContent = `${(file.size / 1024).toFixed(2)} KB`
+      filePreview.hidden = false
+    }
+  }
+
+  clearSelectedFile() {
+    this.selectedFile = null
+    const fileInput = document.getElementById('fileInput')
+    const filePreview = document.getElementById('filePreview')
+
+    if (fileInput) {
+      fileInput.value = ''
+    }
+    if (filePreview) {
+      filePreview.hidden = true
+    }
+  }
+
+  showErrorNotification(title, message) {
+    // Remove any existing error notification
+    const existingError = document.getElementById('fileErrorNotification')
+    if (existingError) {
+      existingError.remove()
+    }
+
+    // Create error notification
+    const errorDiv = document.createElement('div')
+    errorDiv.id = 'fileErrorNotification'
+    errorDiv.className = 'govuk-error-summary'
+    errorDiv.setAttribute('role', 'alert')
+    errorDiv.setAttribute('aria-labelledby', 'error-summary-title')
+    errorDiv.setAttribute('data-module', 'govuk-error-summary')
+
+    errorDiv.innerHTML = `
+      <h2 class="govuk-error-summary__title" id="error-summary-title">
+        ${this.escapeHtml(title)}
+      </h2>
+      <div class="govuk-error-summary__body">
+        <p>${this.escapeHtml(message)}</p>
+      </div>
+    `
+
+    // Insert at top of chat container
+    const chatContainer = document.querySelector('.chat-container')
+    if (chatContainer) {
+      chatContainer.insertBefore(errorDiv, chatContainer.firstChild)
+
+      // Auto-remove after 5 seconds
+      setTimeout(() => {
+        if (errorDiv && errorDiv.parentNode) {
+          errorDiv.remove()
+        }
+      }, 5000)
     }
   }
 
@@ -122,7 +258,7 @@ class ConversationManager {
     }
   }
 
-  addMessageToUI(content, role) {
+  addMessageToUI(content, role, fileInfo) {
     const chatMessages = document.getElementById('chatMessages')
     if (!chatMessages) {
       return
@@ -133,31 +269,76 @@ class ConversationManager {
 
     const contentDiv = document.createElement('div')
     contentDiv.className = 'message-content'
-    contentDiv.innerHTML = `<p>${this.escapeHtml(content)}</p>`
+
+    // Add file attachment if present
+    if (fileInfo) {
+      const fileExt = fileInfo.filename
+        ? fileInfo.filename.split('.').pop().toLowerCase()
+        : 'file'
+      const isPdf = fileExt === 'pdf'
+      const fileIcon = isPdf ? '📄' : '📝'
+
+      const fileAttachment = document.createElement('div')
+      fileAttachment.className = 'file-attachment'
+      fileAttachment.innerHTML = `
+        <div class="file-attachment-content">
+          <span class="file-attachment-icon">${fileIcon}</span>
+          <div class="file-attachment-details">
+            <span class="file-attachment-name">${this.escapeHtml(fileInfo.filename || 'document')}</span>
+            <span class="file-attachment-size">${(fileInfo.size / 1024).toFixed(2)} KB</span>
+          </div>
+        </div>
+      `
+      contentDiv.appendChild(fileAttachment)
+    }
+
+    // Add text content
+    if (content) {
+      const textParagraph = document.createElement('p')
+      textParagraph.innerHTML = this.escapeHtml(content)
+      contentDiv.appendChild(textParagraph)
+    }
 
     messageDiv.appendChild(contentDiv)
     chatMessages.appendChild(messageDiv)
     chatMessages.scrollTop = chatMessages.scrollHeight
   }
 
-  saveMessage(content, role) {
+  saveMessage(content, role, fileInfo) {
     const conversation = this.conversations.find(
       (c) => c.id === this.currentConversationId
     )
     if (conversation) {
-      conversation.messages.push({
+      const message = {
         content,
         role,
         timestamp: new Date().toISOString()
-      })
+      }
+
+      // Add file info if present
+      if (fileInfo) {
+        message.attachment = {
+          filename: fileInfo.filename,
+          uploadId: fileInfo.uploadId || fileInfo.fileId,
+          s3Location: fileInfo.s3Location,
+          size: fileInfo.size,
+          contentType: fileInfo.contentType
+        }
+      }
+
+      conversation.messages.push(message)
 
       // Update conversation title from first user message
       if (
         role === 'user' &&
         conversation.messages.filter((m) => m.role === 'user').length === 1
       ) {
-        conversation.title =
-          content.substring(0, 50) + (content.length > 50 ? '...' : '')
+        if (fileInfo && !content) {
+          conversation.title = fileInfo.filename
+        } else {
+          conversation.title =
+            content.substring(0, 50) + (content.length > 50 ? '...' : '')
+        }
       }
 
       this.saveConversations()
@@ -194,45 +375,116 @@ class ConversationManager {
     }
 
     const message = userInput.value.trim()
-    if (!message) {
+    const hasFile = this.selectedFile !== null
+
+    // Must have either message or file
+    if (!message && !hasFile) {
       return
     }
 
-    // Clear input FIRST
+    // Clear input immediately
     userInput.value = ''
 
-    // Add user message to UI and save
-    this.addMessageToUI(message, 'user')
-    this.saveMessage(message, 'user')
+    // Handle file upload if file is selected
+    if (hasFile) {
+      try {
+        const fileInfo = await this.uploadFile(this.selectedFile)
 
-    // Show typing indicator
-    this.showTypingIndicator()
+        // Add user message with file attachment
+        this.addMessageToUI(message || '', 'user', fileInfo)
+        this.saveMessage(message || '', 'user', fileInfo)
 
-    try {
-      // TODO: Replace with actual API call to backend
-      // For now, just show a placeholder response
-      await this.simulateAPICall(message)
-    } catch (error) {
-      this.hideTypingIndicator()
-      this.addMessageToUI(
-        'Sorry, there was an error processing your message. Please try again.',
-        'bot'
-      )
-      this.saveMessage(
-        'Sorry, there was an error processing your message. Please try again.',
-        'bot'
-      )
+        // Clear file selection
+        this.clearSelectedFile()
+
+        // Show typing indicator
+        this.showTypingIndicator()
+
+        // Simulate API response
+        await this.simulateAPICall(message, fileInfo)
+      } catch (error) {
+        console.error('File upload error:', error)
+        this.addMessageToUI(
+          'Sorry, the file upload failed. Please try again.',
+          'bot'
+        )
+        this.saveMessage(
+          'Sorry, the file upload failed. Please try again.',
+          'bot'
+        )
+      }
+    } else {
+      // Text-only message
+      this.addMessageToUI(message, 'user')
+      this.saveMessage(message, 'user')
+
+      // Show typing indicator
+      this.showTypingIndicator()
+
+      try {
+        await this.simulateAPICall(message)
+      } catch (error) {
+        this.hideTypingIndicator()
+        this.addMessageToUI(
+          'Sorry, there was an error processing your message. Please try again.',
+          'bot'
+        )
+        this.saveMessage(
+          'Sorry, there was an error processing your message. Please try again.',
+          'bot'
+        )
+      }
     }
   }
 
-  async simulateAPICall(message) {
+  async uploadFile(file) {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    // Get backend URL from global config
+    const backendUrl =
+      window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001'
+
+    console.log('Uploading file to:', `${backendUrl}/api/upload`)
+
+    const response = await fetch(`${backendUrl}/api/upload`, {
+      method: 'POST',
+      body: formData,
+      credentials: 'include'
+    })
+
+    if (!response.ok) {
+      const error = await response
+        .json()
+        .catch(() => ({ error: `Server error: ${response.status}` }))
+      throw new Error(error.error || 'Upload failed')
+    }
+
+    const result = await response.json()
+    console.log('Upload successful:', result)
+
+    return {
+      filename: result.filename || file.name,
+      uploadId: result.uploadId || result.fileId,
+      s3Location: result.s3Location || result.location,
+      size: result.size || file.size,
+      contentType: result.contentType || file.type
+    }
+  }
+
+  async simulateAPICall(message, fileInfo) {
     // Simulate API delay
     await new Promise((resolve) => setTimeout(resolve, 1000))
 
     this.hideTypingIndicator()
 
     // Placeholder response
-    const response = `Thank you for your message. I received: "${message}". This is a placeholder response. The actual AI integration will be implemented in the backend.`
+    let response = ''
+    if (fileInfo) {
+      response = `Thank you for uploading "${fileInfo.filename}". I've received your document. This is a placeholder response. The actual AI content review will be implemented in the backend.`
+    } else {
+      response = `Thank you for your message. I received: "${message}". This is a placeholder response. The actual AI integration will be implemented in the backend.`
+    }
 
     this.addMessageToUI(response, 'bot')
     this.saveMessage(response, 'bot')

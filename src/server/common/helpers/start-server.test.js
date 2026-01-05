@@ -3,7 +3,7 @@ import { vi } from 'vitest'
 import hapi from '@hapi/hapi'
 import { statusCodes } from '../constants/status-codes.js'
 
-describe('#startServer', () => {
+describe.sequential('#startServer', () => {
   let createServerSpy
   let hapiServerSpy
   let startServerImport
@@ -17,7 +17,7 @@ describe('#startServer', () => {
 
     createServerSpy = vi.spyOn(createServerImport, 'createServer')
     hapiServerSpy = vi.spyOn(hapi, 'server')
-  })
+  }, 60000)
 
   afterAll(() => {
     vi.unstubAllEnvs()

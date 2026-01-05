@@ -60,7 +60,7 @@ describe('context and cache', () => {
               href: '/about'
             }
           ],
-          serviceName: 'content-reviewer-frontend',
+          serviceName: 'Content Review Tool',
           serviceUrl: '/'
         })
       })
@@ -149,7 +149,7 @@ describe('context and cache', () => {
               href: '/about'
             }
           ],
-          serviceName: 'content-reviewer-frontend',
+          serviceName: 'Content Review Tool',
           serviceUrl: '/'
         })
       })
