@@ -481,7 +481,7 @@ class ConversationManager {
     // Placeholder response
     let response = ''
     if (fileInfo) {
-      response = `Thank you for uploading "${fileInfo.filename}". I've received your document. This is a placeholder response. The actual AI content review will be implemented in the backend.`
+      response = `Thank you for your message. I received a file named "${fileInfo.filename}". This is a placeholder response. The actual AI integration will be implemented in the backend.`
     } else {
       response = `Thank you for your message. I received: "${message}". This is a placeholder response. The actual AI integration will be implemented in the backend.`
     }
