@@ -287,7 +287,7 @@
 }
 
 .attach-button {
-  background-color: govuk-colour("yellow");
+  background-color: govuk-colour("green");
   border: 2px solid govuk-colour("black");
   border-radius: 0;
   padding: 8px govuk-spacing(4);
@@ -295,6 +295,7 @@
   font-size: 19px;
   font-weight: 400;
   line-height: 1.1875;
+  color: govuk-colour("white");
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -310,14 +311,14 @@
   }
   
   &:hover {
-    background-color: #f5df4d;
+    background-color: govuk-colour("dark-green");
     box-shadow: 0 2px 0 govuk-colour("black");
   }
   
   &:focus {
-    outline: 3px solid govuk-colour("black");
+    outline: 3px solid govuk-colour("yellow");
     outline-offset: 0;
-    background-color: govuk-colour("yellow");
+    background-color: govuk-colour("green");
   }
 
   &:active {
