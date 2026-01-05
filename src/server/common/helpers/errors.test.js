@@ -23,7 +23,7 @@ describe('#errors', () => {
     })
 
     expect(result).toEqual(
-      expect.stringContaining('Page not found | content-reviewer-frontend')
+      expect.stringContaining('Page not found | Content Review Tool')
     )
     expect(statusCode).toBe(statusCodes.notFound)
   })

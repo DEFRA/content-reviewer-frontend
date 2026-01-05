@@ -59,24 +59,6 @@
           <p class="govuk-body">
             I can help you review content for clarity, formatting and compliance with GOV.UK standards.
           </p>
-          
-          <!-- Upload Section -->
-          <div class="govuk-!-margin-top-4 govuk-!-margin-bottom-4">
-            <div class="upload-option-card">
-              <a href="/upload/form" class="govuk-link govuk-link--no-visited-state" style="text-decoration: none;">
-                <div style="display: flex; align-items: center; padding: 15px; background-color: #f3f2f1; border-left: 4px solid #1d70b8; border-radius: 4px;">
-                  <svg class="upload-icon" width="24" height="24" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-right: 10px; color: #1d70b8;">
-                    <path d="M10 4L10 14M10 4L6 8M10 4L14 8M4 16H16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                  </svg>
-                  <span style="font-size: 19px; font-weight: 600; color: #1d70b8;">Upload a document for review</span>
-                </div>
-              </a>
-            </div>
-            
-            <div class="divider-with-text">
-              <span>or type your message below</span>
-            </div>
-          </div>
         </div>
 
         <!-- Chat Messages Area -->
@@ -99,26 +81,55 @@
 
         <!-- Input Area -->
         <div class="chat-input-container">
-          <form id="chatForm" class="chat-form">
-            <div class="govuk-form-group">
-              <label class="govuk-label" for="userInput">
-                Type your message or paste content to review
-              </label>
-              <textarea 
-                id="userInput" 
-                class="govuk-textarea" 
-                rows="3" 
-                aria-label="Chat message input"
-              ></textarea>
+          <!-- File Preview (hidden by default) -->
+          <div id="filePreview" class="file-preview" hidden>
+            <div class="file-preview-content">
+              <span class="file-preview-icon">📎</span>
+              <div class="file-preview-details">
+                <span class="file-preview-name" id="fileName">document.pdf</span>
+                <span class="file-preview-size" id="fileSize">1.2 MB</span>
+              </div>
+              <button type="button" class="file-preview-remove" id="removeFile" aria-label="Remove file">
+                ✕
+              </button>
             </div>
-            <button 
-              type="submit" 
-              class="govuk-button"
-              data-module="govuk-button"
-              id="sendButton"
-            >
-              Send
-            </button>
+          </div>
+
+          <form id="chatForm" class="chat-form">
+            <!-- Hidden file input -->
+            <input type="file" id="fileInput" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden>
+            
+            <div class="chat-input-wrapper">
+              <div class="govuk-form-group">
+                <label class="govuk-label govuk-visually-hidden" for="userInput">
+                  Type your message or paste content to review
+                </label>
+                <textarea 
+                  id="userInput" 
+                  class="govuk-textarea" 
+                  rows="3" 
+                  placeholder="Type your message here..."
+                  aria-label="Chat message input"
+                ></textarea>
+              </div>
+              
+              <div class="chat-buttons-row">
+                <!-- Attach button on left -->
+                <button type="button" class="attach-button" id="attachButton" aria-label="Attach file" title="Attach PDF or Word document">
+                  Attach File
+                </button>
+                
+                <!-- Send button on right -->
+                <button 
+                  type="submit" 
+                  class="govuk-button send-button"
+                  data-module="govuk-button"
+                  id="sendButton"
+                >
+                  Send
+                </button>
+              </div>
+            </div>
           </form>
         </div>
         <!-- End chat-input-container -->
@@ -134,6 +145,11 @@
 {% block bodyEnd %}
   {{ super() }}
   <script nonce="{{ cspNonce }}">
+    // Configure backend API URL
+    window.APP_CONFIG = {
+      backendApiUrl: 'http://localhost:3001'
+    };
+
     // Check for upload success message from sessionStorage
     (function() {
       const uploadSuccess = sessionStorage.getItem('uploadSuccess');
