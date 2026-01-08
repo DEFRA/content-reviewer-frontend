@@ -1,0 +1,181 @@
+{% extends "layouts/page.njk" %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-full">
+      
+      <a href="/" class="govuk-back-link">Back to home</a>
+      
+      <h1 class="govuk-heading-xl">{{ heading }}</h1>
+      
+      <!-- Document Information -->
+      <dl class="govuk-summary-list govuk-!-margin-bottom-6">
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">Document</dt>
+          <dd class="govuk-summary-list__value">{{ results.documentName }}</dd>
+        </div>
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">Review Date</dt>
+          <dd class="govuk-summary-list__value">{{ results.reviewDate | formatDate('dd/MM/yyyy HH:mm') }}</dd>
+        </div>
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">Status</dt>
+          <dd class="govuk-summary-list__value">
+            <strong class="govuk-tag govuk-tag--green">{{ results.status }}</strong>
+          </dd>
+        </div>
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">S3 Result Location</dt>
+          <dd class="govuk-summary-list__value"><code>{{ results.s3Location }}</code></dd>
+        </div>
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">LLM Model</dt>
+          <dd class="govuk-summary-list__value">{{ results.llmModel }}</dd>
+        </div>
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">Processing Time</dt>
+          <dd class="govuk-summary-list__value">{{ results.processingTime }}</dd>
+        </div>
+      </dl>
+
+      <!-- Export Options -->
+      <div class="govuk-button-group govuk-!-margin-bottom-8">
+        <button type="button" class="govuk-button" data-module="govuk-button" id="exportPdfBtn">
+          Export as PDF
+        </button>
+        <button type="button" class="govuk-button govuk-button--secondary" data-module="govuk-button" id="exportWordBtn">
+          Export as Word
+        </button>
+      </div>
+
+      <!-- Review Summary -->
+      <h2 class="govuk-heading-l">Summary</h2>
+      
+      <div class="govuk-grid-row govuk-!-margin-bottom-6">
+        <div class="govuk-grid-column-one-sixth">
+          <div class="app-stat-card">
+            <h3 class="govuk-heading-s">Overall Score</h3>
+            <p class="govuk-body govuk-!-font-size-48 govuk-!-font-weight-bold">{{ results.summary.overallScore }}</p>
+          </div>
+        </div>
+        <div class="govuk-grid-column-one-sixth">
+          <div class="app-stat-card">
+            <h3 class="govuk-heading-s">Readability</h3>
+            <p class="govuk-body govuk-!-font-size-24">{{ results.summary.readabilityScore }}</p>
+          </div>
+        </div>
+        <div class="govuk-grid-column-one-sixth">
+          <div class="app-stat-card">
+            <h3 class="govuk-heading-s">Compliance</h3>
+            <p class="govuk-body govuk-!-font-size-24">{{ results.summary.complianceScore }}</p>
+          </div>
+        </div>
+        <div class="govuk-grid-column-one-sixth">
+          <div class="app-stat-card">
+            <h3 class="govuk-heading-s">Issues Found</h3>
+            <p class="govuk-body govuk-!-font-size-48 govuk-!-font-weight-bold">{{ results.summary.issuesFound }}</p>
+          </div>
+        </div>
+        <div class="govuk-grid-column-one-sixth">
+          <div class="app-stat-card">
+            <h3 class="govuk-heading-s">Word Count</h3>
+            <p class="govuk-body govuk-!-font-size-24">{{ results.summary.wordCount }}</p>
+          </div>
+        </div>
+        <div class="govuk-grid-column-one-sixth">
+          <div class="app-stat-card">
+            <h3 class="govuk-heading-s">Avg Sentence</h3>
+            <p class="govuk-body govuk-!-font-size-24">{{ results.summary.averageSentenceLength }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Findings -->
+      <h2 class="govuk-heading-l">Findings</h2>
+      
+      {% for finding in results.findings %}
+      <div class="govuk-warning-text govuk-!-margin-bottom-6">
+        <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
+        <div class="govuk-warning-text__text">
+          <span class="govuk-warning-text__assistive">Warning</span>
+          <h3 class="govuk-heading-s govuk-!-margin-bottom-2">
+            {{ finding.category }} 
+            <strong class="govuk-tag {{ 'govuk-tag--red' if finding.severity == 'High' else ('govuk-tag--yellow' if finding.severity == 'Medium' else 'govuk-tag--grey') }}">
+              {{ finding.severity }}
+            </strong>
+            <span class="govuk-body-s" style="margin-left: 10px;">AI Confidence: {{ (finding.aiConfidence * 100) | round }}%</span>
+          </h3>
+          <p class="govuk-body"><strong>Issue:</strong> {{ finding.description }}</p>
+          <p class="govuk-body"><strong>Location:</strong> {{ finding.location }}</p>
+          <p class="govuk-body"><strong>Suggestion:</strong> {{ finding.suggestion }}</p>
+        </div>
+      </div>
+      {% endfor %}
+
+      <!-- Recommendations -->
+      <h2 class="govuk-heading-l">Recommendations</h2>
+      
+      <div class="govuk-inset-text">
+        <ul class="govuk-list govuk-list--bullet">
+          {% for recommendation in results.recommendations %}
+          <li>{{ recommendation }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <!-- Actions -->
+      <div class="govuk-button-group govuk-!-margin-top-6">
+        <a href="/" class="govuk-button" data-module="govuk-button">
+          Review Another Document
+        </a>
+        <a href="/" class="govuk-link">
+          Back to home
+        </a>
+      </div>
+
+      <!-- Debug Link (for backend users) -->
+      <div class="govuk-!-margin-top-4">
+        <details class="govuk-details govuk-!-font-size-14">
+          <summary class="govuk-details__summary">
+            <span class="govuk-details__summary-text">
+              Backend/Developer Options
+            </span>
+          </summary>
+          <div class="govuk-details__text">
+            <a href="/review/debug/{{ results.id }}" class="govuk-link">
+              View processing workflow (debug)
+            </a>
+          </div>
+        </details>
+      </div>
+
+    </div>
+  </div>
+{% endblock %}
+
+{% block bodyEnd %}
+  {{ super() }}
+  <script nonce="{{ cspNonce }}">
+    // Export as PDF
+    document.getElementById('exportPdfBtn').addEventListener('click', () => {
+      window.location.href = '/review/export/{{ results.id }}/pdf';
+    });
+
+    // Export as Word
+    document.getElementById('exportWordBtn').addEventListener('click', () => {
+      window.location.href = '/review/export/{{ results.id }}/word';
+    });
+  </script>
+  
+  <style>
+    .app-stat-card {
+      background: #f3f2f1;
+      padding: 1.5rem;
+      text-align: center;
+      border-left: 4px solid #1d70b8;
+    }
+    .app-stat-card h3 {
+      margin-bottom: 0.5rem;
+    }
+  </style>
+{% endblock %}
