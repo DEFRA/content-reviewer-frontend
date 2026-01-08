@@ -1,0 +1,39 @@
+{% extends "layouts/page.njk" %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      
+      <a href="/" class="govuk-back-link">Back to home</a>
+      
+      <h1 class="govuk-heading-l">{{ heading }}</h1>
+
+      <div class="govuk-panel govuk-panel--confirmation">
+        <h2 class="govuk-panel__title">Review Still Processing</h2>
+        <div class="govuk-panel__body">
+          Current status: <strong>{{ currentStatus }}</strong>
+        </div>
+      </div>
+
+      <div class="govuk-inset-text">
+        <p class="govuk-body">
+          Your document is still being reviewed. This page will automatically refresh every few seconds.
+        </p>
+      </div>
+
+      <p class="govuk-body">
+        <a href="/review/status-poller/{{ reviewId }}" class="govuk-link">
+          View real-time progress
+        </a>
+      </p>
+
+    </div>
+  </div>
+
+  <script nonce="{{ cspNonce }}">
+    // Auto-refresh every 3 seconds
+    setTimeout(() => {
+      window.location.reload();
+    }, 3000);
+  </script>
+{% endblock %}
