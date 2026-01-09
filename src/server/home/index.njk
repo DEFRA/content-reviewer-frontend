@@ -6,13 +6,6 @@
       
       <h1 class="govuk-heading-l">Content Review Assistant</h1>
       
-      <!-- Quick Actions -->
-      <div class="govuk-button-group govuk-!-margin-bottom-6">
-        <a href="/upload" class="govuk-button" data-module="govuk-button">
-          Upload Document
-        </a>
-      </div>
-
       <!-- Upload Success Message -->
       {% if uploadSuccess %}
       <div class="govuk-notification-banner govuk-notification-banner--success" role="alert" aria-labelledby="upload-success-title" data-module="govuk-notification-banner">
@@ -50,31 +43,17 @@
 
       <!-- Content Review Form -->
       <div class="govuk-!-margin-bottom-6">
-        <form id="reviewForm" enctype="multipart/form-data">
+        <form id="reviewForm" enctype="multipart/form-data" method="POST" action="/api/upload">
           
           <!-- File Upload Option -->
           <div class="govuk-form-group" id="fileFormGroup">
             <label class="govuk-label govuk-label--s" for="file-upload">
-              Upload a document (optional)
+              Upload a document
             </label>
             <div class="govuk-hint">
               Accepted file types: PDF (.pdf), Word (.doc, .docx). Maximum file size: 10MB
             </div>
-            <input class="govuk-file-upload" id="file-upload" name="file" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
-          </div>
-
-          <!-- Text Input Option -->
-          <div class="govuk-form-group">
-            <label class="govuk-label govuk-label--s" for="userInput">
-              Or type/paste your content directly
-            </label>
-            <textarea 
-              id="userInput" 
-              class="govuk-textarea" 
-              rows="5" 
-              placeholder="Type or paste content here..."
-              aria-label="Content input for review"
-            ></textarea>
+            <input class="govuk-file-upload" id="file-upload" name="file" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required>
           </div>
           
           <button 
@@ -85,6 +64,13 @@
           >
             Review Content
           </button>
+
+          <!-- Upload Progress Indicator -->
+          <div id="uploadProgress" class="govuk-!-margin-top-4" style="display: none;">
+            <div class="govuk-inset-text">
+              <p class="govuk-body" id="uploadStatus">Uploading to S3...</p>
+            </div>
+          </div>
         </form>
       </div>
 
@@ -168,30 +154,95 @@
     // Auto-refresh if there are active reviews (processing, queued, uploading, analyzing)
     const hasActiveReviews = {{ (reviewHistory | selectattr('status', 'in', ['processing', 'analyzing', 'queued', 'uploading']) | list | length > 0) | dump }};
     
+    let autoRefreshInterval = null;
+    
     if (hasActiveReviews) {
-      console.log('Active reviews detected - auto-refreshing in 5 seconds...');
-      // Refresh page every 5 seconds to update status from S3/SQS/MongoDB
-      setTimeout(() => {
+      console.log('Active reviews detected - starting auto-refresh every 3 seconds...');
+      // Refresh page every 3 seconds to update status from S3/SQS/MongoDB
+      autoRefreshInterval = setInterval(() => {
         window.location.reload();
-      }, 5000);
+      }, 3000);
     }
     
-    // Handle review form submission
+    // Handle review form submission via AJAX
     const reviewForm = document.getElementById('reviewForm');
+    const reviewButton = document.getElementById('reviewButton');
+    const uploadProgress = document.getElementById('uploadProgress');
+    const uploadStatus = document.getElementById('uploadStatus');
+    const fileInput = document.getElementById('file-upload');
+    
     if (reviewForm) {
-      reviewForm.addEventListener('submit', function(e) {
+      reviewForm.addEventListener('submit', async function(e) {
         e.preventDefault();
         
-        const fileInput = document.getElementById('file-upload');
-        const textInput = document.getElementById('userInput');
+        if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+          alert('Please select a file to upload.');
+          return;
+        }
         
-        if (fileInput && fileInput.files.length > 0) {
-          // Redirect to upload page for file upload
-          window.location.href = '/upload';
-        } else if (textInput && textInput.value.trim()) {
-          alert('Text content review functionality coming soon!');
-        } else {
-          alert('Please upload a file or enter text content to review.');
+        const file = fileInput.files[0];
+        
+        // Validate file size (10MB)
+        const maxSize = 10 * 1024 * 1024;
+        if (file.size > maxSize) {
+          alert(`File too large. Maximum size is 10MB. Your file is ${(file.size / 1024 / 1024).toFixed(2)}MB.`);
+          return;
+        }
+        
+        // Show upload progress
+        reviewButton.disabled = true;
+        reviewButton.textContent = 'Uploading...';
+        uploadProgress.style.display = 'block';
+        uploadStatus.textContent = 'Uploading to S3...';
+        
+        try {
+          // Create FormData
+          const formData = new FormData();
+          formData.append('file', file);
+          
+          // Upload file to backend
+          uploadStatus.textContent = 'Uploading to S3...';
+          const response = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData
+          });
+          
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Upload failed');
+          }
+          
+          const result = await response.json();
+          console.log('Upload successful:', result);
+          
+          // Update status
+          uploadStatus.textContent = 'Upload successful! Adding to review queue...';
+          
+          // Clear form
+          fileInput.value = '';
+          
+          // Wait a moment then refresh to show new review in table
+          setTimeout(() => {
+            uploadProgress.style.display = 'none';
+            reviewButton.disabled = false;
+            reviewButton.textContent = 'Review Content';
+            
+            // Reload page to show updated review history
+            window.location.reload();
+          }, 1500);
+          
+        } catch (error) {
+          console.error('Upload error:', error);
+          uploadStatus.textContent = `Upload failed: ${error.message}`;
+          uploadStatus.style.color = '#d4351c';
+          
+          reviewButton.disabled = false;
+          reviewButton.textContent = 'Review Content';
+          
+          setTimeout(() => {
+            uploadProgress.style.display = 'none';
+            uploadStatus.style.color = '';
+          }, 5000);
         }
       });
     }
