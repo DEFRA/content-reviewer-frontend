@@ -10,21 +10,20 @@ A GOV.UK Design System compliant web application for AI-powered content review w
 
 ## 📚 Complete Documentation
 
-**For comprehensive documentation, see [DOCUMENTATION.md](./DOCUMENTATION.md)**
+**For comprehensive documentation, see [USER_GUIDE.md](./USER_GUIDE.md)**
 
 The complete user guide includes:
 
 - 🚀 Quick Start & Installation
 - ✨ Features & Capabilities
 - ⚙️ Configuration Guide
-- 📤 File Upload System
+- 📤 File Upload & Text Review
 - 📊 Review Results & Export
 - 🌍 Environment Configuration
 - ☁️ CDP Deployment Guide
-- 🧪 Testing Guide
 - 🔧 Troubleshooting
-- 📖 API Reference
-- 🏗️ Architecture Overview
+- 📖 API Integration
+- 🏗️ Project Structure
 
 ---
 

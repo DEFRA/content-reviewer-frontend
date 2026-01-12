@@ -312,6 +312,9 @@
     .app-stat-card h3 {
       margin-bottom: 0.5rem;
     }
+    .app-confidence-badge {
+      margin-left: 10px;
+    }
     
     @media print {
       .govuk-back-link,
@@ -330,7 +333,7 @@
             <strong class="govuk-tag {{ 'govuk-tag--red' if finding.severity == 'High' else ('govuk-tag--yellow' if finding.severity == 'Medium' else 'govuk-tag--grey') }}">
               {{ finding.severity }}
             </strong>
-            <span class="govuk-body-s" style="margin-left: 10px;">AI Confidence: {{ (finding.aiConfidence * 100) | round }}%</span>
+            <span class="govuk-body-s app-confidence-badge">AI Confidence: {{ (finding.aiConfidence * 100) | round }}%</span>
           </h3>
           <p class="govuk-body"><strong>Issue:</strong> {{ finding.description }}</p>
           <p class="govuk-body"><strong>Location:</strong> {{ finding.location }}</p>
@@ -393,16 +396,4 @@
       window.location.href = '/review/export/{{ results.id }}/word';
     });
   </script>
-  
-  <style>
-    .app-stat-card {
-      background: #f3f2f1;
-      padding: 1.5rem;
-      text-align: center;
-      border-left: 4px solid #1d70b8;
-    }
-    .app-stat-card h3 {
-      margin-bottom: 0.5rem;
-    }
-  </style>
 {% endblock %}

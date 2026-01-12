@@ -11,8 +11,8 @@ export const homeController = {
     // Fetch review history from backend
     let reviewHistory = []
     try {
-      const config = request.server.app.config
-      const backendUrl = config.get('backendUrl')
+      // Use hardcoded backend URL for now to avoid config issues
+      const backendUrl = 'http://localhost:3001'
 
       const response = await fetch(`${backendUrl}/api/review-history?limit=20`)
 

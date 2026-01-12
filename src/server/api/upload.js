@@ -1,5 +1,6 @@
 import FormData from 'form-data'
 import fetch from 'node-fetch'
+import { config } from '../../config/config.js'
 
 /**
  * API controller for handling file uploads
@@ -56,7 +57,6 @@ export const uploadApiController = {
       }
 
       // Forward file to backend
-      const config = request.server.app.config
       const backendUrl = config.get('backendUrl')
 
       const formData = new FormData()
