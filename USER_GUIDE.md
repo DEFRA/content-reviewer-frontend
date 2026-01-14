@@ -7,22 +7,26 @@ The Content Reviewer Frontend is a GOV.UK Design System compliant web applicatio
 ## Features
 
 ### 📤 Dual Input Methods
+
 - **File Upload**: Upload documents (PDF, Word, .docx) up to 10MB
 - **Text Input**: Paste content directly for instant review
 
 ### 📊 Review Management
+
 - Real-time status updates with auto-refresh
 - Review history with status tracking
 - Animated progress indicators for active reviews
 - Persistent results across sessions
 
 ### 📑 Results Display
+
 - Overall assessment with scoring
 - Detailed review sections (expandable accordion)
 - Export options (JSON, Text, Print)
 - Metrics dashboard (issues, word count, passive voice, etc.)
 
 ### 🔒 Security & Compliance
+
 - CSP (Content Security Policy) compliant
 - GOV.UK Design System
 - Secure session management
@@ -33,7 +37,8 @@ The Content Reviewer Frontend is a GOV.UK Design System compliant web applicatio
 ## Quick Start
 
 ### Prerequisites
-- Node.js 18+ 
+
+- Node.js 18+
 - Backend service running on port 3001 (or configured URL)
 
 ### Installation
@@ -122,26 +127,28 @@ Three export options available:
 
 ### Environment Variables
 
-| Variable | Description | Default | Required |
-|----------|-------------|---------|----------|
-| `PORT` | Frontend server port | 3000 | No |
-| `NODE_ENV` | Environment (development/production) | development | No |
-| `BACKEND_URL` | Backend API URL | http://localhost:3001 | Yes |
-| `SESSION_COOKIE_PASSWORD` | Session encryption key (32+ chars) | - | Yes |
-| `CONTENT_SECURITY_POLICY_ENABLED` | Enable CSP headers | true | No |
-| `SESSION_CACHE_TTL` | Session cache TTL (ms) | 7200000 | No |
-| `LOG_LEVEL` | Logging level | info | No |
+| Variable                          | Description                          | Default               | Required |
+| --------------------------------- | ------------------------------------ | --------------------- | -------- |
+| `PORT`                            | Frontend server port                 | 3000                  | No       |
+| `NODE_ENV`                        | Environment (development/production) | development           | No       |
+| `BACKEND_URL`                     | Backend API URL                      | http://localhost:3001 | Yes      |
+| `SESSION_COOKIE_PASSWORD`         | Session encryption key (32+ chars)   | -                     | Yes      |
+| `CONTENT_SECURITY_POLICY_ENABLED` | Enable CSP headers                   | true                  | No       |
+| `SESSION_CACHE_TTL`               | Session cache TTL (ms)               | 7200000               | No       |
+| `LOG_LEVEL`                       | Logging level                        | info                  | No       |
 
 ### Session Configuration
 
 The application uses server-side session management with memory cache (development) or Redis (production recommended).
 
 **Development** (memory cache):
+
 ```javascript
 // Automatically configured when redis connection fails
 ```
 
 **Production** (Redis):
+
 ```bash
 REDIS_HOST=your-redis-host
 REDIS_PORT=6379
@@ -217,6 +224,7 @@ npm run lint:fix # Fix linting issues
 **Symptom**: File upload doesn't show in review history
 
 **Solutions**:
+
 1. Check backend is running: http://localhost:3001/health
 2. Verify `BACKEND_URL` in `.env`
 3. Check browser console for errors
@@ -228,6 +236,7 @@ npm run lint:fix # Fix linting issues
 **Symptom**: Clicking "View results" shows error page
 
 **Solutions**:
+
 1. Check backend logs for errors
 2. Verify review completed successfully
 3. Check backend API: `http://localhost:3001/api/status/{reviewId}`
@@ -239,6 +248,7 @@ npm run lint:fix # Fix linting issues
 **Symptom**: Review history doesn't update automatically
 
 **Solutions**:
+
 1. Check browser console for JavaScript errors
 2. Verify `upload-handler.js` is loaded
 3. Clear browser cache
@@ -249,6 +259,7 @@ npm run lint:fix # Fix linting issues
 **Symptom**: "Session error" or authentication issues
 
 **Solutions**:
+
 1. Verify `SESSION_COOKIE_PASSWORD` is set (32+ characters)
 2. Check Redis connection (if using Redis)
 3. Clear browser cookies
@@ -284,6 +295,7 @@ User Input → Frontend → Backend API → S3/SQS → AI Service → Results �
 See the root [DEPLOYMENT-READINESS.md](../DEPLOYMENT-READINESS.md) for complete deployment instructions.
 
 **Quick checklist**:
+
 - [ ] Set all environment variables
 - [ ] Configure session storage (Redis)
 - [ ] Set `NODE_ENV=production`
@@ -295,6 +307,7 @@ See the root [DEPLOYMENT-READINESS.md](../DEPLOYMENT-READINESS.md) for complete 
 ### Environment-Specific Configuration
 
 **Development**:
+
 ```bash
 NODE_ENV=development
 BACKEND_URL=http://localhost:3001
@@ -302,6 +315,7 @@ SESSION_CACHE_TTL=7200000  # 2 hours
 ```
 
 **Production**:
+
 ```bash
 NODE_ENV=production
 BACKEND_URL=https://content-review-backend.cdp.defra.cloud

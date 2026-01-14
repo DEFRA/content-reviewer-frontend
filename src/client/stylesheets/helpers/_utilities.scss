@@ -1,11 +1,11 @@
 // JavaScript utility classes
 
 .js-hidden {
-  display: none !important;
+  display: none !important; /* stylelint-disable-line declaration-no-important */
 }
 
 .js-visible {
-  display: block !important;
+  display: block !important; /* stylelint-disable-line declaration-no-important */
 }
 
 // Disabled state for form inputs (mutual exclusivity)

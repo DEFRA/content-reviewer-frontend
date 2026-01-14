@@ -397,10 +397,14 @@ class ConversationManager {
         // Clear file selection
         this.clearSelectedFile()
 
-        // Show typing indicator
-        this.showTypingIndicator()
+        // Redirect to polling page if we have a reviewId
+        if (fileInfo.reviewId) {
+          window.location.href = `/review/status-poller/${fileInfo.reviewId}`
+          return
+        }
 
-        // Simulate API response
+        // Fallback: show typing indicator if no reviewId
+        this.showTypingIndicator()
         await this.simulateAPICall(message, fileInfo)
       } catch (error) {
         console.error('File upload error:', error)
@@ -414,16 +418,24 @@ class ConversationManager {
         )
       }
     } else {
-      // Text-only message
+      // Text-only message - submit for AI review
       this.addMessageToUI(message, 'user')
       this.saveMessage(message, 'user')
 
-      // Show typing indicator
-      this.showTypingIndicator()
-
       try {
-        await this.simulateAPICall(message)
+        // Submit text for review
+        const reviewId = await this.submitTextReview(message)
+
+        if (reviewId) {
+          // Redirect to polling page to track review progress
+          window.location.href = `/review/status-poller/${reviewId}`
+        } else {
+          // No reviewId - fallback to placeholder
+          this.showTypingIndicator()
+          await this.simulateAPICall(message)
+        }
       } catch (error) {
+        console.error('Text review submission error:', error)
         this.hideTypingIndicator()
         this.addMessageToUI(
           'Sorry, there was an error processing your message. Please try again.',
@@ -468,7 +480,43 @@ class ConversationManager {
       uploadId: result.uploadId || result.fileId,
       s3Location: result.s3Location || result.location,
       size: result.size || file.size,
-      contentType: result.contentType || file.type
+      contentType: result.contentType || file.type,
+      reviewId: result.reviewId // Include reviewId for redirect
+    }
+  }
+
+  async submitTextReview(textContent) {
+    try {
+      console.log(
+        'Submitting text for AI review:',
+        textContent.substring(0, 100) + '...'
+      )
+
+      const response = await fetch('/api/review-text', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          textContent
+        }),
+        credentials: 'include'
+      })
+
+      if (!response.ok) {
+        const error = await response
+          .json()
+          .catch(() => ({ message: `Server error: ${response.status}` }))
+        throw new Error(error.message || 'Text review submission failed')
+      }
+
+      const result = await response.json()
+      console.log('Text review submitted successfully:', result)
+
+      return result.reviewId
+    } catch (error) {
+      console.error('Failed to submit text review:', error)
+      throw error
     }
   }
 

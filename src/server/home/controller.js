@@ -14,7 +14,7 @@ export const homeController = {
       // Use hardcoded backend URL for now to avoid config issues
       const backendUrl = 'http://localhost:3001'
 
-      const response = await fetch(`${backendUrl}/api/review-history?limit=20`)
+      const response = await fetch(`${backendUrl}/api/reviews?limit=20`)
 
       if (response.ok) {
         const data = await response.json()

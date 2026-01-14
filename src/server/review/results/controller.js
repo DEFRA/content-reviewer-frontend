@@ -6,20 +6,29 @@ export const resultsController = {
 
     try {
       request.logger.info({ reviewId: id }, 'Fetching review results')
-      
+
       // Fetch review status and results from backend
-      const response = await fetch(`${backendUrl}/api/status/${id}`)
+      const response = await fetch(`${backendUrl}/api/review/${id}`)
 
       if (!response.ok) {
-        request.logger.error({ reviewId: id, status: response.status }, 'Backend returned error status')
+        request.logger.error(
+          { reviewId: id, status: response.status },
+          'Backend returned error status'
+        )
         throw new Error(`Failed to fetch review results: ${response.status}`)
       }
 
       const apiResponse = await response.json()
-      request.logger.info({ reviewId: id, hasData: !!apiResponse.data }, 'Received API response')
+      request.logger.info(
+        { reviewId: id, hasData: !!apiResponse.data },
+        'Received API response'
+      )
 
       if (!apiResponse.success || !apiResponse.data) {
-        request.logger.error({ reviewId: id, apiResponse }, 'Invalid API response')
+        request.logger.error(
+          { reviewId: id, apiResponse },
+          'Invalid API response'
+        )
         throw new Error('Invalid response from backend')
       }
 
@@ -27,7 +36,10 @@ export const resultsController = {
 
       // Check if review is completed
       if (statusData.status !== 'completed') {
-        request.logger.info({ reviewId: id, status: statusData.status }, 'Review not completed yet')
+        request.logger.info(
+          { reviewId: id, status: statusData.status },
+          'Review not completed yet'
+        )
         return h.view('review/results/pending', {
           pageTitle: 'Review In Progress',
           heading: 'Review In Progress',
@@ -40,15 +52,20 @@ export const resultsController = {
       request.logger.info({ reviewId: id }, 'Transforming review data')
       // Transform backend data to frontend format
       const reviewResults = transformReviewData(statusData)
-      
-      request.logger.info({ 
-        reviewId: id, 
-        documentName: reviewResults.documentName,
-        hasS3Location: !!reviewResults.s3Location,
-        hasSections: !!reviewResults.sections,
-        sectionKeys: reviewResults.sections ? Object.keys(reviewResults.sections) : []
-      }, 'Rendering results view')
-      
+
+      request.logger.info(
+        {
+          reviewId: id,
+          documentName: reviewResults.documentName,
+          hasS3Location: !!reviewResults.s3Location,
+          hasSections: !!reviewResults.sections,
+          sectionKeys: reviewResults.sections
+            ? Object.keys(reviewResults.sections)
+            : []
+        },
+        'Rendering results view'
+      )
+
       return h.view('review/results/index', {
         pageTitle: 'Review Results',
         heading: 'AI Content Review Results',
@@ -56,7 +73,10 @@ export const resultsController = {
         results: reviewResults
       })
     } catch (error) {
-      request.logger.error({ error: error.message, stack: error.stack, reviewId: id }, 'Failed to fetch review results')
+      request.logger.error(
+        { error: error.message, stack: error.stack, reviewId: id },
+        'Failed to fetch review results'
+      )
 
       return h.view('review/results/error', {
         pageTitle: 'Error',
