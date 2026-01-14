@@ -53,6 +53,10 @@ export async function createServer() {
       strictHeader: false
     }
   })
+
+  // Attach config to server app for access in controllers
+  server.app.config = config
+
   await server.register([
     requestLogger,
     requestTracing,

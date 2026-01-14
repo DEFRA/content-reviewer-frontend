@@ -71,7 +71,11 @@ document.addEventListener('DOMContentLoaded', function () {
       // Uploading
       showProgress('Uploading to server...', 30)
 
-      const response = await fetch('http://localhost:3001/api/upload', {
+      // Get backend URL from global config
+      const backendUrl =
+        window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001'
+
+      const response = await fetch(`${backendUrl}/api/upload`, {
         method: 'POST',
         body: formData,
         credentials: 'include'

@@ -8,12 +8,13 @@ export const homeController = {
     const uploadSuccess = request.yar.flash('uploadSuccess')
     const uploadError = request.yar.flash('uploadError')
 
+    // Get backend URL from config
+    const config = request.server.app.config
+    const backendUrl = config.get('backendUrl')
+
     // Fetch review history from backend
     let reviewHistory = []
     try {
-      // Use hardcoded backend URL for now to avoid config issues
-      const backendUrl = 'http://localhost:3001'
-
       const response = await fetch(`${backendUrl}/api/reviews?limit=20`)
 
       if (response.ok) {
@@ -33,7 +34,8 @@ export const homeController = {
       heading: 'Home',
       uploadSuccess: uploadSuccess.length > 0 ? uploadSuccess[0] : null,
       uploadError: uploadError.length > 0 ? uploadError[0] : null,
-      reviewHistory
+      reviewHistory,
+      backendUrl // Pass to template for client-side use
     })
   }
 }
