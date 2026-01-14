@@ -1,199 +1,681 @@
 {% extends 'layouts/page.njk' %}
 
+{% block head %}
+  {{ super() }}
+  <style nonce="{{ cspNonce }}">
+    /* Animated loading dots */
+    .loading-dots {
+      display: inline-block;
+      margin-left: 2px;
+    }
+    
+    .loading-dots span {
+      animation: blink 1.4s infinite;
+      animation-fill-mode: both;
+    }
+    
+    .loading-dots span:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+    
+    .loading-dots span:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+    
+    @keyframes blink {
+      0%, 80%, 100% {
+        opacity: 0;
+      }
+      40% {
+        opacity: 1;
+      }
+    }
+  </style>
+{% endblock %}
+
 {% block content %}
-  <div class="app-main-container">
-        <!-- Sidebar for conversation history -->
-        <aside class="sidebar" id="sidebar">
-          <div class="sidebar-header">
-            <h2 class="sidebar-title">Conversations</h2>
-            <button class="govuk-button sidebar-new-chat-btn" id="newChatBtn">
-              + New chat
-            </button>
-          </div>
-          <div class="sidebar-conversations" id="conversationList">
-            <!-- Conversation items will be added here dynamically -->
-          </div>
-        </aside>
-
-        <!-- Chat Container -->
-        <div class="chat-container">
-        
-        <!-- Upload Success Message -->
-        {% if uploadSuccess %}
-        <div class="govuk-notification-banner govuk-notification-banner--success" role="alert" aria-labelledby="upload-success-title" data-module="govuk-notification-banner">
-          <div class="govuk-notification-banner__header">
-            <h2 class="govuk-notification-banner__title" id="upload-success-title">
-              Success
-            </h2>
-          </div>
-          <div class="govuk-notification-banner__content">
-            <h3 class="govuk-notification-banner__heading">
-              Document uploaded successfully
-            </h3>
-            <p class="govuk-body">
-              <strong>{{ uploadSuccess.filename }}</strong> ({{ (uploadSuccess.size / 1024) | round(2) }} KB) has been uploaded and scanned.
-            </p>
-            <p class="govuk-body-s">
-              File ID: {{ uploadSuccess.fileId }}<br>
-              Storage: {{ uploadSuccess.s3Location }}
-            </p>
-          </div>
-        </div>
-        {% endif %}
-
-        <!-- Upload Error Message -->
-        {% if uploadError %}
-        <div class="govuk-error-summary" aria-labelledby="error-summary-title" role="alert" tabindex="-1" data-module="govuk-error-summary">
-          <h2 class="govuk-error-summary__title" id="error-summary-title">
-            Upload failed
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-full">
+      
+      <h1 class="govuk-heading-l">Content Review Assistant</h1>
+      
+      <!-- Upload Success Message -->
+      {% if uploadSuccess %}
+      <div class="govuk-notification-banner govuk-notification-banner--success" role="alert" aria-labelledby="upload-success-title" data-module="govuk-notification-banner">
+        <div class="govuk-notification-banner__header">
+          <h2 class="govuk-notification-banner__title" id="upload-success-title">
+            Success
           </h2>
-          <div class="govuk-error-summary__body">
-            <p class="govuk-body">{{ uploadError }}</p>
-          </div>
         </div>
-        {% endif %}
-        
-        <!-- Welcome Message -->
-        <div class="chat-welcome">
-          <h2 class="govuk-heading-m">Content Review Assistant</h2>
+        <div class="govuk-notification-banner__content">
+          <h3 class="govuk-notification-banner__heading">
+            Document uploaded successfully
+          </h3>
           <p class="govuk-body">
-            I can help you review content for clarity, formatting and compliance with GOV.UK standards.
+            <strong>{{ uploadSuccess.filename }}</strong> ({{ (uploadSuccess.size / 1024) | round(2) }} KB) has been uploaded and scanned.
           </p>
         </div>
-
-        <!-- Chat Messages Area -->
-        <div class="chat-messages" id="chatMessages">
-          <div class="message bot-message">
-            <div class="message-content">
-              <p>Hello! I'm here to help you review content for GOV.UK websites.</p>
-              <p>You can:</p>
-              <ul>
-                <li>Type or paste content for me to review</li>
-                <li>Upload a PDF or Word document using the option above</li>
-                <li>Ask about GOV.UK content standards</li>
-                <li>Check formatting and readability</li>
-                <li>Get suggestions for improvement</li>
-              </ul>
-              <p>How can I help you today?</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Input Area -->
-        <div class="chat-input-container">
-          <!-- File Preview (hidden by default) -->
-          <div id="filePreview" class="file-preview" hidden>
-            <div class="file-preview-content">
-              <span class="file-preview-icon">📎</span>
-              <div class="file-preview-details">
-                <span class="file-preview-name" id="fileName">document.pdf</span>
-                <span class="file-preview-size" id="fileSize">1.2 MB</span>
-              </div>
-              <button type="button" class="file-preview-remove" id="removeFile" aria-label="Remove file">
-                ✕
-              </button>
-            </div>
-          </div>
-
-          <form id="chatForm" class="chat-form">
-            <!-- Hidden file input -->
-            <input type="file" id="fileInput" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden>
-            
-            <div class="chat-input-wrapper">
-              <div class="govuk-form-group">
-                <label class="govuk-label govuk-visually-hidden" for="userInput">
-                  Type your message or paste content to review
-                </label>
-                <textarea 
-                  id="userInput" 
-                  class="govuk-textarea" 
-                  rows="3" 
-                  placeholder="Type your message here..."
-                  aria-label="Chat message input"
-                ></textarea>
-              </div>
-              
-              <div class="chat-buttons-row">
-                <!-- Attach button on left -->
-                <button type="button" class="attach-button" id="attachButton" aria-label="Attach file" title="Attach PDF or Word document">
-                  Attach File
-                </button>
-                
-                <!-- Send button on right -->
-                <button 
-                  type="submit" 
-                  class="govuk-button send-button"
-                  data-module="govuk-button"
-                  id="sendButton"
-                >
-                  Send
-                </button>
-              </div>
-            </div>
-          </form>
-        </div>
-        <!-- End chat-input-container -->
-
       </div>
-      <!-- End chat-container -->
-      
+      {% endif %}
+
+      <!-- Upload Error Message -->
+      {% if uploadError %}
+      <div class="govuk-error-summary" aria-labelledby="error-summary-title" role="alert" tabindex="-1" data-module="govuk-error-summary">
+        <h2 class="govuk-error-summary__title" id="error-summary-title">
+          Upload failed
+        </h2>
+        <div class="govuk-error-summary__body">
+          <p class="govuk-body">{{ uploadError }}</p>
+        </div>
+      </div>
+      {% endif %}
+
+      <p class="govuk-body">
+        Upload a document or paste content below for review. The content will be analyzed for clarity, formatting and compliance with GOV.UK standards.
+      </p>
+
+      <!-- Content Review Form -->
+      <div class="govuk-!-margin-bottom-6">
+        <form id="uploadForm" enctype="multipart/form-data" method="POST" action="/api/upload">
+          
+          <!-- Upload Error Message (Dynamic) -->
+          <div id="uploadError" class="govuk-error-summary" hidden aria-labelledby="error-summary-title" role="alert" tabindex="-1">
+            <h2 class="govuk-error-summary__title" id="error-summary-title">
+              Upload failed
+            </h2>
+            <div class="govuk-error-summary__body">
+              <p class="govuk-body" id="errorMessage"></p>
+            </div>
+          </div>
+
+          <!-- Upload Success Message (Dynamic) -->
+          <div id="uploadSuccess" class="govuk-notification-banner govuk-notification-banner--success" role="alert" hidden>
+            <div class="govuk-notification-banner__header">
+              <h2 class="govuk-notification-banner__title">Success</h2>
+            </div>
+            <div class="govuk-notification-banner__content">
+              <p class="govuk-body" id="successMessage"></p>
+            </div>
+          </div>
+
+          <!-- File Upload Option -->
+          <div class="govuk-form-group" id="fileFormGroup">
+            <label class="govuk-label govuk-label--s" for="file-upload">
+              Upload a document (optional)
+            </label>
+            <div class="govuk-hint">
+              Accepted file types: PDF (.pdf), Word (.doc, .docx). Maximum file size: 10MB
+            </div>
+            <input class="govuk-file-upload" id="file-upload" name="file" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+            <div id="file-name-display" class="govuk-hint govuk-!-margin-top-2 js-hidden">
+              Selected: <strong id="selected-file-name"></strong>
+            </div>
+          </div>
+
+          <!-- Text Content Option -->
+          <div class="govuk-form-group" id="textFormGroup">
+            <label class="govuk-label govuk-label--s" for="text-content">
+              Or type/paste your content directly
+            </label>
+            <textarea 
+              class="govuk-textarea" 
+              id="text-content" 
+              name="textContent" 
+              rows="8" 
+              placeholder="Type or paste content here..."
+              aria-describedby="text-content-hint"
+            ></textarea>
+          </div>
+          
+          <button 
+            type="submit" 
+            class="govuk-button"
+            data-module="govuk-button"
+            id="uploadButton"
+          >
+            Review Content
+          </button>
+
+          <!-- Upload Progress Indicator -->
+          <div id="uploadProgress" class="govuk-!-margin-top-4" hidden>
+            <div class="govuk-inset-text">
+              <p class="govuk-body" id="uploadStatusText"></p>
+              <div class="govuk-!-margin-top-2">
+                <div id="progressBar" data-progress="0" style="background: #1d70b8; height: 10px; border-radius: 5px; transition: width 0.3s;"></div>
+                <p class="govuk-body govuk-!-margin-top-1" id="uploadProgressText"></p>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- Document Review History Table -->
+      <h2 class="govuk-heading-m govuk-!-margin-top-8">Review History</h2>
+        
+      <table class="govuk-table" id="reviewHistoryTable">
+        <thead class="govuk-table__head">
+          <tr class="govuk-table__row">
+            <th scope="col" class="govuk-table__header">Uploaded Document</th>
+            <th scope="col" class="govuk-table__header">Method</th>
+            <th scope="col" class="govuk-table__header">Status</th>
+            <th scope="col" class="govuk-table__header">Timestamp</th>
+            <th scope="col" class="govuk-table__header">Result</th>
+          </tr>
+        </thead>
+        <tbody class="govuk-table__body" id="reviewHistoryBody">
+          {% if reviewHistory and reviewHistory.length > 0 %}
+            {% for review in reviewHistory %}
+            <tr class="govuk-table__row">
+              <td class="govuk-table__cell">{{ review.filename }}</td>
+              <td class="govuk-table__cell">Review Content</td>
+              <td class="govuk-table__cell">
+                {% if review.status === 'completed' %}
+                  <strong class="govuk-tag govuk-tag--green">Completed</strong>
+                {% elif review.status === 'processing' or review.status === 'analyzing' or review.status === 'reviewing' %}
+                  <strong class="govuk-tag govuk-tag--blue">{{ review.status | title }}<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></strong>
+                {% elif review.status === 'queued' %}
+                  <strong class="govuk-tag govuk-tag--yellow">Queued<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></strong>
+                {% elif review.status === 'uploading' or review.status === 'uploaded' %}
+                  <strong class="govuk-tag govuk-tag--grey">{{ review.status | title }}<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></strong>
+                {% elif review.status === 'failed' %}
+                  <strong class="govuk-tag govuk-tag--red">Failed</strong>
+                {% else %}
+                  <strong class="govuk-tag govuk-tag--grey">{{ review.status | title }}</strong>
+                {% endif %}
+              </td>
+              <td class="govuk-table__cell">
+                {% if review.uploadedAt %}
+                  {{ review.uploadedAt | formatDate('dd/MM/yyyy, HH:mm') }}
+                {% else %}
+                  N/A
+                {% endif %}
+              </td>
+              <td class="govuk-table__cell">
+                {% if review.status === 'completed' %}
+                  <a href="/review/results/{{ review.reviewId }}" class="govuk-link">View results</a>
+                {% elif review.status === 'failed' %}
+                  <span class="govuk-error-message">Review failed</span>
+                {% elif review.status === 'processing' or review.status === 'analyzing' or review.status === 'reviewing' %}
+                  <span class="govuk-body">{{ review.status | title }}<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></span>
+                {% elif review.status === 'queued' %}
+                  <span class="govuk-body">Queued<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></span>
+                {% elif review.status === 'uploading' or review.status === 'uploaded' %}
+                  <span class="govuk-body">{{ review.status | title }}<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></span>
+                {% else %}
+                  <span class="govuk-body">{{ review.status }}</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr class="govuk-table__row">
+              <td class="govuk-table__cell" colspan="5">
+                <p class="govuk-body">No review history available.</p>
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+
     </div>
-    <!-- End app-main-container -->
+  </div>
 
 {% endblock %}
 
 {% block bodyEnd %}
-  {{ super() }}
   <script nonce="{{ cspNonce }}">
-    // Configure backend API URL
-    window.APP_CONFIG = {
-      backendApiUrl: 'http://localhost:3001'
-    };
+    console.log('Content Review Assistant - Home Page Loaded');
+    
+    // ============ UPLOAD FORM HANDLER ============
+    const uploadForm = document.getElementById('uploadForm');
+    const fileInput = document.getElementById('file-upload');
+    const textContent = document.getElementById('text-content');
+    const uploadButton = document.getElementById('uploadButton');
+    const uploadProgress = document.getElementById('uploadProgress');
+    const uploadError = document.getElementById('uploadError');
+    const uploadSuccess = document.getElementById('uploadSuccess');
+    const errorMessage = document.getElementById('errorMessage');
+    const successMessage = document.getElementById('successMessage');
+    const uploadStatusText = document.getElementById('uploadStatusText');
+    const uploadProgressText = document.getElementById('uploadProgressText');
 
-    // Check for upload success message from sessionStorage
-    (function() {
-      const uploadSuccess = sessionStorage.getItem('uploadSuccess');
-      if (uploadSuccess) {
-        try {
-          const data = JSON.parse(uploadSuccess);
-          
-          // Create success notification
-          const notification = document.createElement('div');
-          notification.className = 'govuk-notification-banner govuk-notification-banner--success';
-          notification.setAttribute('role', 'alert');
-          notification.setAttribute('aria-labelledby', 'upload-success-title');
-          notification.innerHTML = `
-            <div class="govuk-notification-banner__header">
-              <h2 class="govuk-notification-banner__title" id="upload-success-title">
-                Success
-              </h2>
-            </div>
-            <div class="govuk-notification-banner__content">
-              <h3 class="govuk-notification-banner__heading">
-                Document uploaded successfully
-              </h3>
-              <p class="govuk-body">
-                <strong>${data.filename}</strong> (${(data.size / 1024).toFixed(2)} KB) has been uploaded.
-              </p>
-              <p class="govuk-body-s">
-                File ID: ${data.fileId}<br>
-                Storage: ${data.s3Location}
-              </p>
-            </div>
-          `;
-          
-          // Insert at top of chat container
-          const chatContainer = document.querySelector('.chat-container');
-          if (chatContainer) {
-            chatContainer.insertBefore(notification, chatContainer.firstChild);
+    if (uploadForm) {
+      // Hide error/success/progress on load
+      if (uploadError) uploadError.hidden = true;
+      if (uploadSuccess) uploadSuccess.hidden = true;
+      if (uploadProgress) uploadProgress.hidden = true;
+
+      // Auto-disable/enable based on user input
+      if (fileInput && textContent) {
+        fileInput.addEventListener('change', () => {
+          if (fileInput.files.length > 0) {
+            textContent.disabled = true;
+            textContent.placeholder = 'File upload selected - text input disabled';
+          } else {
+            textContent.disabled = false;
+            textContent.placeholder = 'Type or paste content here...';
           }
+        });
+
+        textContent.addEventListener('input', () => {
+          if (textContent.value.trim().length > 0) {
+            fileInput.disabled = true;
+          } else {
+            fileInput.disabled = false;
+          }
+        });
+      }
+
+      uploadForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        console.log('Upload form submitted - using AJAX');
+
+        // Reset UI
+        if (uploadError) uploadError.hidden = true;
+        if (uploadSuccess) uploadSuccess.hidden = true;
+        if (uploadProgress) uploadProgress.hidden = true;
+
+        const file = fileInput.files[0];
+        const text = textContent ? textContent.value.trim() : '';
+
+        // Check if user provided either file or text
+        if (!file && !text) {
+          if (errorMessage) errorMessage.textContent = 'Please upload a file OR paste/type content to review';
+          if (uploadError) uploadError.hidden = false;
+          return;
+        }
+
+        try {
+          uploadButton.disabled = true;
+
+          if (file) {
+            // File upload workflow
+            await handleFileUpload(file);
+          } else if (text) {
+            // Text content workflow
+            await handleTextReview(text);
+          }
+
+        } catch (error) {
+          console.error('Upload/Review error:', error);
+          if (errorMessage) errorMessage.textContent = error.message || 'Request failed. Please try again.';
+          if (uploadError) uploadError.hidden = false;
+          uploadButton.disabled = false;
+          if (uploadProgress) uploadProgress.hidden = true;
+        }
+      });
+
+      // Handle file upload
+      async function handleFileUpload(file) {
+        // Validate file size (10MB)
+        const maxSize = 10 * 1024 * 1024;
+        if (file.size > maxSize) {
+          throw new Error(`File too large. Maximum size is 10MB. Your file is ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+        }
+
+        // Validate file type
+        const allowedTypes = [
+          'application/pdf',
+          'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        ];
+
+        if (!allowedTypes.includes(file.type) && !file.name.match(/\.(pdf|doc|docx)$/i)) {
+          throw new Error('Invalid file type. Please upload a PDF or Word document');
+        }
+
+        showProgress('Uploading file...', 30);
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        showProgress('Uploading to server...', 50);
+
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData
+        });
+
+        showProgress('Processing...', 80);
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ error: `Server error: ${response.status}` }));
+          throw new Error(error.error || 'Upload failed');
+        }
+
+        const result = await response.json();
+        showProgress('Upload complete!', 100);
+
+        setTimeout(() => {
+          if (uploadProgress) uploadProgress.hidden = true;
+          if (successMessage) successMessage.innerHTML = `<strong>${result.filename || 'File'}</strong> uploaded successfully and is being reviewed.`;
+          if (uploadSuccess) uploadSuccess.hidden = false;
+          fileInput.value = '';
+          fileInput.disabled = false;
+          if (textContent) {
+            textContent.disabled = false;
+            textContent.placeholder = 'Type or paste content here...';
+          }
+          uploadButton.disabled = false;
           
-          // Clear from sessionStorage
-          sessionStorage.removeItem('uploadSuccess');
-        } catch (e) {
-          // Silently handle errors
+          console.log('Refreshing review history after upload');
+          updateReviewHistory();
+          startAutoRefresh();
+        }, 500);
+      }
+
+      // Handle text content review
+      async function handleTextReview(text) {
+        // Validate text length
+        if (text.length < 10) {
+          throw new Error('Please provide at least 10 characters of content to review');
+        }
+
+        if (text.length > 50000) {
+          throw new Error(`Content too long. Maximum 50,000 characters. Your content is ${text.length} characters`);
+        }
+
+        showProgress('Submitting content...', 30);
+
+        const response = await fetch('/api/review-text', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ textContent: text })
+        });
+
+        showProgress('Processing...', 70);
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ error: `Server error: ${response.status}` }));
+          throw new Error(error.error || 'Text review failed');
+        }
+
+        const result = await response.json();
+        showProgress('Submitted!', 100);
+
+        setTimeout(() => {
+          if (uploadProgress) uploadProgress.hidden = true;
+          if (successMessage) successMessage.innerHTML = `<strong>Content</strong> (${text.length} characters) submitted successfully and is being reviewed.`;
+          if (uploadSuccess) uploadSuccess.hidden = false;
+          if (textContent) {
+            textContent.value = '';
+            textContent.disabled = false;
+          }
+          fileInput.disabled = false;
+          uploadButton.disabled = false;
+          
+          console.log('Refreshing review history after text submission');
+          updateReviewHistory();
+          startAutoRefresh();
+        }, 500);
+      }
+
+      function showError(message) {
+        if (errorMessage) errorMessage.textContent = message;
+        if (uploadError) {
+          uploadError.hidden = false;
+          uploadError.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
       }
-    })();
+
+      function showSuccess(message) {
+        if (successMessage) successMessage.innerHTML = message;
+        if (uploadSuccess) {
+          uploadSuccess.hidden = false;
+          uploadSuccess.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+
+      function showProgress(statusText, percentage) {
+        if (uploadStatusText) uploadStatusText.textContent = statusText;
+        if (uploadProgressText) uploadProgressText.textContent = percentage + '%';
+        if (uploadProgress) uploadProgress.hidden = false;
+      }
+    } else {
+      console.warn('Upload form not found on page');
+    }
+
+    // ============ AUTO-REFRESH LOGIC ============
+    // Auto-refresh state
+    let autoRefreshInterval = null;
+    let isRefreshing = false;
+    
+    // Function to update review history without page reload
+    async function updateReviewHistory() {
+      if (isRefreshing) return; // Prevent concurrent requests
+      
+      isRefreshing = true;
+      try {
+        const response = await fetch('/api/reviews', {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+        
+        if (!response.ok) {
+          console.error('Failed to fetch review history');
+          return;
+        }
+        
+        const data = await response.json();
+        console.log('Review history updated:', data.reviews ? data.reviews.length : 0, 'items');
+        
+        // Update the table
+        updateReviewTable(data.reviews || []);
+        
+        // Check if there are still active reviews
+        const hasActiveReviews = data.reviews.some(r => 
+          ['processing', 'analyzing', 'queued', 'reviewing', 'downloading', 'finalizing', 'uploaded', 'uploading'].includes(r.status)
+        );
+        
+        // Hide success message if no active reviews (all completed)
+        if (!hasActiveReviews && uploadSuccess) {
+          uploadSuccess.hidden = true;
+        }
+        
+        // Stop auto-refresh if no active reviews
+        if (!hasActiveReviews && autoRefreshInterval) {
+          console.log('No more active reviews - doing one final refresh in 3 seconds before stopping auto-refresh');
+          clearInterval(autoRefreshInterval);
+          autoRefreshInterval = null;
+          setTimeout(async () => {
+            await updateReviewHistory();
+            // After final refresh, check again for active reviews
+            const stillActive = (window.lastReviewData || []).some(r => 
+              ['processing', 'analyzing', 'queued', 'reviewing', 'downloading', 'finalizing', 'uploaded', 'uploading'].includes(r.status)
+            );
+            if (stillActive) {
+              // If still active, restart auto-refresh
+              startAutoRefresh();
+            } else {
+              console.log('Final refresh done, auto-refresh stopped.');
+            }
+          }, 3000);
+        }
+        // Store last review data for re-check
+        window.lastReviewData = data.reviews || [];
+        
+      } catch (error) {
+        console.error('Error updating review history:', error);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+    
+    // Helper function to create loading dots using DOM (CSP-compliant)
+    function createLoadingDots() {
+      const container = document.createElement('span');
+      container.className = 'loading-dots';
+      
+      for (let i = 0; i < 3; i++) {
+        const dot = document.createElement('span');
+        dot.textContent = '.';
+        container.appendChild(dot);
+      }
+      
+      return container;
+    }
+    
+    // Helper to create status content with loading dots (CSP-compliant)
+    function createStatusContent(cell, status) {
+      const statusLower = (status || '').toLowerCase();
+      
+      if (statusLower === 'completed') {
+        cell.textContent = 'Completed';
+      } else if (statusLower === 'processing' || statusLower === 'analyzing' || statusLower === 'reviewing') {
+        cell.textContent = 'In progress';
+        const dots = createLoadingDots();
+        cell.appendChild(dots);
+      } else if (statusLower === 'queued') {
+        cell.textContent = 'Queued';
+        const dots = createLoadingDots();
+        cell.appendChild(dots);
+      } else if (statusLower === 'uploading' || statusLower === 'uploaded') {
+        cell.textContent = 'Uploading';
+        const dots = createLoadingDots();
+        cell.appendChild(dots);
+      } else if (statusLower === 'failed') {
+        cell.textContent = 'Failed';
+      } else {
+        cell.textContent = status;
+      }
+    }
+    
+    // Helper to create result content (CSP-compliant)
+    function createResultContent(cell, review) {
+      const status = (review.status || review.overallStatus || '').toLowerCase();
+      const reviewId = review.reviewId || review.uploadId;
+      
+      if (status === 'completed' && reviewId) {
+        const link = document.createElement('a');
+        link.href = `/review/results/${reviewId}`;
+        link.className = 'govuk-link';
+        link.textContent = 'View results';
+        cell.appendChild(link);
+      } else if (status === 'failed') {
+        const span = document.createElement('span');
+        span.className = 'govuk-error-message';
+        span.textContent = 'Review failed';
+        cell.appendChild(span);
+      } else if (status === 'processing' || status === 'analyzing' || status === 'reviewing') {
+        const span = document.createElement('span');
+        span.className = 'govuk-body';
+        span.textContent = 'In progress';
+        const dots = createLoadingDots();
+        span.appendChild(dots);
+        cell.appendChild(span);
+      } else if (status === 'queued' || status === 'uploading' || status === 'uploaded') {
+        const span = document.createElement('span');
+        span.className = 'govuk-body';
+        span.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+        const dots = createLoadingDots();
+        span.appendChild(dots);
+        cell.appendChild(span);
+      } else {
+        const span = document.createElement('span');
+        span.className = 'govuk-body';
+        span.textContent = review.status;
+        cell.appendChild(span);
+      }
+    }
+
+    // Function to update the review history table (CSP-compliant)
+    function updateReviewTable(reviews) {
+      const tableBody = document.getElementById('reviewHistoryBody');
+      if (!tableBody) {
+        console.error('Review history table body not found');
+        return;
+      }
+
+      // Clear existing content
+      while (tableBody.firstChild) {
+        tableBody.removeChild(tableBody.firstChild);
+      }
+      
+      if (!reviews || reviews.length === 0) {
+        const row = document.createElement('tr');
+        row.className = 'govuk-table__row';
+        const cell = document.createElement('td');
+        cell.className = 'govuk-table__cell';
+        cell.setAttribute('colspan', '5');
+        const para = document.createElement('p');
+        para.className = 'govuk-body';
+        para.textContent = 'No review history available.';
+        cell.appendChild(para);
+        row.appendChild(cell);
+        tableBody.appendChild(row);
+        return;
+      }
+      
+      // Sort reviews by uploadedAt desc (newest first)
+      reviews.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
+      
+      reviews.forEach(review => {
+        const row = document.createElement('tr');
+        row.className = 'govuk-table__row';
+        
+        // Filename cell
+        const filenameCell = document.createElement('td');
+        filenameCell.className = 'govuk-table__cell';
+        filenameCell.textContent = review.filename || 'Unknown';
+        row.appendChild(filenameCell);
+        
+        // Method cell
+        const methodCell = document.createElement('td');
+        methodCell.className = 'govuk-table__cell';
+        methodCell.textContent = 'Review Content';
+        row.appendChild(methodCell);
+        
+        // Status cell
+        const statusCell = document.createElement('td');
+        statusCell.className = 'govuk-table__cell';
+        createStatusContent(statusCell, review.status);
+        row.appendChild(statusCell);
+        
+        // Timestamp cell
+        const timestampCell = document.createElement('td');
+        timestampCell.className = 'govuk-table__cell';
+        const uploadedAt = review.uploadedAt ? new Date(review.uploadedAt).toLocaleString('en-GB', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        }).replace(',', '') : 'N/A';
+        timestampCell.textContent = uploadedAt;
+        row.appendChild(timestampCell);
+        
+        // Result cell
+        const resultCell = document.createElement('td');
+        resultCell.className = 'govuk-table__cell';
+        createResultContent(resultCell, review);
+        row.appendChild(resultCell);
+        
+        tableBody.appendChild(row);
+      });
+      
+      console.log(`Updated review table with ${reviews.length} reviews`);
+    }
+    
+    // Start auto-refresh interval
+    function startAutoRefresh() {
+      if (autoRefreshInterval) {
+        console.log('Auto-refresh already running');
+        return; // Already running
+      }
+      console.log('Starting auto-refresh every 3 seconds');
+      autoRefreshInterval = setInterval(updateReviewHistory, 3000); // Refresh every 3 seconds
+    }
+
+    // Initialize on page load
+    console.log('Initializing review history auto-refresh...');
+    // Do an initial fetch and start auto-refresh
+    updateReviewHistory().then(() => {
+      startAutoRefresh();
+    });
   </script>
 {% endblock %}

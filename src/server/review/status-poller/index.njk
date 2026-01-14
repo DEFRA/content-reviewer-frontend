@@ -1,0 +1,210 @@
+{% extends "layouts/page.njk" %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <h1 class="govuk-heading-l">{{ heading }}</h1>
+
+      <div class="govuk-panel govuk-panel--confirmation" id="processing-panel">
+        <h2 class="govuk-panel__title">
+          <span id="status-title">Analyzing Content</span>
+        </h2>
+        <div class="govuk-panel__body">
+          <span class="govuk-!-font-size-27" id="status-message">
+            Please wait while our AI reviews your document...
+          </span>
+        </div>
+      </div>
+
+      <div class="govuk-inset-text" id="progress-message">
+        <p class="govuk-body">
+          <strong>Current step:</strong> <span id="current-step">Uploading to queue</span>
+        </p>
+        <p class="govuk-body govuk-!-margin-bottom-0">
+          This process typically takes 30-60 seconds depending on document size.
+        </p>
+      </div>
+
+      <!-- Progress indicator -->
+      <div class="govuk-!-margin-bottom-6" id="progress-container">
+        <ol class="app-task-list">
+          <li class="app-task-list__item" id="step-queued">
+            <span class="app-task-list__task-name">
+              <span class="govuk-tag govuk-tag--grey">Pending</span>
+              Queued for processing
+            </span>
+          </li>
+          <li class="app-task-list__item" id="step-extracting">
+            <span class="app-task-list__task-name">
+              <span class="govuk-tag govuk-tag--grey">Pending</span>
+              Extracting document content
+            </span>
+          </li>
+          <li class="app-task-list__item" id="step-analyzing">
+            <span class="app-task-list__task-name">
+              <span class="govuk-tag govuk-tag--grey">Pending</span>
+              AI analysis in progress
+            </span>
+          </li>
+          <li class="app-task-list__item" id="step-completed">
+            <span class="app-task-list__task-name">
+              <span class="govuk-tag govuk-tag--grey">Pending</span>
+              Finalizing results
+            </span>
+          </li>
+        </ol>
+      </div>
+
+      <div class="spinner" id="spinner">
+        <div class="govuk-!-margin-bottom-4">
+          <p class="govuk-body">Processing...</p>
+        </div>
+      </div>
+
+      <div id="error-container" style="display: none;">
+        <div class="govuk-error-summary" aria-labelledby="error-summary-title" role="alert">
+          <h2 class="govuk-error-summary__title" id="error-summary-title">
+            There is a problem
+          </h2>
+          <div class="govuk-error-summary__body">
+            <p class="govuk-body" id="error-message"></p>
+          </div>
+        </div>
+        <p class="govuk-body">
+          <a href="/upload" class="govuk-link">Upload another document</a>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <style nonce="{{ cspNonce }}">
+    .app-task-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    
+    .app-task-list__item {
+      border-bottom: 1px solid #b1b4b6;
+      padding: 15px 0;
+    }
+    
+    .app-task-list__task-name {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .spinner {
+      text-align: center;
+      padding: 20px 0;
+    }
+  </style>
+
+  <script nonce="{{ cspNonce }}">
+    (function() {
+      const reviewId = '{{ reviewId }}';
+      const maxAttempts = 60; // 2 minutes with 2-second intervals
+      const pollInterval = 2000; // 2 seconds
+      let attempts = 0;
+
+      const statusSteps = {
+        'queued': 'step-queued',
+        'processing': 'step-extracting',
+        'extracting_content': 'step-extracting',
+        'analyzing': 'step-analyzing',
+        'ai_review': 'step-analyzing',
+        'completed': 'step-completed',
+        'failed': null
+      };
+
+      const statusMessages = {
+        'queued': 'Queued for processing',
+        'processing': 'Extracting document content',
+        'extracting_content': 'Extracting text from document',
+        'analyzing': 'AI is analyzing your content',
+        'ai_review': 'AI is reviewing against GOV.UK standards',
+        'completed': 'Review completed successfully',
+        'failed': 'Review failed'
+      };
+
+      function updateProgressStep(status) {
+        // Reset all steps
+        ['step-queued', 'step-extracting', 'step-analyzing', 'step-completed'].forEach(stepId => {
+          const step = document.getElementById(stepId);
+          if (step) {
+            const tag = step.querySelector('.govuk-tag');
+            tag.className = 'govuk-tag govuk-tag--grey';
+            tag.textContent = 'Pending';
+          }
+        });
+
+        // Update current step
+        const currentStepId = statusSteps[status];
+        if (currentStepId) {
+          const currentStep = document.getElementById(currentStepId);
+          if (currentStep) {
+            const tag = currentStep.querySelector('.govuk-tag');
+            tag.className = 'govuk-tag govuk-tag--blue';
+            tag.textContent = 'In Progress';
+          }
+        }
+
+        // Update message
+        document.getElementById('current-step').textContent = statusMessages[status] || status;
+      }
+
+      function showError(message) {
+        document.getElementById('spinner').style.display = 'none';
+        document.getElementById('processing-panel').style.display = 'none';
+        document.getElementById('progress-message').style.display = 'none';
+        document.getElementById('progress-container').style.display = 'none';
+        document.getElementById('error-message').textContent = message;
+        document.getElementById('error-container').style.display = 'block';
+      }
+
+      function pollStatus() {
+        fetch('/review/status/' + reviewId)
+          .then(response => {
+            if (!response.ok) {
+              throw new Error('Failed to check review status');
+            }
+            return response.json();
+          })
+          .then(data => {
+            const status = data.status;
+
+            if (status === 'completed') {
+              // Review complete, redirect to results
+              window.location.href = '/review/results/' + reviewId;
+            } else if (status === 'failed' || status === 'error') {
+              showError('The AI review failed. ' + (data.error || 'Please try uploading again.'));
+            } else {
+              // Update progress
+              updateProgressStep(status);
+
+              // Continue polling
+              attempts++;
+              if (attempts < maxAttempts) {
+                setTimeout(pollStatus, pollInterval);
+              } else {
+                showError('Review processing timed out. The document may be too large or complex.');
+              }
+            }
+          })
+          .catch(error => {
+            console.error('Poll error:', error);
+            attempts++;
+            if (attempts < maxAttempts) {
+              setTimeout(pollStatus, pollInterval);
+            } else {
+              showError('An error occurred while checking review status.');
+            }
+          });
+      }
+
+      // Start polling after a short delay
+      setTimeout(pollStatus, 1000);
+    })();
+  </script>
+{% endblock %}

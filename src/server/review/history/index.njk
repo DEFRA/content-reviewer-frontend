@@ -1,0 +1,148 @@
+{% extends "layouts/page.njk" %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-full">
+      
+      <h1 class="govuk-heading-xl">{{ heading }}</h1>
+
+      {% if error %}
+      <div class="govuk-error-summary" aria-labelledby="error-summary-title" role="alert">
+        <h2 class="govuk-error-summary__title" id="error-summary-title">
+          There is a problem
+        </h2>
+        <div class="govuk-error-summary__body">
+          <p class="govuk-body">{{ error }}</p>
+        </div>
+      </div>
+      {% endif %}
+
+      <p class="govuk-body-l">
+        View and manage all your document reviews.
+      </p>
+
+      <div class="govuk-button-group govuk-!-margin-bottom-6">
+        <a href="/upload" class="govuk-button" data-module="govuk-button">
+          Upload New Document
+        </a>
+        <button type="button" class="govuk-button govuk-button--secondary" data-module="govuk-button" onclick="window.location.reload()">
+          Refresh List
+        </button>
+      </div>
+
+      {% if count === 0 %}
+        <div class="govuk-inset-text">
+          <p class="govuk-body">No reviews found. <a href="/upload" class="govuk-link">Upload a document</a> to get started.</p>
+        </div>
+      {% else %}
+        <p class="govuk-body">
+          Showing <strong>{{ count }}</strong> review{{ 's' if count !== 1 else '' }}
+        </p>
+
+        <table class="govuk-table govuk-!-margin-top-6">
+          <thead class="govuk-table__head">
+            <tr class="govuk-table__row">
+              <th scope="col" class="govuk-table__header">Document</th>
+              <th scope="col" class="govuk-table__header">Uploaded</th>
+              <th scope="col" class="govuk-table__header">Status</th>
+              <th scope="col" class="govuk-table__header">Overall Result</th>
+              <th scope="col" class="govuk-table__header">Issues</th>
+              <th scope="col" class="govuk-table__header">Time</th>
+              <th scope="col" class="govuk-table__header">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="govuk-table__body">
+            {% for review in reviews %}
+            <tr class="govuk-table__row">
+              <td class="govuk-table__cell">
+                <strong>{{ review.filename }}</strong>
+              </td>
+              <td class="govuk-table__cell">
+                {{ review.uploadedAt | date('dd MMM yyyy HH:mm') if review.uploadedAt else 'N/A' }}
+              </td>
+              <td class="govuk-table__cell">
+                {% set statusClass = 'govuk-tag--green' if review.status === 'completed' else 
+                                     ('govuk-tag--blue' if review.status === 'processing' or review.status === 'analyzing' else 
+                                     ('govuk-tag--red' if review.status === 'failed' else 'govuk-tag--grey')) %}
+                <strong class="govuk-tag {{ statusClass }}">
+                  {{ review.status | replace('_', ' ') | title }}
+                </strong>
+              </td>
+              <td class="govuk-table__cell">
+                {% if review.status === 'completed' %}
+                  {% set resultClass = 'govuk-tag--green' if review.overallStatus === 'pass' else 
+                                       ('govuk-tag--blue' if review.overallStatus === 'pass_with_recommendations' else 
+                                       ('govuk-tag--yellow' if review.overallStatus === 'needs_improvement' else 'govuk-tag--red')) %}
+                  <strong class="govuk-tag {{ resultClass }}">
+                    {{ review.overallStatus | replace('_', ' ') | title }}
+                  </strong>
+                {% else %}
+                  <span class="govuk-body-s">Pending</span>
+                {% endif %}
+              </td>
+              <td class="govuk-table__cell">
+                {% if review.status === 'completed' %}
+                  {{ review.metrics.totalIssues }}
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+              <td class="govuk-table__cell">
+                {% if review.processingTime %}
+                  {{ review.processingTime }}s
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+              <td class="govuk-table__cell">
+                {% if review.status === 'completed' %}
+                  <a href="/review/results/{{ review.reviewId }}" class="govuk-link">View</a>
+                {% elif review.status === 'failed' %}
+                  <span class="govuk-body-s">Failed</span>
+                {% else %}
+                  <a href="/review/status-poller/{{ review.reviewId }}" class="govuk-link">Track</a>
+                {% endif %}
+                 | 
+                <form method="POST" action="/review/history/{{ review.reviewId }}/delete" style="display: inline;">
+                  <button type="submit" class="govuk-link" style="background:none;border:none;padding:0;cursor:pointer;color:#1d70b8;text-decoration:underline;" onclick="return confirm('Are you sure you want to delete this review?')">
+                    Delete
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+
+      <div class="govuk-!-margin-top-6">
+        <h2 class="govuk-heading-m">Filter by Status</h2>
+        <div class="govuk-button-group">
+          <a href="/review/history" class="govuk-button govuk-button--secondary">All</a>
+          <a href="/review/history?status=completed" class="govuk-button govuk-button--secondary">Completed</a>
+          <a href="/review/history?status=processing" class="govuk-button govuk-button--secondary">Processing</a>
+          <a href="/review/history?status=failed" class="govuk-button govuk-button--secondary">Failed</a>
+        </div>
+      </div>
+
+      <p class="govuk-body govuk-!-margin-top-6">
+        <a href="/" class="govuk-link">Back to home</a>
+      </p>
+
+    </div>
+  </div>
+{% endblock %}
+
+{% block bodyEnd %}
+  {{ super() }}
+  <script nonce="{{ cspNonce }}">
+    // Auto-refresh every 10 seconds if there are processing reviews
+    const hasProcessing = {{ (reviews | selectattr('status', 'in', ['processing', 'analyzing', 'queued']) | list | length > 0) | dump }};
+    
+    if (hasProcessing) {
+      setTimeout(() => {
+        window.location.reload();
+      }, 10000);
+    }
+  </script>
+{% endblock %}

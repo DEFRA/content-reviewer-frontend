@@ -1,0 +1,22 @@
+// JavaScript utility classes
+
+.js-hidden {
+  display: none !important;
+}
+
+.js-visible {
+  display: block !important;
+}
+
+// Disabled state for form inputs (mutual exclusivity)
+.govuk-file-upload--disabled,
+.govuk-textarea--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #f3f2f1;
+  pointer-events: none;
+}
+
+.govuk-file-upload--disabled + .govuk-hint {
+  opacity: 0.5;
+}

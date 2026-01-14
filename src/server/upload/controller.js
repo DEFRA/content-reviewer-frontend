@@ -106,17 +106,68 @@ const uploadController = {
         // Get file details
         const fileDetails = status.form?.file || {}
 
-        // Store success message in session flash
-        request.yar.flash('uploadSuccess', {
-          filename: fileDetails.filename,
-          size: fileDetails.contentLength,
-          type: fileDetails.detectedContentType,
-          fileId: fileDetails.fileId,
-          s3Location: `${fileDetails.s3Bucket}/${fileDetails.s3Key}`
-        })
+        // Trigger AI review in backend
+        const config = request.server.app.config
+        const backendUrl = config.get('backendUrl')
 
-        // Redirect to home with success message
-        return h.redirect('/')
+        try {
+          const reviewResponse = await fetch(`${backendUrl}/upload`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              bucket: fileDetails.s3Bucket,
+              key: fileDetails.s3Key,
+              filename: fileDetails.filename,
+              contentType: fileDetails.detectedContentType,
+              size: fileDetails.contentLength
+            })
+          })
+
+          if (reviewResponse.ok) {
+            const reviewData = await reviewResponse.json()
+            const reviewId = reviewData.reviewId
+
+            // Store review ID in session
+            request.yar.set('currentReviewId', reviewId)
+
+            // Redirect to review status poller
+            return h.redirect(`/review/status-poller/${reviewId}`)
+          } else {
+            request.logger.error('Failed to initiate AI review')
+            // Fallback to success page
+            return h.view('upload/success', {
+              pageTitle: 'Upload Successful',
+              heading: 'Upload Successful',
+              fileDetails: {
+                filename: fileDetails.filename,
+                contentLength: fileDetails.contentLength,
+                detectedContentType: fileDetails.detectedContentType,
+                fileId: fileDetails.fileId,
+                s3Bucket: fileDetails.s3Bucket,
+                s3Key: fileDetails.s3Key,
+                fileStatus: 'Uploaded (Review pending)'
+              }
+            })
+          }
+        } catch (error) {
+          request.logger.error(error, 'Error triggering AI review')
+          // Fallback to success page
+          return h.view('upload/success', {
+            pageTitle: 'Upload Successful',
+            heading: 'Upload Successful',
+            fileDetails: {
+              filename: fileDetails.filename,
+              contentLength: fileDetails.contentLength,
+              detectedContentType: fileDetails.detectedContentType,
+              fileId: fileDetails.fileId,
+              s3Bucket: fileDetails.s3Bucket,
+              s3Key: fileDetails.s3Key,
+              fileStatus: 'Uploaded (Review pending)'
+            }
+          })
+        }
       } else {
         // Handle rejected files - store error in session
         request.yar.flash(

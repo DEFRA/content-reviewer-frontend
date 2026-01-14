@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', function () {
       // Uploading
       showProgress('Uploading to server...', 30)
 
-      const response = await fetch('http://localhost:3001/api/upload', {
+      const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
         credentials: 'include'
@@ -124,6 +124,11 @@ document.addEventListener('DOMContentLoaded', function () {
         // Reset form for another upload
         fileInput.value = ''
         uploadButton.disabled = false
+
+        // Refresh review history table after upload
+        if (typeof updateReviewHistory === 'function') {
+          updateReviewHistory()
+        }
       }, 800)
     } catch (error) {
       showError(error.message || 'Upload failed. Please try again.')
