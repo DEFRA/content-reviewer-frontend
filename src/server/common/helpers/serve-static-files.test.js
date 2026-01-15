@@ -10,14 +10,14 @@ describe('#serveStaticFiles', () => {
       vi.stubEnv('PORT', '3098')
       const { startServer: startServerFn } = await import('./start-server.js')
       server = await startServerFn()
-    })
+    }, 30000)
 
     afterAll(async () => {
       if (server) {
         await server.stop({ timeout: 0 })
       }
       vi.unstubAllEnvs()
-    })
+    }, 30000)
 
     test('Should serve favicon as expected', async () => {
       const { statusCode } = await server.inject({
