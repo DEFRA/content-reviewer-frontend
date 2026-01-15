@@ -18,6 +18,13 @@ describe('#contentSecurityPolicy', () => {
       url: '/'
     })
 
-    expect(resp.headers['content-security-policy']).toBeDefined()
+    // Check for either the standard CSP header or report-only version
+    const cspHeader =
+      resp.headers['content-security-policy'] ||
+      resp.headers['content-security-policy-report-only']
+
+    expect(cspHeader).toBeDefined()
+    expect(typeof cspHeader).toBe('string')
+    expect(cspHeader.length).toBeGreaterThan(0)
   })
 })

@@ -3,6 +3,10 @@
  * Handles file uploads to the backend API
  */
 
+import { config } from '../../../config/config.js'
+
+const backendUrl = config.get('backendUrl')
+
 /**
  * Upload file to backend
  * @param {File} file - File object from file input
@@ -12,7 +16,7 @@ async function uploadFile(file) {
   const formData = new FormData()
   formData.append('file', file)
 
-  const response = await fetch('http://localhost:3001/api/upload', {
+  const response = await fetch(`${backendUrl}/api/upload`, {
     method: 'POST',
     body: formData,
     credentials: 'include'
@@ -31,7 +35,7 @@ async function uploadFile(file) {
  * @returns {Promise<Object>} Health status
  */
 async function checkUploadHealth() {
-  const response = await fetch('http://localhost:3001/api/upload/health', {
+  const response = await fetch(`${backendUrl}/api/upload/health`, {
     method: 'GET',
     credentials: 'include'
   })
