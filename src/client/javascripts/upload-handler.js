@@ -31,8 +31,17 @@ document.addEventListener('DOMContentLoaded', function () {
     hideProgress()
 
     const file = fileInput.files[0]
-    if (!file) {
-      showError('Please select a file to upload')
+    const textContent = document.getElementById('text-content')?.value.trim()
+
+    // Check if either file or text content is provided
+    if (!file && !textContent) {
+      showError('Please either upload a file or enter text content to review')
+      return
+    }
+
+    // If text content is provided, handle text review
+    if (textContent && !file) {
+      await handleTextReview(textContent)
       return
     }
 
@@ -71,7 +80,11 @@ document.addEventListener('DOMContentLoaded', function () {
       // Uploading
       showProgress('Uploading to server...', 30)
 
-      const response = await fetch('/api/upload', {
+      // Get backend URL from global config
+      const backendUrl =
+        window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001'
+
+      const response = await fetch(`${backendUrl}/api/upload`, {
         method: 'POST',
         body: formData,
         credentials: 'include'
@@ -92,38 +105,17 @@ document.addEventListener('DOMContentLoaded', function () {
       // Complete
       showProgress('Upload complete!', 100)
 
-      // Hide progress after a moment and show success
+      // Redirect to polling page after a brief moment
       setTimeout(() => {
-        hideProgress()
-
-        // Build success message with available data
-        let successMsg = `<strong>${result.filename || result.fileName || 'File'}</strong> `
-        if (result.size) {
-          successMsg += `(${(result.size / 1024).toFixed(2)} KB) `
+        if (result.reviewId) {
+          window.location.href = `/review/status-poller/${result.reviewId}`
+        } else {
+          // Fallback: show success message if no reviewId
+          hideProgress()
+          showSuccess('File uploaded successfully')
+          fileInput.value = ''
+          uploadButton.disabled = false
         }
-        successMsg += `has been uploaded successfully to S3.`
-
-        if (result.uploadId || result.fileId || result.id) {
-          successMsg += `<br><strong>File ID:</strong> ${result.uploadId || result.fileId || result.id}`
-        }
-
-        if (result.s3Location || result.s3Bucket || result.location) {
-          const location =
-            result.s3Location ||
-            result.location ||
-            (result.s3Bucket && result.s3Key
-              ? result.s3Bucket + '/' + result.s3Key
-              : '')
-          if (location) {
-            successMsg += `<br><strong>Storage:</strong> ${location}`
-          }
-        }
-
-        showSuccess(successMsg)
-
-        // Reset form for another upload
-        fileInput.value = ''
-        uploadButton.disabled = false
       }, 800)
     } catch (error) {
       showError(error.message || 'Upload failed. Please try again.')
@@ -164,5 +156,84 @@ document.addEventListener('DOMContentLoaded', function () {
   function hideProgress() {
     uploadProgress.hidden = true
     progressBar.setAttribute('data-progress', '0')
+  }
+
+  // Handle text content review
+  async function handleTextReview(textContent) {
+    try {
+      uploadButton.disabled = true
+      showProgress('Preparing review...', 0)
+
+      // Validate text content length (max 50,000 characters)
+      const maxLength = 50000
+      if (textContent.length > maxLength) {
+        throw new Error(
+          `Text content too long. Maximum ${maxLength} characters. Your content has ${textContent.length} characters.`
+        )
+      }
+
+      // Minimum content check
+      if (textContent.length < 10) {
+        throw new Error(
+          'Text content too short. Please provide at least 10 characters.'
+        )
+      }
+
+      showProgress('Submitting for review...', 30)
+
+      // Get backend URL from global config
+      const backendUrl =
+        window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001'
+
+      // Use first 10 characters of text as title (or less if shorter)
+      const title =
+        textContent.substring(0, 10).trim() +
+        (textContent.length > 10 ? '...' : '')
+
+      const response = await fetch(`${backendUrl}/api/review/text`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          content: textContent,
+          title: title
+        }),
+        credentials: 'include'
+      })
+
+      showProgress('Processing review...', 70)
+
+      if (!response.ok) {
+        const error = await response
+          .json()
+          .catch(() => ({ error: `Server error: ${response.status}` }))
+        throw new Error(error.error || 'Text review failed')
+      }
+
+      const result = await response.json()
+
+      if (!result.success) {
+        throw new Error(result.error || 'Text review failed')
+      }
+
+      showProgress('Review submitted!', 100)
+
+      // Redirect to polling page
+      setTimeout(() => {
+        if (result.reviewId) {
+          window.location.href = `/review/status-poller/${result.reviewId}`
+        } else {
+          hideProgress()
+          showSuccess('Text submitted for review successfully')
+          document.getElementById('text-content').value = ''
+          uploadButton.disabled = false
+        }
+      }, 800)
+    } catch (error) {
+      showError(error.message || 'Text review failed. Please try again.')
+      uploadButton.disabled = false
+      hideProgress()
+    }
   }
 })
