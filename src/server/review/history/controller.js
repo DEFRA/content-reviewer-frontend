@@ -12,8 +12,8 @@ export const reviewHistoryController = {
       const config = request.server.app.config
       const backendUrl = config.get('backendUrl')
 
-      // Fetch review history from backend
-      const response = await fetch(`${backendUrl}/api/review-history?limit=100`)
+      // Fetch review history from backend (S3-backed storage)
+      const response = await fetch(`${backendUrl}/api/reviews?limit=100`)
 
       if (!response.ok) {
         throw new Error('Failed to fetch review history')
@@ -25,7 +25,7 @@ export const reviewHistoryController = {
         pageTitle: 'Review History',
         heading: 'Review History',
         reviews: data.reviews || [],
-        count: data.count || 0
+        count: data.total || data.count || 0
       })
     } catch (error) {
       request.logger.error(error, 'Failed to fetch review history')
