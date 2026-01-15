@@ -71,11 +71,7 @@ document.addEventListener('DOMContentLoaded', function () {
       // Uploading
       showProgress('Uploading to server...', 30)
 
-      // Get backend URL from global config
-      const backendUrl =
-        window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001'
-
-      const response = await fetch(`${backendUrl}/api/upload`, {
+      const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
         credentials: 'include'
@@ -96,7 +92,7 @@ document.addEventListener('DOMContentLoaded', function () {
       // Complete
       showProgress('Upload complete!', 100)
 
-      // Redirect to polling page after a brief moment
+      // Hide progress after a moment and show success
       setTimeout(() => {
         hideProgress()
 
