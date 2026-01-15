@@ -13,7 +13,7 @@ export const reviewHistoryController = {
       const backendUrl = config.get('backendUrl')
 
       // Fetch review history from backend
-      const response = await fetch(`${backendUrl}/api/reviews?limit=100`)
+      const response = await fetch(`${backendUrl}/api/review-history?limit=100`)
 
       if (!response.ok) {
         throw new Error('Failed to fetch review history')
@@ -49,9 +49,12 @@ export const reviewHistoryController = {
       const config = request.server.app.config
       const backendUrl = config.get('backendUrl')
 
-      const response = await fetch(`${backendUrl}/api/reviews/${reviewId}`, {
-        method: 'DELETE'
-      })
+      const response = await fetch(
+        `${backendUrl}/api/review-history/${reviewId}`,
+        {
+          method: 'DELETE'
+        }
+      )
 
       if (!response.ok) {
         throw new Error('Failed to delete review')

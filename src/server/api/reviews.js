@@ -26,12 +26,15 @@ export async function getReviewsController(request, h) {
     logger.info('Fetching review history from backend')
 
     // Fetch review history from backend
-    const response = await fetch(`${backendUrl}/api/reviews?limit=50`, {
-      method: 'GET',
-      headers: {
-        Accept: 'application/json'
+    const response = await fetch(
+      `${backendUrl}/api/review-history?userId=all&limit=50`,
+      {
+        method: 'GET',
+        headers: {
+          Accept: 'application/json'
+        }
       }
-    })
+    )
 
     if (!response.ok) {
       logger.error(
