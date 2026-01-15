@@ -2,6 +2,12 @@
 
 {% block head %}
   {{ super() }}
+  <script nonce="{{ cspNonce }}">
+    // Make backend URL available to client-side JavaScript
+    window.APP_CONFIG = {
+      backendApiUrl: '{{ backendUrl }}'
+    };
+  </script>
   <style nonce="{{ cspNonce }}">
     /* Animated loading dots */
     .loading-dots {
@@ -331,7 +337,8 @@
 
         showProgress('Uploading to server...', 50);
 
-        const response = await fetch('/api/upload', {
+        const backendUrl = window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001';
+        const response = await fetch(`${backendUrl}/api/upload`, {
           method: 'POST',
           body: formData
         });
@@ -377,7 +384,8 @@
 
         showProgress('Submitting content...', 30);
 
-        const response = await fetch('/api/review-text', {
+        const backendUrl = window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001';
+        const response = await fetch(`${backendUrl}/api/review-text`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -448,7 +456,8 @@
       
       isRefreshing = true;
       try {
-        const response = await fetch('/api/reviews', {
+        const backendUrl = window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001';
+        const response = await fetch(`${backendUrl}/api/reviews`, {
           method: 'GET',
           headers: {
             'Accept': 'application/json'
