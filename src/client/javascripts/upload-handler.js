@@ -98,15 +98,36 @@ document.addEventListener('DOMContentLoaded', function () {
 
       // Redirect to polling page after a brief moment
       setTimeout(() => {
-        if (result.reviewId) {
-          window.location.href = `/review/status-poller/${result.reviewId}`
-        } else {
-          // Fallback: show success message if no reviewId
-          hideProgress()
-          showSuccess('File uploaded successfully')
-          fileInput.value = ''
-          uploadButton.disabled = false
+        hideProgress()
+
+        // Build success message with available data
+        let successMsg = `<strong>${result.filename || result.fileName || 'File'}</strong> `
+        if (result.size) {
+          successMsg += `(${(result.size / 1024).toFixed(2)} KB) `
         }
+        successMsg += `has been uploaded successfully to S3.`
+
+        if (result.uploadId || result.fileId || result.id) {
+          successMsg += `<br><strong>File ID:</strong> ${result.uploadId || result.fileId || result.id}`
+        }
+
+        if (result.s3Location || result.s3Bucket || result.location) {
+          const location =
+            result.s3Location ||
+            result.location ||
+            (result.s3Bucket && result.s3Key
+              ? result.s3Bucket + '/' + result.s3Key
+              : '')
+          if (location) {
+            successMsg += `<br><strong>Storage:</strong> ${location}`
+          }
+        }
+
+        showSuccess(successMsg)
+
+        // Reset form for another upload
+        fileInput.value = ''
+        uploadButton.disabled = false
       }, 800)
     } catch (error) {
       showError(error.message || 'Upload failed. Please try again.')
