@@ -50,7 +50,7 @@ export const textReviewApiController = {
         `Submitting text content to backend: ${textContent.length} characters`
       )
 
-      const response = await fetch(`${backendUrl}/api/review-text`, {
+      const response = await fetch(`${backendUrl}/api/review/text`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
