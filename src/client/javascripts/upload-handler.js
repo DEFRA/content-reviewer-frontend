@@ -197,7 +197,7 @@ document.addEventListener('DOMContentLoaded', function () {
         },
         body: JSON.stringify({
           content: textContent,
-          title: title
+          title
         }),
         credentials: 'include'
       })
