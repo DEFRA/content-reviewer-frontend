@@ -46,6 +46,7 @@ describe('context and cache', () => {
       test('Should provide expected context', () => {
         expect(contextResult).toEqual({
           assetPath: '/public/assets',
+          backendUrl: 'http://localhost:3001',
           breadcrumbs: [],
           cspNonce: '',
           getAssetPath: expect.any(Function),
@@ -136,6 +137,7 @@ describe('context and cache', () => {
       test('Should provide expected context', () => {
         expect(contextResult).toEqual({
           assetPath: '/public/assets',
+          backendUrl: 'http://localhost:3001',
           breadcrumbs: [],
           cspNonce: '',
           getAssetPath: expect.any(Function),
