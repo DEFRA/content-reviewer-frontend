@@ -185,6 +185,11 @@ document.addEventListener('DOMContentLoaded', function () {
       const backendUrl =
         window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001'
 
+      // Use first 10 characters of text as title (or less if shorter)
+      const title =
+        textContent.substring(0, 10).trim() +
+        (textContent.length > 10 ? '...' : '')
+
       const response = await fetch(`${backendUrl}/api/review/text`, {
         method: 'POST',
         headers: {
@@ -192,7 +197,7 @@ document.addEventListener('DOMContentLoaded', function () {
         },
         body: JSON.stringify({
           content: textContent,
-          title: 'Direct Text Input'
+          title: title
         }),
         credentials: 'include'
       })
