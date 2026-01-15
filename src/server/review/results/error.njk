@@ -1,0 +1,30 @@
+{% extends "layouts/page.njk" %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      
+      <a href="/" class="govuk-back-link">Back to home</a>
+      
+      <div class="govuk-error-summary" aria-labelledby="error-summary-title" role="alert">
+        <h2 class="govuk-error-summary__title" id="error-summary-title">
+          {{ heading }}
+        </h2>
+        <div class="govuk-error-summary__body">
+          <p class="govuk-body">{{ error }}</p>
+        </div>
+      </div>
+
+      <p class="govuk-body">
+        <a href="/upload" class="govuk-button" data-module="govuk-button">
+          Upload Another Document
+        </a>
+      </p>
+
+      <p class="govuk-body">
+        <a href="/" class="govuk-link">Back to home</a>
+      </p>
+
+    </div>
+  </div>
+{% endblock %}

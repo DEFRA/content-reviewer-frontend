@@ -1,17 +1,199 @@
 {% extends 'layouts/page.njk' %}
 
 {% block content %}
-  {{ appHeading({
-    text: heading,
-    caption: "content-reviewer-frontend"
-  }) }}
+  <div class="app-main-container">
+        <!-- Sidebar for conversation history -->
+        <aside class="sidebar" id="sidebar">
+          <div class="sidebar-header">
+            <h2 class="sidebar-title">Conversations</h2>
+            <button class="govuk-button sidebar-new-chat-btn" id="newChatBtn">
+              + New chat
+            </button>
+          </div>
+          <div class="sidebar-conversations" id="conversationList">
+            <!-- Conversation items will be added here dynamically -->
+          </div>
+        </aside>
 
-  <div class="govuk-grid-row">
-    <div class="govuk-grid-column-two-thirds">
-      <div class="govuk-body" data-testid="app-page-body">
-        <p></p>
+        <!-- Chat Container -->
+        <div class="chat-container">
+        
+        <!-- Upload Success Message -->
+        {% if uploadSuccess %}
+        <div class="govuk-notification-banner govuk-notification-banner--success" role="alert" aria-labelledby="upload-success-title" data-module="govuk-notification-banner">
+          <div class="govuk-notification-banner__header">
+            <h2 class="govuk-notification-banner__title" id="upload-success-title">
+              Success
+            </h2>
+          </div>
+          <div class="govuk-notification-banner__content">
+            <h3 class="govuk-notification-banner__heading">
+              Document uploaded successfully
+            </h3>
+            <p class="govuk-body">
+              <strong>{{ uploadSuccess.filename }}</strong> ({{ (uploadSuccess.size / 1024) | round(2) }} KB) has been uploaded and scanned.
+            </p>
+            <p class="govuk-body-s">
+              File ID: {{ uploadSuccess.fileId }}<br>
+              Storage: {{ uploadSuccess.s3Location }}
+            </p>
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Upload Error Message -->
+        {% if uploadError %}
+        <div class="govuk-error-summary" aria-labelledby="error-summary-title" role="alert" tabindex="-1" data-module="govuk-error-summary">
+          <h2 class="govuk-error-summary__title" id="error-summary-title">
+            Upload failed
+          </h2>
+          <div class="govuk-error-summary__body">
+            <p class="govuk-body">{{ uploadError }}</p>
+          </div>
+        </div>
+        {% endif %}
+        
+        <!-- Welcome Message -->
+        <div class="chat-welcome">
+          <h2 class="govuk-heading-m">Content Review Assistant</h2>
+          <p class="govuk-body">
+            I can help you review content for clarity, formatting and compliance with GOV.UK standards.
+          </p>
+        </div>
+
+        <!-- Chat Messages Area -->
+        <div class="chat-messages" id="chatMessages">
+          <div class="message bot-message">
+            <div class="message-content">
+              <p>Hello! I'm here to help you review content for GOV.UK websites.</p>
+              <p>You can:</p>
+              <ul>
+                <li>Type or paste content for me to review</li>
+                <li>Upload a PDF or Word document using the option above</li>
+                <li>Ask about GOV.UK content standards</li>
+                <li>Check formatting and readability</li>
+                <li>Get suggestions for improvement</li>
+              </ul>
+              <p>How can I help you today?</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="chat-input-container">
+          <!-- File Preview (hidden by default) -->
+          <div id="filePreview" class="file-preview" hidden>
+            <div class="file-preview-content">
+              <span class="file-preview-icon">📎</span>
+              <div class="file-preview-details">
+                <span class="file-preview-name" id="fileName">document.pdf</span>
+                <span class="file-preview-size" id="fileSize">1.2 MB</span>
+              </div>
+              <button type="button" class="file-preview-remove" id="removeFile" aria-label="Remove file">
+                ✕
+              </button>
+            </div>
+          </div>
+
+          <form id="chatForm" class="chat-form">
+            <!-- Hidden file input -->
+            <input type="file" id="fileInput" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden>
+            
+            <div class="chat-input-wrapper">
+              <div class="govuk-form-group">
+                <label class="govuk-label govuk-visually-hidden" for="userInput">
+                  Type your message or paste content to review
+                </label>
+                <textarea 
+                  id="userInput" 
+                  class="govuk-textarea" 
+                  rows="3" 
+                  placeholder="Type your message here..."
+                  aria-label="Chat message input"
+                ></textarea>
+              </div>
+              
+              <div class="chat-buttons-row">
+                <!-- Attach button on left -->
+                <button type="button" class="attach-button" id="attachButton" aria-label="Attach file" title="Attach PDF or Word document">
+                  Attach File
+                </button>
+                
+                <!-- Send button on right -->
+                <button 
+                  type="submit" 
+                  class="govuk-button send-button"
+                  data-module="govuk-button"
+                  id="sendButton"
+                >
+                  Send
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+        <!-- End chat-input-container -->
+
       </div>
+      <!-- End chat-container -->
+      
     </div>
-  </div>
+    <!-- End app-main-container -->
 
+{% endblock %}
+
+{% block bodyEnd %}
+  {{ super() }}
+  <script nonce="{{ cspNonce }}">
+    // Configure backend API URL from server-side config
+    window.APP_CONFIG = {
+      backendApiUrl: '{{ backendUrl | safe }}'
+    };
+
+    // Check for upload success message from sessionStorage
+    (function() {
+      const uploadSuccess = sessionStorage.getItem('uploadSuccess');
+      if (uploadSuccess) {
+        try {
+          const data = JSON.parse(uploadSuccess);
+          
+          // Create success notification
+          const notification = document.createElement('div');
+          notification.className = 'govuk-notification-banner govuk-notification-banner--success';
+          notification.setAttribute('role', 'alert');
+          notification.setAttribute('aria-labelledby', 'upload-success-title');
+          notification.innerHTML = `
+            <div class="govuk-notification-banner__header">
+              <h2 class="govuk-notification-banner__title" id="upload-success-title">
+                Success
+              </h2>
+            </div>
+            <div class="govuk-notification-banner__content">
+              <h3 class="govuk-notification-banner__heading">
+                Document uploaded successfully
+              </h3>
+              <p class="govuk-body">
+                <strong>${data.filename}</strong> (${(data.size / 1024).toFixed(2)} KB) has been uploaded.
+              </p>
+              <p class="govuk-body-s">
+                File ID: ${data.fileId}<br>
+                Storage: ${data.s3Location}
+              </p>
+            </div>
+          `;
+          
+          // Insert at top of chat container
+          const chatContainer = document.querySelector('.chat-container');
+          if (chatContainer) {
+            chatContainer.insertBefore(notification, chatContainer.firstChild);
+          }
+          
+          // Clear from sessionStorage
+          sessionStorage.removeItem('uploadSuccess');
+        } catch (e) {
+          // Silently handle errors
+        }
+      }
+    })();
+  </script>
 {% endblock %}

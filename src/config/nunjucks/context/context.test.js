@@ -47,6 +47,7 @@ describe('context and cache', () => {
         expect(contextResult).toEqual({
           assetPath: '/public/assets',
           breadcrumbs: [],
+          cspNonce: '',
           getAssetPath: expect.any(Function),
           navigation: [
             {
@@ -60,7 +61,7 @@ describe('context and cache', () => {
               href: '/about'
             }
           ],
-          serviceName: 'content-reviewer-frontend',
+          serviceName: 'Content Review Tool',
           serviceUrl: '/'
         })
       })
@@ -136,6 +137,7 @@ describe('context and cache', () => {
         expect(contextResult).toEqual({
           assetPath: '/public/assets',
           breadcrumbs: [],
+          cspNonce: '',
           getAssetPath: expect.any(Function),
           navigation: [
             {
@@ -149,7 +151,7 @@ describe('context and cache', () => {
               href: '/about'
             }
           ],
-          serviceName: 'content-reviewer-frontend',
+          serviceName: 'Content Review Tool',
           serviceUrl: '/'
         })
       })

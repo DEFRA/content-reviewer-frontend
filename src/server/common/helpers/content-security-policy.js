@@ -11,11 +11,22 @@ const contentSecurityPolicy = {
     // https://frontend.design-system.service.gov.uk/import-javascript/#if-our-inline-javascript-snippet-is-blocked-by-a-content-security-policy
     defaultSrc: ['self'],
     fontSrc: ['self', 'data:'],
-    connectSrc: ['self', 'wss', 'data:'],
+    // Allow connections to backend services in all environments
+    connectSrc: [
+      'self',
+      'wss',
+      'data:',
+      'http://localhost:3001',
+      'https://content-reviewer-backend.dev.cdp-int.defra.cloud',
+      'https://content-reviewer-backend.test.cdp-int.defra.cloud',
+      'https://content-reviewer-backend.perf-test.cdp-int.defra.cloud',
+      'https://content-reviewer-backend.prod.cdp-int.defra.cloud'
+    ],
     mediaSrc: ['self'],
-    styleSrc: ['self'],
+    styleSrc: ['self', 'unsafe-inline'],
     scriptSrc: [
       'self',
+      'unsafe-inline',
       "'sha256-GUQ5ad8JK5KmEWmROf3LZd9ge94daqNvd8xy9YS1iDw='"
     ],
     imgSrc: ['self', 'data:'],
@@ -24,7 +35,7 @@ const contentSecurityPolicy = {
     frameAncestors: ['none'],
     formAction: ['self'],
     manifestSrc: ['self'],
-    generateNonces: false
+    generateNonces: true
   }
 }
 

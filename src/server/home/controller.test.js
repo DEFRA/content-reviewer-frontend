@@ -1,5 +1,9 @@
 import { createServer } from '../server.js'
 import { statusCodes } from '../common/constants/status-codes.js'
+import { vi } from 'vitest'
+
+// Mock fetch to avoid making real backend requests during tests
+global.fetch = vi.fn()
 
 describe('#homeController', () => {
   let server
@@ -13,13 +17,25 @@ describe('#homeController', () => {
     await server.stop({ timeout: 0 })
   })
 
+  beforeEach(() => {
+    // Mock fetch to return empty review history
+    global.fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ reviews: [] })
+    })
+  })
+
+  afterEach(() => {
+    vi.clearAllMocks()
+  })
+
   test('Should provide expected response', async () => {
-    const { result, statusCode } = await server.inject({
+    const response = await server.inject({
       method: 'GET',
       url: '/'
     })
 
-    expect(result).toEqual(expect.stringContaining('Home |'))
-    expect(statusCode).toBe(statusCodes.ok)
+    expect(response.result).toEqual(expect.stringContaining('Home |'))
+    expect(response.statusCode).toBe(statusCodes.ok)
   })
 })
