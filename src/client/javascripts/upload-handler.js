@@ -13,7 +13,6 @@ document.addEventListener('DOMContentLoaded', function () {
   const uploadError = document.getElementById('uploadError')
   const uploadSuccess = document.getElementById('uploadSuccess')
   const errorMessage = document.getElementById('errorMessage')
-  const successMessage = document.getElementById('successMessage')
 
   console.log('[UPLOAD-HANDLER] DOM elements found:', {
     form: !!form,
@@ -40,54 +39,102 @@ document.addEventListener('DOMContentLoaded', function () {
   // ============ MUTUAL EXCLUSION LOGIC ============
   console.log('[UPLOAD-HANDLER] Setting up mutual exclusion logic')
 
-  // Disable text input when file is selected
+  function updateMutualExclusion() {
+    const hasFile = fileInput && fileInput.files && fileInput.files.length > 0
+    const hasText = textContentInput && textContentInput.value.trim().length > 0
+
+    console.log('[UPLOAD-HANDLER] Mutual exclusion check:', {
+      hasFile,
+      hasText
+    })
+
+    if (hasFile) {
+      // File selected - disable and dim text input
+      textContentInput.disabled = true
+      textContentInput.value = ''
+      textContentInput.placeholder =
+        'File upload selected - text input disabled'
+      textContentInput.style.opacity = '0.5'
+      textContentInput.style.backgroundColor = '#f3f2f1'
+
+      // Add visual indicator to file input group
+      const fileFormGroup = document.getElementById('fileFormGroup')
+      if (fileFormGroup) {
+        fileFormGroup.style.border = '2px solid #1d70b8'
+        fileFormGroup.style.padding = '15px'
+        fileFormGroup.style.backgroundColor = '#f0f4f8'
+      }
+
+      console.log('[UPLOAD-HANDLER] Text input disabled - file selected')
+    } else if (hasText) {
+      // Text entered - disable and dim file input
+      fileInput.disabled = true
+      fileInput.style.opacity = '0.5'
+      fileInput.style.backgroundColor = '#f3f2f1'
+
+      // Add visual indicator to text input group
+      const textFormGroup = document.getElementById('textFormGroup')
+      if (textFormGroup) {
+        textFormGroup.style.border = '2px solid #1d70b8'
+        textFormGroup.style.padding = '15px'
+        textFormGroup.style.backgroundColor = '#f0f4f8'
+      }
+
+      console.log('[UPLOAD-HANDLER] File input disabled - text entered')
+    } else {
+      // Nothing selected - enable both
+      if (fileInput) {
+        fileInput.disabled = false
+        fileInput.style.opacity = '1'
+        fileInput.style.backgroundColor = ''
+      }
+
+      if (textContentInput) {
+        textContentInput.disabled = false
+        textContentInput.placeholder = 'Type or paste content here...'
+        textContentInput.style.opacity = '1'
+        textContentInput.style.backgroundColor = ''
+      }
+
+      // Remove visual indicators
+      const fileFormGroup = document.getElementById('fileFormGroup')
+      const textFormGroup = document.getElementById('textFormGroup')
+      if (fileFormGroup) {
+        fileFormGroup.style.border = ''
+        fileFormGroup.style.padding = ''
+        fileFormGroup.style.backgroundColor = ''
+      }
+      if (textFormGroup) {
+        textFormGroup.style.border = ''
+        textFormGroup.style.padding = ''
+        textFormGroup.style.backgroundColor = ''
+      }
+
+      console.log('[UPLOAD-HANDLER] Both inputs enabled - nothing selected')
+    }
+  }
+
+  // File input change handler
   if (fileInput && textContentInput) {
     fileInput.addEventListener('change', () => {
       console.log(
         '[UPLOAD-HANDLER] File input changed, files count:',
         fileInput.files.length
       )
-
-      if (fileInput.files.length > 0) {
-        const fileName = fileInput.files[0].name
-        const fileSize = (fileInput.files[0].size / 1024 / 1024).toFixed(2)
-        console.log('[UPLOAD-HANDLER] File selected:', {
-          fileName,
-          fileSize: `${fileSize}MB`
-        })
-
-        textContentInput.disabled = true
-        textContentInput.placeholder =
-          'File upload selected - text input disabled'
-        textContentInput.style.opacity = '0.6'
-        console.log(
-          '[UPLOAD-HANDLER] Text input disabled due to file selection'
-        )
-      } else {
-        console.log(
-          '[UPLOAD-HANDLER] File input cleared, re-enabling text input'
-        )
-        textContentInput.disabled = false
-        textContentInput.placeholder = 'Type or paste content here...'
-        textContentInput.style.opacity = '1'
-      }
+      updateMutualExclusion()
     })
 
-    // Disable file input when user types text
+    // Text input change handler
     textContentInput.addEventListener('input', () => {
-      const textLength = textContentInput.value.trim().length
-      console.log('[UPLOAD-HANDLER] Text input changed, length:', textLength)
-
-      if (textLength > 0) {
-        fileInput.disabled = true
-        fileInput.style.opacity = '0.6'
-        console.log('[UPLOAD-HANDLER] File input disabled due to text content')
-      } else {
-        fileInput.disabled = false
-        fileInput.style.opacity = '1'
-        console.log('[UPLOAD-HANDLER] File input re-enabled, text cleared')
-      }
+      console.log(
+        '[UPLOAD-HANDLER] Text input changed, length:',
+        textContentInput.value.trim().length
+      )
+      updateMutualExclusion()
     })
+
+    // Initial state
+    updateMutualExclusion()
   }
 
   form.addEventListener('submit', async (e) => {
@@ -209,7 +256,11 @@ document.addEventListener('DOMContentLoaded', function () {
       // Complete
       showProgress('Upload complete!', 100)
 
-      // Redirect to polling page after a brief moment
+      // Clear form state first
+      fileInput.value = ''
+      updateMutualExclusion()
+
+      // Redirect to polling page after a brief moment or refresh page
       setTimeout(() => {
         if (result.reviewId) {
           console.log(
@@ -218,38 +269,13 @@ document.addEventListener('DOMContentLoaded', function () {
           )
           window.location.href = `/review/status-poller/${result.reviewId}`
         } else {
-          // Fallback: show success message if no reviewId
           console.log(
-            '[UPLOAD-HANDLER] No reviewId in response, showing success message'
+            '[UPLOAD-HANDLER] No reviewId in response, refreshing page to show success'
           )
-          hideProgress()
-          showSuccess('File uploaded successfully')
-          fileInput.value = ''
-          textContentInput.disabled = false
-          textContentInput.placeholder = 'Type or paste content here...'
-          textContentInput.style.opacity = '1'
-          uploadButton.disabled = false
-
-          // Refresh review history
-          console.log('[UPLOAD-HANDLER] Attempting to refresh review history')
-          if (typeof window.updateReviewHistory === 'function') {
-            console.log('[UPLOAD-HANDLER] Calling window.updateReviewHistory()')
-            window.updateReviewHistory()
-          } else {
-            console.warn(
-              '[UPLOAD-HANDLER] window.updateReviewHistory function not available'
-            )
-          }
-          if (typeof window.startAutoRefresh === 'function') {
-            console.log('[UPLOAD-HANDLER] Calling window.startAutoRefresh()')
-            window.startAutoRefresh()
-          } else {
-            console.warn(
-              '[UPLOAD-HANDLER] window.startAutoRefresh function not available'
-            )
-          }
+          // Refresh the entire page to show updated review history
+          window.location.reload()
         }
-      }, 800)
+      }, 1500)
     } catch (error) {
       console.error('[UPLOAD-HANDLER] Upload failed:', {
         message: error.message,
@@ -274,13 +300,6 @@ document.addEventListener('DOMContentLoaded', function () {
   function hideError() {
     console.log('[UPLOAD-HANDLER] Hiding error message')
     uploadError.hidden = true
-  }
-
-  function showSuccess(message) {
-    console.log('[UPLOAD-HANDLER] Showing success:', message)
-    successMessage.innerHTML = message
-    uploadSuccess.hidden = false
-    uploadSuccess.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   function hideSuccess() {
@@ -395,6 +414,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
       showProgress('Review submitted!', 100)
 
+      // Clear form state
+      textContentInput.value = ''
+      updateMutualExclusion()
+
       // Redirect to polling page
       setTimeout(() => {
         if (result.reviewId) {
@@ -405,41 +428,12 @@ document.addEventListener('DOMContentLoaded', function () {
           window.location.href = `/review/status-poller/${result.reviewId}`
         } else {
           console.log(
-            '[UPLOAD-HANDLER] No reviewId in text review response, showing success message'
+            '[UPLOAD-HANDLER] No reviewId in text review response, refreshing page'
           )
-          hideProgress()
-          showSuccess('Text submitted for review successfully')
-          textContentInput.value = ''
-          fileInput.disabled = false
-          fileInput.style.opacity = '1'
-          uploadButton.disabled = false
-
-          // Refresh review history
-          console.log(
-            '[UPLOAD-HANDLER] Attempting to refresh review history after text review'
-          )
-          if (typeof window.updateReviewHistory === 'function') {
-            console.log(
-              '[UPLOAD-HANDLER] Calling window.updateReviewHistory() for text review'
-            )
-            window.updateReviewHistory()
-          } else {
-            console.warn(
-              '[UPLOAD-HANDLER] window.updateReviewHistory function not available for text review'
-            )
-          }
-          if (typeof window.startAutoRefresh === 'function') {
-            console.log(
-              '[UPLOAD-HANDLER] Calling window.startAutoRefresh() for text review'
-            )
-            window.startAutoRefresh()
-          } else {
-            console.warn(
-              '[UPLOAD-HANDLER] window.startAutoRefresh function not available for text review'
-            )
-          }
+          // Refresh the entire page to show updated review history
+          window.location.reload()
         }
-      }, 800)
+      }, 1500)
     } catch (error) {
       console.error('[UPLOAD-HANDLER] Text review failed:', {
         message: error.message,

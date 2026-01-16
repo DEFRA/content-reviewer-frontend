@@ -56,7 +56,13 @@
 
       <!-- Export Options -->
       <div class="govuk-button-group govuk-!-margin-bottom-8">
-        <button type="button" class="govuk-button" data-module="govuk-button" id="exportJsonBtn">
+        <button type="button" class="govuk-button" data-module="govuk-button" id="exportPdfBtn">
+          Download as PDF
+        </button>
+        <button type="button" class="govuk-button govuk-button--secondary" data-module="govuk-button" id="exportWordBtn">
+          Download as Word
+        </button>
+        <button type="button" class="govuk-button govuk-button--secondary" data-module="govuk-button" id="exportJsonBtn">
           Download Results (JSON)
         </button>
         <button type="button" class="govuk-button govuk-button--secondary" data-module="govuk-button" id="exportTextBtn">
@@ -298,6 +304,80 @@
       report += 'END OF REPORT\n';
       report += '='.repeat(80) + '\n';
       return report;
+{% endblock %}
+
+{% block bodyEnd %}
+  {{ super() }}
+  <script nonce="{{ cspNonce }}">
+    const reviewId = '{{ reviewId }}';
+    const resultsData = {{ results.rawData | dump | safe }};
+
+    // Export as PDF
+    document.getElementById('exportPdfBtn').addEventListener('click', () => {
+      window.location.href = `/review/export/${reviewId}/pdf`;
+    });
+
+    // Export as Word
+    document.getElementById('exportWordBtn').addEventListener('click', () => {
+      window.location.href = `/review/export/${reviewId}/word`;
+    });
+
+    // Export as JSON
+    document.getElementById('exportJsonBtn').addEventListener('click', () => {
+      const dataStr = JSON.stringify(resultsData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `review-results-${reviewId}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    });
+
+    // Export as Text
+    document.getElementById('exportTextBtn').addEventListener('click', () => {
+      const textContent = generateTextReport();
+      const textBlob = new Blob([textContent], { type: 'text/plain' });
+      const url = URL.createObjectURL(textBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `review-report-${reviewId}.txt`;
+      link.click();
+      URL.revokeObjectURL(url);
+    });
+
+    // Print
+    document.getElementById('printBtn').addEventListener('click', () => {
+      window.print();
+    });
+
+    // Generate text report
+    function generateTextReport() {
+      const results = {{ results | dump | safe }};
+      let report = '';
+      report += '='.repeat(80) + '\n';
+      report += 'GOV.UK CONTENT REVIEW REPORT\n';
+      report += '='.repeat(80) + '\n\n';
+      report += `Document: ${results.documentName}\n`;
+      report += `Review Date: ${results.reviewDate}\n`;
+      report += `AI Model: ${results.llmModel}\n`;
+      report += `Processing Time: ${results.processingTime}\n`;
+      report += `Overall Status: ${results.summary.overallStatus}\n`;
+      report += `Overall Score: ${results.summary.overallScore}/100\n\n`;
+      report += '='.repeat(80) + '\n';
+      report += 'SUMMARY\n';
+      report += '='.repeat(80) + '\n';
+      report += `Issues Found: ${results.summary.issuesFound}\n`;
+      report += `Words to Avoid: ${results.summary.wordsToAvoid}\n`;
+      report += `Passive Sentences: ${results.summary.passiveSentences}\n\n`;
+      report += '='.repeat(80) + '\n';
+      report += 'FULL REVIEW\n';
+      report += '='.repeat(80) + '\n\n';
+      report += results.fullReviewText;
+      report += '\n\n' + '='.repeat(80) + '\n';
+      report += 'END OF REPORT\n';
+      report += '='.repeat(80) + '\n';
+      return report;
     }
   </script>
   
@@ -321,79 +401,11 @@
       .govuk-button-group,
       #exportJsonBtn,
       #exportTextBtn,
+      #exportPdfBtn,
+      #exportWordBtn,
       #printBtn {
         display: none;
       }
     }
   </style>
-{% endblock %}
-
-          <h3 class="govuk-heading-s govuk-!-margin-bottom-2">
-            {{ finding.category }} 
-            <strong class="govuk-tag {{ 'govuk-tag--red' if finding.severity == 'High' else ('govuk-tag--yellow' if finding.severity == 'Medium' else 'govuk-tag--grey') }}">
-              {{ finding.severity }}
-            </strong>
-            <span class="govuk-body-s app-confidence-badge">AI Confidence: {{ (finding.aiConfidence * 100) | round }}%</span>
-          </h3>
-          <p class="govuk-body"><strong>Issue:</strong> {{ finding.description }}</p>
-          <p class="govuk-body"><strong>Location:</strong> {{ finding.location }}</p>
-          <p class="govuk-body"><strong>Suggestion:</strong> {{ finding.suggestion }}</p>
-        </div>
-      </div>
-      {% endfor %}
-
-      <!-- Recommendations -->
-      <h2 class="govuk-heading-l">Recommendations</h2>
-      
-      <div class="govuk-inset-text">
-        <ul class="govuk-list govuk-list--bullet">
-          {% for recommendation in results.recommendations %}
-          <li>{{ recommendation }}</li>
-          {% endfor %}
-        </ul>
-      </div>
-
-      <!-- Actions -->
-      <div class="govuk-button-group govuk-!-margin-top-6">
-        <a href="/" class="govuk-button" data-module="govuk-button">
-          Review Another Document
-        </a>
-        <a href="/" class="govuk-link">
-          Back to home
-        </a>
-      </div>
-
-      <!-- Debug Link (for backend users) -->
-      <div class="govuk-!-margin-top-4">
-        <details class="govuk-details govuk-!-font-size-14">
-          <summary class="govuk-details__summary">
-            <span class="govuk-details__summary-text">
-              Backend/Developer Options
-            </span>
-          </summary>
-          <div class="govuk-details__text">
-            <a href="/review/debug/{{ results.id }}" class="govuk-link">
-              View processing workflow (debug)
-            </a>
-          </div>
-        </details>
-      </div>
-
-    </div>
-  </div>
-{% endblock %}
-
-{% block bodyEnd %}
-  {{ super() }}
-  <script nonce="{{ cspNonce }}">
-    // Export as PDF
-    document.getElementById('exportPdfBtn').addEventListener('click', () => {
-      window.location.href = '/review/export/{{ results.id }}/pdf';
-    });
-
-    // Export as Word
-    document.getElementById('exportWordBtn').addEventListener('click', () => {
-      window.location.href = '/review/export/{{ results.id }}/word';
-    });
-  </script>
 {% endblock %}
