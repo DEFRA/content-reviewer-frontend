@@ -65,11 +65,5 @@
 {% endblock %}
 
 {% block bodyEnd %}
-  <script nonce="{{ cspNonce }}">
-    // Inject backend configuration for client-side JavaScript
-    window.APP_CONFIG = {
-      backendApiUrl: '{{ backendUrl }}'
-    };
-  </script>
   <script nonce="{{ cspNonce }}" src="{{ getAssetPath('application.js') }}"></script>
 {% endblock %}

@@ -82,7 +82,7 @@
 
       <!-- Content Review Form -->
       <div class="govuk-!-margin-bottom-6">
-        <form id="uploadForm" enctype="multipart/form-data" method="POST" action="/api/upload">
+        <form id="uploadForm" enctype="multipart/form-data">
           
           <!-- Upload Error Message (Dynamic) -->
           <div id="uploadError" class="govuk-error-summary" hidden aria-labelledby="error-summary-title" role="alert" tabindex="-1">
@@ -232,220 +232,8 @@
   <script nonce="{{ cspNonce }}">
     console.log('Content Review Assistant - Home Page Loaded');
     
-    // ============ UPLOAD FORM HANDLER ============
-    const uploadForm = document.getElementById('uploadForm');
-    const fileInput = document.getElementById('file-upload');
-    const textContent = document.getElementById('text-content');
-    const uploadButton = document.getElementById('uploadButton');
-    const uploadProgress = document.getElementById('uploadProgress');
-    const uploadError = document.getElementById('uploadError');
-    const uploadSuccess = document.getElementById('uploadSuccess');
-    const errorMessage = document.getElementById('errorMessage');
-    const successMessage = document.getElementById('successMessage');
-    const uploadStatusText = document.getElementById('uploadStatusText');
-    const uploadProgressText = document.getElementById('uploadProgressText');
-
-    if (uploadForm) {
-      // Hide error/success/progress on load
-      if (uploadError) uploadError.hidden = true;
-      if (uploadSuccess) uploadSuccess.hidden = true;
-      if (uploadProgress) uploadProgress.hidden = true;
-
-      // Auto-disable/enable based on user input
-      if (fileInput && textContent) {
-        fileInput.addEventListener('change', () => {
-          if (fileInput.files.length > 0) {
-            textContent.disabled = true;
-            textContent.placeholder = 'File upload selected - text input disabled';
-          } else {
-            textContent.disabled = false;
-            textContent.placeholder = 'Type or paste content here...';
-          }
-        });
-
-        textContent.addEventListener('input', () => {
-          if (textContent.value.trim().length > 0) {
-            fileInput.disabled = true;
-          } else {
-            fileInput.disabled = false;
-          }
-        });
-      }
-
-      uploadForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        console.log('Upload form submitted - using AJAX');
-
-        // Reset UI
-        if (uploadError) uploadError.hidden = true;
-        if (uploadSuccess) uploadSuccess.hidden = true;
-        if (uploadProgress) uploadProgress.hidden = true;
-
-        const file = fileInput.files[0];
-        const text = textContent ? textContent.value.trim() : '';
-
-        // Check if user provided either file or text
-        if (!file && !text) {
-          if (errorMessage) errorMessage.textContent = 'Please upload a file OR paste/type content to review';
-          if (uploadError) uploadError.hidden = false;
-          return;
-        }
-
-        try {
-          uploadButton.disabled = true;
-
-          if (file) {
-            // File upload workflow
-            await handleFileUpload(file);
-          } else if (text) {
-            // Text content workflow
-            await handleTextReview(text);
-          }
-
-        } catch (error) {
-          console.error('Upload/Review error:', error);
-          if (errorMessage) errorMessage.textContent = error.message || 'Request failed. Please try again.';
-          if (uploadError) uploadError.hidden = false;
-          uploadButton.disabled = false;
-          if (uploadProgress) uploadProgress.hidden = true;
-        }
-      });
-
-      // Handle file upload
-      async function handleFileUpload(file) {
-        // Validate file size (10MB)
-        const maxSize = 10 * 1024 * 1024;
-        if (file.size > maxSize) {
-          throw new Error(`File too large. Maximum size is 10MB. Your file is ${(file.size / 1024 / 1024).toFixed(2)}MB`);
-        }
-
-        // Validate file type
-        const allowedTypes = [
-          'application/pdf',
-          'application/msword',
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-        ];
-
-        if (!allowedTypes.includes(file.type) && !file.name.match(/\.(pdf|doc|docx)$/i)) {
-          throw new Error('Invalid file type. Please upload a PDF or Word document');
-        }
-
-        showProgress('Uploading file...', 30);
-
-        const formData = new FormData();
-        formData.append('file', file);
-
-        showProgress('Uploading to server...', 50);
-
-        const backendUrl = window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001';
-        const response = await fetch(`${backendUrl}/api/upload`, {
-          method: 'POST',
-          body: formData
-        });
-
-        showProgress('Processing...', 80);
-
-        if (!response.ok) {
-          const error = await response.json().catch(() => ({ error: `Server error: ${response.status}` }));
-          throw new Error(error.error || 'Upload failed');
-        }
-
-        const result = await response.json();
-        showProgress('Upload complete!', 100);
-
-        setTimeout(() => {
-          if (uploadProgress) uploadProgress.hidden = true;
-          if (successMessage) successMessage.innerHTML = `<strong>${result.filename || 'File'}</strong> uploaded successfully and is being reviewed.`;
-          if (uploadSuccess) uploadSuccess.hidden = false;
-          fileInput.value = '';
-          fileInput.disabled = false;
-          if (textContent) {
-            textContent.disabled = false;
-            textContent.placeholder = 'Type or paste content here...';
-          }
-          uploadButton.disabled = false;
-          
-          console.log('Refreshing review history after upload');
-          updateReviewHistory();
-          startAutoRefresh();
-        }, 500);
-      }
-
-      // Handle text content review
-      async function handleTextReview(text) {
-        // Validate text length
-        if (text.length < 10) {
-          throw new Error('Please provide at least 10 characters of content to review');
-        }
-
-        if (text.length > 50000) {
-          throw new Error(`Content too long. Maximum 50,000 characters. Your content is ${text.length} characters`);
-        }
-
-        showProgress('Submitting content...', 30);
-
-        const backendUrl = window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001';
-        const response = await fetch(`${backendUrl}/api/review-text`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ textContent: text })
-        });
-
-        showProgress('Processing...', 70);
-
-        if (!response.ok) {
-          const error = await response.json().catch(() => ({ error: `Server error: ${response.status}` }));
-          throw new Error(error.error || 'Text review failed');
-        }
-
-        const result = await response.json();
-        showProgress('Submitted!', 100);
-
-        setTimeout(() => {
-          if (uploadProgress) uploadProgress.hidden = true;
-          if (successMessage) successMessage.innerHTML = `<strong>Content</strong> (${text.length} characters) submitted successfully and is being reviewed.`;
-          if (uploadSuccess) uploadSuccess.hidden = false;
-          if (textContent) {
-            textContent.value = '';
-            textContent.disabled = false;
-          }
-          fileInput.disabled = false;
-          uploadButton.disabled = false;
-          
-          console.log('Refreshing review history after text submission');
-          updateReviewHistory();
-          startAutoRefresh();
-        }, 500);
-      }
-
-      function showError(message) {
-        if (errorMessage) errorMessage.textContent = message;
-        if (uploadError) {
-          uploadError.hidden = false;
-          uploadError.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-      }
-
-      function showSuccess(message) {
-        if (successMessage) successMessage.innerHTML = message;
-        if (uploadSuccess) {
-          uploadSuccess.hidden = false;
-          uploadSuccess.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }
-
-      function showProgress(statusText, percentage) {
-        if (uploadStatusText) uploadStatusText.textContent = statusText;
-        if (uploadProgressText) uploadProgressText.textContent = percentage + '%';
-        if (uploadProgress) uploadProgress.hidden = false;
-      }
-    } else {
-      console.warn('Upload form not found on page');
-    }
-
     // ============ AUTO-REFRESH LOGIC ============
+    // Note: Upload form handling is now in upload-handler.js
     // Auto-refresh state
     let autoRefreshInterval = null;
     let isRefreshing = false;
@@ -679,6 +467,10 @@
       console.log('Starting auto-refresh every 3 seconds');
       autoRefreshInterval = setInterval(updateReviewHistory, 3000); // Refresh every 3 seconds
     }
+
+    // Make functions globally available for upload-handler.js
+    window.updateReviewHistory = updateReviewHistory;
+    window.startAutoRefresh = startAutoRefresh;
 
     // Initialize on page load
     console.log('Initializing review history auto-refresh...');
