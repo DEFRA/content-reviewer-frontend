@@ -2,6 +2,7 @@
 document.addEventListener('DOMContentLoaded', function () {
   const form = document.getElementById('uploadForm')
   const fileInput = document.getElementById('file-upload')
+  const textContentInput = document.getElementById('text-content')
   const uploadButton = document.getElementById('uploadButton')
   const uploadProgress = document.getElementById('uploadProgress')
   const progressBar = document.getElementById('progressBar')
@@ -21,6 +22,34 @@ document.addEventListener('DOMContentLoaded', function () {
   hideError()
   hideProgress()
   hideSuccess()
+
+  // ============ MUTUAL EXCLUSION LOGIC ============
+  // Disable text input when file is selected
+  if (fileInput && textContentInput) {
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length > 0) {
+        textContentInput.disabled = true
+        textContentInput.placeholder =
+          'File upload selected - text input disabled'
+        textContentInput.style.opacity = '0.6'
+      } else {
+        textContentInput.disabled = false
+        textContentInput.placeholder = 'Type or paste content here...'
+        textContentInput.style.opacity = '1'
+      }
+    })
+
+    // Disable file input when user types text
+    textContentInput.addEventListener('input', () => {
+      if (textContentInput.value.trim().length > 0) {
+        fileInput.disabled = true
+        fileInput.style.opacity = '0.6'
+      } else {
+        fileInput.disabled = false
+        fileInput.style.opacity = '1'
+      }
+    })
+  }
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault()
@@ -110,12 +139,18 @@ document.addEventListener('DOMContentLoaded', function () {
           hideProgress()
           showSuccess('File uploaded successfully')
           fileInput.value = ''
+          textContentInput.disabled = false
+          textContentInput.placeholder = 'Type or paste content here...'
+          textContentInput.style.opacity = '1'
           uploadButton.disabled = false
         }
       }, 800)
     } catch (error) {
       showError(error.message || 'Upload failed. Please try again.')
       uploadButton.disabled = false
+      textContentInput.disabled = false
+      textContentInput.placeholder = 'Type or paste content here...'
+      textContentInput.style.opacity = '1'
       hideProgress()
     }
   })
@@ -218,13 +253,17 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
           hideProgress()
           showSuccess('Text submitted for review successfully')
-          document.getElementById('text-content').value = ''
+          textContentInput.value = ''
+          fileInput.disabled = false
+          fileInput.style.opacity = '1'
           uploadButton.disabled = false
         }
       }, 800)
     } catch (error) {
       showError(error.message || 'Text review failed. Please try again.')
       uploadButton.disabled = false
+      fileInput.disabled = false
+      fileInput.style.opacity = '1'
       hideProgress()
     }
   }
