@@ -37,7 +37,30 @@ document.addEventListener('DOMContentLoaded', function () {
   console.log('[UPLOAD-HANDLER] Initial UI state reset completed')
 
   // ============ MUTUAL EXCLUSION LOGIC ============
-  console.log('[UPLOAD-HANDLER] Setting up mutual exclusion logic')
+  console.log('[UPLOAD-HANDLER] Setting up mutual exclusion logic')(
+    // Inject runtime CSS to ensure consistent disabled visuals across browsers
+    function ensureDisabledStyles() {
+      const existing = document.getElementById('app-disabled-styles')
+      if (existing) return
+      const style = document.createElement('style')
+      style.id = 'app-disabled-styles'
+      style.type = 'text/css'
+      style.innerHTML = `
+      .app-disabled {
+        opacity: 0.6 !important;
+        filter: grayscale(60%) !important;
+        pointer-events: none !important;
+      }
+      .app-disabled .govuk-file-upload,
+      .app-disabled .govuk-textarea {
+        opacity: 0.6 !important;
+        background: #f3f2f1 !important;
+      }
+      .app-disabled .govuk-label { color: #6f777a !important; }
+    `
+      document.head.appendChild(style)
+    }
+  )()
 
   function updateMutualExclusion() {
     const hasFile = fileInput && fileInput.files && fileInput.files.length > 0
@@ -48,18 +71,26 @@ document.addEventListener('DOMContentLoaded', function () {
       hasText
     })
 
-    if (hasFile) {
-      // File selected - disable and dim text input
-      textContentInput.disabled = true
-      textContentInput.value = ''
-      textContentInput.placeholder =
-        'File upload selected - text input disabled'
-      textContentInput.style.opacity = '0.5'
-      textContentInput.style.backgroundColor = '#f3f2f1'
+    const fileFormGroup = document.getElementById('fileFormGroup')
+    const textFormGroup = document.getElementById('textFormGroup')
 
-      // Add visual indicator to file input group
-      const fileFormGroup = document.getElementById('fileFormGroup')
+    if (hasFile) {
+      // File selected - disable and dim text input group
+      if (textFormGroup) {
+        textFormGroup.classList.add('app-disabled')
+        textFormGroup.setAttribute('aria-disabled', 'true')
+      }
+
+      if (textContentInput) {
+        textContentInput.disabled = true
+        textContentInput.value = ''
+        textContentInput.placeholder =
+          'File upload selected - text input disabled'
+      }
+
+      // Highlight file group
       if (fileFormGroup) {
+        fileFormGroup.classList.remove('app-disabled')
         fileFormGroup.style.border = '2px solid #1d70b8'
         fileFormGroup.style.padding = '15px'
         fileFormGroup.style.backgroundColor = '#f0f4f8'
@@ -67,14 +98,25 @@ document.addEventListener('DOMContentLoaded', function () {
 
       console.log('[UPLOAD-HANDLER] Text input disabled - file selected')
     } else if (hasText) {
-      // Text entered - disable and dim file input
-      fileInput.disabled = true
-      fileInput.style.opacity = '0.5'
-      fileInput.style.backgroundColor = '#f3f2f1'
+      // Text entered - disable and dim file input group
+      if (fileFormGroup) {
+        fileFormGroup.classList.add('app-disabled')
+        fileFormGroup.setAttribute('aria-disabled', 'true')
+      }
 
-      // Add visual indicator to text input group
-      const textFormGroup = document.getElementById('textFormGroup')
+      if (fileInput) {
+        fileInput.disabled = true
+        // Clear any selected file to avoid confusion
+        try {
+          fileInput.value = ''
+        } catch (e) {
+          /* ignore */
+        }
+      }
+
+      // Highlight text group
       if (textFormGroup) {
+        textFormGroup.classList.remove('app-disabled')
         textFormGroup.style.border = '2px solid #1d70b8'
         textFormGroup.style.padding = '15px'
         textFormGroup.style.backgroundColor = '#f0f4f8'
@@ -82,32 +124,30 @@ document.addEventListener('DOMContentLoaded', function () {
 
       console.log('[UPLOAD-HANDLER] File input disabled - text entered')
     } else {
-      // Nothing selected - enable both
+      // Nothing selected - enable both and remove visual indicators
+      if (fileFormGroup) {
+        fileFormGroup.classList.remove('app-disabled')
+        fileFormGroup.removeAttribute('aria-disabled')
+        fileFormGroup.style.border = ''
+        fileFormGroup.style.padding = ''
+        fileFormGroup.style.backgroundColor = ''
+      }
+
+      if (textFormGroup) {
+        textFormGroup.classList.remove('app-disabled')
+        textFormGroup.removeAttribute('aria-disabled')
+        textFormGroup.style.border = ''
+        textFormGroup.style.padding = ''
+        textFormGroup.style.backgroundColor = ''
+      }
+
       if (fileInput) {
         fileInput.disabled = false
-        fileInput.style.opacity = '1'
-        fileInput.style.backgroundColor = ''
       }
 
       if (textContentInput) {
         textContentInput.disabled = false
         textContentInput.placeholder = 'Type or paste content here...'
-        textContentInput.style.opacity = '1'
-        textContentInput.style.backgroundColor = ''
-      }
-
-      // Remove visual indicators
-      const fileFormGroup = document.getElementById('fileFormGroup')
-      const textFormGroup = document.getElementById('textFormGroup')
-      if (fileFormGroup) {
-        fileFormGroup.style.border = ''
-        fileFormGroup.style.padding = ''
-        fileFormGroup.style.backgroundColor = ''
-      }
-      if (textFormGroup) {
-        textFormGroup.style.border = ''
-        textFormGroup.style.padding = ''
-        textFormGroup.style.backgroundColor = ''
       }
 
       console.log('[UPLOAD-HANDLER] Both inputs enabled - nothing selected')
