@@ -1,6 +1,8 @@
 import fetch from 'node-fetch'
 import { config } from '../../config/config.js'
+import { createLogger } from '../common/helpers/logging/logger.js'
 
+const logger = createLogger()
 const backendUrl = config.get('backendUrl')
 
 /**
@@ -20,24 +22,56 @@ const backendUrl = config.get('backendUrl')
  * @returns {Promise<import('@hapi/hapi').ResponseObject>}
  */
 export async function getReviewsController(request, h) {
-  const logger = request.logger
+  const startTime = Date.now()
+  const requestLogger = request.logger
+
+  logger.info('Review history API request started', {
+    userAgent: request.headers['user-agent'],
+    clientIP: request.info.remoteAddress,
+    backendUrl
+  })
 
   try {
     logger.info('Fetching review history from backend')
+    requestLogger.info('Fetching review history from backend')
+
+    const backendRequestStart = Date.now()
+    const endpoint = `${backendUrl}/api/review-history?userId=all&limit=50`
+
+    logger.info('Initiating backend request for review history', {
+      endpoint,
+      method: 'GET',
+      limit: 50
+    })
 
     // Fetch review history from backend
-    const response = await fetch(
-      `${backendUrl}/api/review-history?userId=all&limit=50`,
-      {
-        method: 'GET',
-        headers: {
-          Accept: 'application/json'
-        }
+    const response = await fetch(endpoint, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json'
       }
-    )
+    })
+
+    const backendRequestEnd = Date.now()
+    const backendRequestTime = (backendRequestEnd - backendRequestStart) / 1000
+
+    logger.info('Backend review history request completed', {
+      endpoint,
+      responseStatus: response.status,
+      responseStatusText: response.statusText,
+      requestTime: `${backendRequestTime}s`,
+      success: response.ok
+    })
 
     if (!response.ok) {
-      logger.error(
+      logger.error('Backend review history request failed', {
+        endpoint,
+        status: response.status,
+        statusText: response.statusText,
+        requestTime: `${backendRequestTime}s`
+      })
+
+      requestLogger.error(
         { status: response.status },
         'Failed to fetch review history from backend'
       )
@@ -51,7 +85,16 @@ export async function getReviewsController(request, h) {
     }
 
     const data = await response.json()
-    logger.info(
+    const totalProcessingTime = (Date.now() - startTime) / 1000
+
+    logger.info('Review history fetched and parsed successfully', {
+      reviewsCount: data.reviews ? data.reviews.length : 0,
+      totalCount: data.total || data.count || 0,
+      totalProcessingTime: `${totalProcessingTime}s`,
+      backendRequestTime: `${backendRequestTime}s`
+    })
+
+    requestLogger.info(
       { count: data.reviews ? data.reviews.length : 0 },
       'Review history fetched successfully'
     )
@@ -64,7 +107,19 @@ export async function getReviewsController(request, h) {
       })
       .code(200)
   } catch (error) {
-    logger.error({ error: error.message }, 'Error fetching review history')
+    const totalProcessingTime = (Date.now() - startTime) / 1000
+
+    logger.error('Review history API request failed with error', {
+      error: error.message,
+      stack: error.stack,
+      totalProcessingTime: `${totalProcessingTime}s`,
+      endpoint: `${backendUrl}/api/review-history?userId=all&limit=50`
+    })
+
+    requestLogger.error(
+      { error: error.message },
+      'Error fetching review history'
+    )
     return h
       .response({
         success: false,

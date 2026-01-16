@@ -246,11 +246,12 @@
       isRefreshing = true;
       try {
         const backendUrl = window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001';
-        const response = await fetch(`${backendUrl}/api/reviews`, {
+        const response = await fetch(`${backendUrl}/api/review-history?userId=all&limit=50`, {
           method: 'GET',
           headers: {
             'Accept': 'application/json'
           }
+        })
         
         if (!response.ok) {
           console.error('Failed to fetch review history');
