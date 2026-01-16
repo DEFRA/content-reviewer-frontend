@@ -16,13 +16,22 @@ export const homeController = {
     const uploadSuccess = request.yar.flash('uploadSuccess')
     const uploadError = request.yar.flash('uploadError')
 
+    // ALSO check session flag that we're setting in upload controller
+    const hasUploadSuccessFlag = request.yar.get('hasUploadSuccess')
+    console.log('🔍 [HOME-CONTROLLER] Upload success tracking:')
+    console.log('- Flash uploadSuccess:', uploadSuccess)
+    console.log('- Flash uploadError:', uploadError)
+    console.log('- Session hasUploadSuccess flag:', hasUploadSuccessFlag)
+
     logger.info('Flash messages retrieved', {
       hasUploadSuccess: uploadSuccess.length > 0,
-      hasUploadError: uploadError.length > 0
+      hasUploadError: uploadError.length > 0,
+      sessionUploadFlag: hasUploadSuccessFlag
     })
     console.log('[HOME-CONTROLLER] Flash messages:', {
       uploadSuccess: uploadSuccess.length > 0,
-      uploadError: uploadError.length > 0
+      uploadError: uploadError.length > 0,
+      sessionUploadFlag: hasUploadSuccessFlag
     })
 
     // Get backend URL from config
