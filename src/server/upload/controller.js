@@ -200,7 +200,7 @@ const uploadController = {
             console.error('❌ Backend review failed:', {
               status: reviewResponse.status,
               statusText: reviewResponse.statusText,
-              errorText: errorText
+              errorText
             })
             request.logger.error('Failed to initiate AI review')
 
