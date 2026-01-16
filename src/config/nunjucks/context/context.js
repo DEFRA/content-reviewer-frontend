@@ -30,6 +30,7 @@ export function context(request) {
     breadcrumbs: [],
     navigation: buildNavigation(request),
     cspNonce: request.plugins?.blankie?.nonces?.script || '',
+    backendUrl: config.get('backendUrl'),
     getAssetPath(asset) {
       const webpackAssetPath = webpackManifest?.[asset]
       return `${assetPath}/${webpackAssetPath ?? asset}`

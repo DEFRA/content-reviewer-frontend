@@ -109,11 +109,7 @@ document.addEventListener('DOMContentLoaded', function () {
       // Uploading
       showProgress('Uploading to server...', 30)
 
-      // Get backend URL from global config
-      const backendUrl =
-        window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001'
-
-      const response = await fetch(`${backendUrl}/api/upload`, {
+      const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
         credentials: 'include'
@@ -216,23 +212,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
       showProgress('Submitting for review...', 30)
 
-      // Get backend URL from global config
-      const backendUrl =
-        window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001'
-
       // Use first 10 characters of text as title (or less if shorter)
       const title =
         textContent.substring(0, 10).trim() +
         (textContent.length > 10 ? '...' : '')
 
-      const response = await fetch(`${backendUrl}/api/review/text`, {
+      const response = await fetch('/api/review-text', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           content: textContent,
-          title: title
+          title
         }),
         credentials: 'include'
       })
