@@ -13,35 +13,6 @@ const isProduction = process.env.NODE_ENV === 'production'
 const isTest = process.env.NODE_ENV === 'test'
 const isDevelopment = process.env.NODE_ENV === 'development'
 
-// CDP environment detection
-const cdpEnvironment = process.env.ENVIRONMENT || 'local'
-const isLocal = cdpEnvironment === 'local' || isDevelopment
-
-// Smart URL generation based on environment
-const getBackendUrl = () => {
-  if (isLocal) {
-    return 'http://localhost:3001'
-  }
-  // Auto-compute backend URL from environment
-  return `https://content-reviewer-backend.${cdpEnvironment}.cdp-int.defra.cloud`
-}
-
-const getS3Bucket = () => {
-  if (isLocal) {
-    return 'dev-service-optimisation-c63f2'
-  }
-  // Map environment to bucket name
-  const bucketMap = {
-    dev: 'dev-service-optimisation-c63f2',
-    test: 'test-service-optimisation-bucket',
-    'perf-test': 'perf-test-service-optimisation-bucket',
-    prod: 'prod-service-optimisation-bucket'
-  }
-  return (
-    bucketMap[cdpEnvironment] || `${cdpEnvironment}-service-optimisation-bucket`
-  )
-}
-
 convict.addFormats(convictFormatWithValidator)
 
 export const config = convict({
@@ -93,7 +64,7 @@ export const config = convict({
   backendUrl: {
     doc: 'Backend API URL - auto-computed from ENVIRONMENT, or override with BACKEND_URL',
     format: String,
-    default: getBackendUrl(),
+    default: 'https://content-reviewer-backend.dev.cdp-int.defra.cloud',
     env: 'BACKEND_URL'
   },
   root: {
@@ -274,14 +245,14 @@ export const config = convict({
     url: {
       doc: 'CDP Uploader service URL - defaults to backend URL',
       format: String,
-      default: getBackendUrl(),
+      default: 'https://content-reviewer-backend.dev.cdp-int.defra.cloud',
       env: 'CDP_UPLOADER_URL'
     },
     s3Bucket: {
       doc: 'S3 bucket for uploaded files - auto-computed from ENVIRONMENT',
       format: String,
-      default: getS3Bucket(),
-      env: 'CDP_UPLOADER_S3_BUCKET'
+      default: 'dev-service-optimisation-c63f2',
+      env: 'AWS_S3_BUCKET_NAME'
     },
     s3Path: {
       doc: 'S3 path prefix for uploaded files',
