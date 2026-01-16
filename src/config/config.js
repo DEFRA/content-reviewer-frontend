@@ -67,6 +67,12 @@ export const config = convict({
     default: 'https://content-reviewer-backend.dev.cdp-int.defra.cloud',
     env: 'BACKEND_URL'
   },
+  cdpUploaderUrl: {
+    doc: 'CDP uploader service URL',
+    format: String,
+    default: 'https://cdp-uploader.dev.cdp-int.defra.cloud',
+    env: 'CDP_UPLOADER_URL'
+  },
   root: {
     doc: 'Project root',
     format: String,
@@ -263,7 +269,7 @@ export const config = convict({
     maxFileSize: {
       doc: 'Maximum file size in bytes (10MB default)',
       format: Number,
-      default: 10 * 1000 * 1000,
+      default: 10485760,
       env: 'CDP_UPLOADER_MAX_FILE_SIZE'
     },
     allowedMimeTypes: {
@@ -275,6 +281,14 @@ export const config = convict({
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
       ],
       env: 'CDP_UPLOADER_MIME_TYPES'
+    }
+  },
+  aws: {
+    region: {
+      doc: 'AWS region for S3 operations',
+      format: String,
+      default: 'eu-west-2',
+      env: 'AWS_REGION'
     }
   }
 })
