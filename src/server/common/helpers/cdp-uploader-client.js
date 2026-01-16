@@ -22,6 +22,13 @@ async function initiateUpload({ redirect, callback, metadata = {} }) {
   const maxFileSize = config.get('cdpUploader.maxFileSize')
   const mimeTypes = config.get('cdpUploader.allowedMimeTypes')
 
+  console.log('🔧 CDP UPLOADER CONFIG DEBUG:')
+  console.log('- Uploader URL:', uploaderUrl)
+  console.log('- S3 Bucket:', s3Bucket)
+  console.log('- S3 Path:', s3Path)
+  console.log('- Max File Size:', maxFileSize)
+  console.log('- Allowed MIME Types:', mimeTypes)
+
   const payload = {
     redirect,
     s3Bucket,
@@ -35,6 +42,11 @@ async function initiateUpload({ redirect, callback, metadata = {} }) {
     payload.callback = callback
   }
 
+  console.log(
+    '📤 INITIATING UPLOAD with payload:',
+    JSON.stringify(payload, null, 2)
+  )
+
   const response = await fetch(`${uploaderUrl}/initiate`, {
     method: 'POST',
     headers: {
@@ -44,11 +56,27 @@ async function initiateUpload({ redirect, callback, metadata = {} }) {
     body: JSON.stringify(payload)
   })
 
+  console.log('📥 UPLOAD INITIATE RESPONSE:', {
+    status: response.status,
+    statusText: response.statusText,
+    url: response.url
+  })
+
   if (!response.ok) {
-    throw new Error(`Failed to initiate upload: ${response.statusText}`)
+    const errorText = await response.text()
+    console.error('❌ UPLOAD INITIATE FAILED:', errorText)
+    throw new Error(
+      `Failed to initiate upload: ${response.statusText} - ${errorText}`
+    )
   }
 
-  return await response.json()
+  const responseData = await response.json()
+  console.log(
+    '✅ UPLOAD INITIATE SUCCESS:',
+    JSON.stringify(responseData, null, 2)
+  )
+
+  return responseData
 }
 
 /**
@@ -58,10 +86,14 @@ async function initiateUpload({ redirect, callback, metadata = {} }) {
  * @returns {Promise<Object>} Upload status
  */
 async function getUploadStatus(uploadId, debug = false) {
+  console.log(`🔍 CHECKING UPLOAD STATUS for ID: ${uploadId}`)
+
   const url = new URL(`${uploaderUrl}/status/${uploadId}`)
   if (debug) {
     url.searchParams.set('debug', 'true')
   }
+
+  console.log('📞 STATUS REQUEST URL:', url.toString())
 
   const response = await fetch(url.toString(), {
     method: 'GET',
@@ -70,11 +102,36 @@ async function getUploadStatus(uploadId, debug = false) {
     }
   })
 
+  console.log('📋 STATUS RESPONSE:', {
+    status: response.status,
+    statusText: response.statusText,
+    url: response.url
+  })
+
   if (!response.ok) {
+    console.error(
+      `❌ FAILED TO GET UPLOAD STATUS for ${uploadId}:`,
+      response.statusText
+    )
     throw new Error(`Failed to get upload status: ${response.statusText}`)
   }
 
-  return await response.json()
+  const statusData = await response.json()
+  console.log('📊 UPLOAD STATUS DATA:', JSON.stringify(statusData, null, 2))
+
+  // Log S3 details if available
+  if (statusData.form?.file?.s3Bucket || statusData.form?.file?.s3Key) {
+    console.log('🗄️  S3 DETAILS:')
+    console.log('- S3 Bucket:', statusData.form?.file?.s3Bucket || 'NOT SET')
+    console.log('- S3 Key:', statusData.form?.file?.s3Key || 'NOT SET')
+    console.log('- Filename:', statusData.form?.file?.filename || 'NOT SET')
+    console.log(
+      '- Content Type:',
+      statusData.form?.file?.detectedContentType || 'NOT SET'
+    )
+  }
+
+  return statusData
 }
 
 /**
