@@ -337,8 +337,7 @@
 
         showProgress('Uploading to server...', 50);
 
-        const backendUrl = window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001';
-        const response = await fetch(`${backendUrl}/api/upload`, {
+        const response = await fetch('/api/upload', {
           method: 'POST',
           body: formData
         });
@@ -384,8 +383,7 @@
 
         showProgress('Submitting content...', 30);
 
-        const backendUrl = window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001';
-        const response = await fetch(`${backendUrl}/api/review-text`, {
+        const response = await fetch('/api/review-text', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -455,14 +453,13 @@
       if (isRefreshing) return; // Prevent concurrent requests
       
       isRefreshing = true;
+      isRefreshing = true;
       try {
-        const backendUrl = window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001';
-        const response = await fetch(`${backendUrl}/api/reviews`, {
+        const response = await fetch('/api/reviews', {
           method: 'GET',
           headers: {
             'Accept': 'application/json'
           }
-        });
         
         if (!response.ok) {
           console.error('Failed to fetch review history');
