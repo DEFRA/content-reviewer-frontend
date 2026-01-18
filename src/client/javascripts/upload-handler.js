@@ -355,33 +355,33 @@ document.addEventListener('DOMContentLoaded', function () {
   })
 
   function showError(message) {
-    errorMessage.textContent = message
-    uploadError.hidden = false
-    uploadError.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    if (errorMessage) errorMessage.textContent = message
+    if (uploadError) {
+      uploadError.hidden = false
+      uploadError.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
   }
   function hideError() {
-    uploadError.hidden = true
+    if (uploadError) uploadError.hidden = true
   }
   function hideSuccess() {
-    uploadSuccess.hidden = true
+    if (uploadSuccess) uploadSuccess.hidden = true
   }
   function showProgress(statusText, percentage) {
-    uploadStatusText.textContent = statusText
-    uploadProgressText.textContent = percentage + '%'
+    if (uploadStatusText) uploadStatusText.textContent = statusText
+    if (uploadProgressText) uploadProgressText.textContent = percentage + '%'
     const roundedPercentage = Math.round(percentage / 10) * 10
-    progressBar.setAttribute('data-progress', roundedPercentage.toString())
-    uploadProgress.hidden = false
+    if (progressBar) {
+      progressBar.setAttribute('data-progress', roundedPercentage.toString())
+    }
+    if (uploadProgress) uploadProgress.hidden = false
   }
   function hideProgress() {
-    uploadProgress.hidden = true
-    progressBar.setAttribute('data-progress', '0')
+    if (uploadProgress) uploadProgress.hidden = true
+    if (progressBar) progressBar.setAttribute('data-progress', '0')
   }
 
   async function handleTextReview(textContent) {
-     // Get backend URL from global config
-    const backendUrl =
-    window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001'
-    
     try {
       uploadButton.disabled = true
       showProgress('Preparing review...', 0)
@@ -405,10 +405,10 @@ document.addEventListener('DOMContentLoaded', function () {
       const title =
         textContent.substring(0, 10).trim() +
         (textContent.length > 10 ? '...' : '')
-      const response = await fetch(`${backendUrl}/api/review/text`, {
+      const response = await fetch('/api/review/text', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: textContent, title }),
+        body: JSON.stringify({ textContent, title }),
         credentials: 'include'
       })
 

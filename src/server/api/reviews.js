@@ -36,7 +36,7 @@ export async function getReviewsController(request, h) {
     requestLogger.info('Fetching review history from backend')
 
     const backendRequestStart = Date.now()
-    const endpoint = `${backendUrl}/api/review-history?userId=all&limit=50`
+    const endpoint = `${backendUrl}/api/reviews?limit=50`
 
     logger.info('Initiating backend request for review history', {
       endpoint,
@@ -113,7 +113,7 @@ export async function getReviewsController(request, h) {
       error: error.message,
       stack: error.stack,
       totalProcessingTime: `${totalProcessingTime}s`,
-      endpoint: `${backendUrl}/api/review-history?userId=all&limit=50`
+      endpoint: `${backendUrl}/api/reviews?limit=50`
     })
 
     requestLogger.error(

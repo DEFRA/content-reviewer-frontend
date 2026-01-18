@@ -1,3 +1,5 @@
+import fetch from 'node-fetch'
+
 /**
  * Review Status Poller Controller
  * Handles polling for AI review progress and completion
