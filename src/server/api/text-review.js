@@ -91,20 +91,21 @@ export const textReviewApiController = {
       logger.info('Initiating backend text review request', {
         contentLength: textInfo.length,
         wordCount: textInfo.wordCount,
-        backendEndpoint: `${backendUrl}/api/review-text`
+        backendEndpoint: `${backendUrl}/api/review/text`
       })
 
       request.logger.info(
         `Submitting text content to backend: ${textContent.length} characters`
       )
 
-      const response = await fetch(`${backendUrl}/api/review-text`, {
+      const response = await fetch(`${backendUrl}/api/review/text`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          textContent,
+          content: textContent,
+          title: 'Text Content',
           userId: request.headers['x-user-id'] || 'anonymous',
           sessionId: request.headers['x-session-id'] || null
         })

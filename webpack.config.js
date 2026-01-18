@@ -22,6 +22,9 @@ export default {
   entry: {
     application: {
       import: ['./javascripts/application.js', './stylesheets/application.scss']
+    },
+    'upload-handler': {
+      import: './javascripts/upload-handler.js'
     }
   },
   experiments: {

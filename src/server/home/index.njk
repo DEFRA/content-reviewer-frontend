@@ -2,12 +2,6 @@
 
 {% block head %}
   {{ super() }}
-  <script nonce="{{ cspNonce }}">
-    // Make backend URL available to client-side JavaScript
-    window.APP_CONFIG = {
-      backendApiUrl: '{{ backendUrl }}'
-    };
-  </script>
   <style nonce="{{ cspNonce }}">
     /* Animated loading dots */
     .loading-dots {
@@ -35,6 +29,15 @@
       40% {
         opacity: 1;
       }
+    }
+    
+    /* Upload progress bar */
+    .upload-progress-bar {
+      background: #1d70b8;
+      height: 10px;
+      border-radius: 5px;
+      transition: width 0.3s ease;
+      width: 0%;
     }
   </style>
 {% endblock %}
@@ -147,7 +150,7 @@
             <div class="govuk-inset-text">
               <p class="govuk-body" id="uploadStatusText"></p>
               <div class="govuk-!-margin-top-2">
-                <div id="progressBar" data-progress="0" style="background: #1d70b8; height: 10px; border-radius: 5px; transition: width 0.3s;"></div>
+                <div id="progressBar" class="upload-progress-bar" data-progress="0"></div>
                 <p class="govuk-body govuk-!-margin-top-1" id="uploadProgressText"></p>
               </div>
             </div>
@@ -229,8 +232,12 @@
 {% endblock %}
 
 {% block bodyEnd %}
+  {{ super() }}
+  <script nonce="{{ cspNonce }}" src="{{ getAssetPath('upload-handler.js') }}"></script>
   <script nonce="{{ cspNonce }}">
-    console.log('Content Review Assistant - Home Page Loaded');
+    console.log('[HOME] Page loaded at', new Date().toISOString());
+    console.log('[HOME] Backend URL:', window.APP_CONFIG?.backendApiUrl);
+    console.log('[HOME] Cache buster:', '{{ cacheBuster }}');
     
     // ============ AUTO-REFRESH LOGIC ============
     // Note: Upload form handling is now in upload-handler.js
@@ -321,163 +328,170 @@
     function createStatusContent(cell, status) {
       const statusLower = (status || '').toLowerCase();
       
-      if (statusLower === 'completed') {
-        cell.textContent = 'Completed';
-      } else if (statusLower === 'processing' || statusLower === 'analyzing' || statusLower === 'reviewing') {
-        cell.textContent = 'In progress';
-        const dots = createLoadingDots();
-        cell.appendChild(dots);
+      if (['processing', 'analyzing', 'reviewing'].includes(statusLower)) {
+        const textNode = document.createTextNode(status.charAt(0).toUpperCase() + status.slice(1));
+        cell.appendChild(textNode);
+        cell.appendChild(createLoadingDots());
       } else if (statusLower === 'queued') {
-        cell.textContent = 'Queued';
-        const dots = createLoadingDots();
-        cell.appendChild(dots);
-      } else if (statusLower === 'uploading' || statusLower === 'uploaded') {
-        cell.textContent = 'Uploading';
-        const dots = createLoadingDots();
-        cell.appendChild(dots);
-      } else if (statusLower === 'failed') {
-        cell.textContent = 'Failed';
+        const textNode = document.createTextNode('Queued');
+        cell.appendChild(textNode);
+        cell.appendChild(createLoadingDots());
+      } else if (['uploading', 'uploaded'].includes(statusLower)) {
+        const textNode = document.createTextNode(status.charAt(0).toUpperCase() + status.slice(1));
+        cell.appendChild(textNode);
+        cell.appendChild(createLoadingDots());
       } else {
-        cell.textContent = status;
+        cell.textContent = status.charAt(0).toUpperCase() + status.slice(1);
       }
     }
     
-    // Helper to create result content (CSP-compliant)
-    function createResultContent(cell, review) {
-      const status = (review.status || review.overallStatus || '').toLowerCase();
-      const reviewId = review.reviewId || review.uploadId;
-      
-      if (status === 'completed' && reviewId) {
-        const link = document.createElement('a');
-        link.href = `/review/results/${reviewId}`;
-        link.className = 'govuk-link';
-        link.textContent = 'View results';
-        cell.appendChild(link);
-      } else if (status === 'failed') {
-        const span = document.createElement('span');
-        span.className = 'govuk-error-message';
-        span.textContent = 'Review failed';
-        cell.appendChild(span);
-      } else if (status === 'processing' || status === 'analyzing' || status === 'reviewing') {
-        const span = document.createElement('span');
-        span.className = 'govuk-body';
-        span.textContent = 'In progress';
-        const dots = createLoadingDots();
-        span.appendChild(dots);
-        cell.appendChild(span);
-      } else if (status === 'queued' || status === 'uploading' || status === 'uploaded') {
-        const span = document.createElement('span');
-        span.className = 'govuk-body';
-        span.textContent = status.charAt(0).toUpperCase() + status.slice(1);
-        const dots = createLoadingDots();
-        span.appendChild(dots);
-        cell.appendChild(span);
-      } else {
-        const span = document.createElement('span');
-        span.className = 'govuk-body';
-        span.textContent = review.status;
-        cell.appendChild(span);
-      }
-    }
-
-    // Function to update the review history table (CSP-compliant)
+    // Update the review table with new data
     function updateReviewTable(reviews) {
-      const tableBody = document.getElementById('reviewHistoryBody');
-      if (!tableBody) {
-        console.error('Review history table body not found');
-        return;
-      }
-
-      // Clear existing content
-      while (tableBody.firstChild) {
-        tableBody.removeChild(tableBody.firstChild);
-      }
+      const tbody = document.getElementById('reviewHistoryBody');
       
       if (!reviews || reviews.length === 0) {
-        const row = document.createElement('tr');
-        row.className = 'govuk-table__row';
-        const cell = document.createElement('td');
-        cell.className = 'govuk-table__cell';
-        cell.setAttribute('colspan', '5');
-        const para = document.createElement('p');
-        para.className = 'govuk-body';
-        para.textContent = 'No review history available.';
-        cell.appendChild(para);
-        row.appendChild(cell);
-        tableBody.appendChild(row);
+        tbody.innerHTML = '<tr class="govuk-table__row"><td class="govuk-table__cell" colspan="5"><p class="govuk-body">No review history available.</p></td></tr>';
         return;
       }
       
-      // Sort reviews by uploadedAt desc (newest first)
-      reviews.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
+      tbody.innerHTML = '';
       
       reviews.forEach(review => {
         const row = document.createElement('tr');
         row.className = 'govuk-table__row';
         
-        // Filename cell
+        // Filename
         const filenameCell = document.createElement('td');
         filenameCell.className = 'govuk-table__cell';
-        filenameCell.textContent = review.filename || 'Unknown';
+        filenameCell.textContent = review.filename || 'N/A';
         row.appendChild(filenameCell);
         
-        // Method cell
+        // Method
         const methodCell = document.createElement('td');
         methodCell.className = 'govuk-table__cell';
         methodCell.textContent = 'Review Content';
         row.appendChild(methodCell);
         
-        // Status cell
+        // Status
         const statusCell = document.createElement('td');
         statusCell.className = 'govuk-table__cell';
-        createStatusContent(statusCell, review.status);
+        const statusTag = document.createElement('strong');
+        statusTag.className = 'govuk-tag';
+        
+        const status = (review.status || '').toLowerCase();
+        if (status === 'completed') {
+          statusTag.classList.add('govuk-tag--green');
+          statusTag.textContent = 'Completed';
+        } else if (['processing', 'analyzing', 'reviewing'].includes(status)) {
+          statusTag.classList.add('govuk-tag--blue');
+          createStatusContent(statusTag, review.status);
+        } else if (status === 'queued') {
+          statusTag.classList.add('govuk-tag--yellow');
+          createStatusContent(statusTag, 'Queued');
+        } else if (['uploading', 'uploaded'].includes(status)) {
+          statusTag.classList.add('govuk-tag--grey');
+          createStatusContent(statusTag, review.status);
+        } else if (status === 'failed') {
+          statusTag.classList.add('govuk-tag--red');
+          statusTag.textContent = 'Failed';
+        } else {
+          statusTag.classList.add('govuk-tag--grey');
+          statusTag.textContent = review.status ? review.status.charAt(0).toUpperCase() + review.status.slice(1) : 'Unknown';
+        }
+        
+        statusCell.appendChild(statusTag);
         row.appendChild(statusCell);
         
-        // Timestamp cell
+        // Timestamp
         const timestampCell = document.createElement('td');
         timestampCell.className = 'govuk-table__cell';
-        const uploadedAt = review.uploadedAt ? new Date(review.uploadedAt).toLocaleString('en-GB', {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false
-        }).replace(',', '') : 'N/A';
-        timestampCell.textContent = uploadedAt;
+        if (review.uploadedAt) {
+          const date = new Date(review.uploadedAt);
+          timestampCell.textContent = date.toLocaleString('en-GB', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+        } else {
+          timestampCell.textContent = 'N/A';
+        }
         row.appendChild(timestampCell);
         
-        // Result cell
+        // Result
         const resultCell = document.createElement('td');
         resultCell.className = 'govuk-table__cell';
-        createResultContent(resultCell, review);
-        row.appendChild(resultCell);
         
-        tableBody.appendChild(row);
+        if (status === 'completed') {
+          const link = document.createElement('a');
+          link.href = `/review/results/${review.reviewId}`;
+          link.className = 'govuk-link';
+          link.textContent = 'View results';
+          resultCell.appendChild(link);
+        } else if (status === 'failed') {
+          const errorSpan = document.createElement('span');
+          errorSpan.className = 'govuk-error-message';
+          errorSpan.textContent = 'Review failed';
+          resultCell.appendChild(errorSpan);
+        } else if (['processing', 'analyzing', 'reviewing'].includes(status)) {
+          const span = document.createElement('span');
+          span.className = 'govuk-body';
+          createStatusContent(span, review.status);
+          resultCell.appendChild(span);
+        } else if (status === 'queued') {
+          const span = document.createElement('span');
+          span.className = 'govuk-body';
+          createStatusContent(span, 'Queued');
+          resultCell.appendChild(span);
+        } else if (['uploading', 'uploaded'].includes(status)) {
+          const span = document.createElement('span');
+          span.className = 'govuk-body';
+          createStatusContent(span, review.status);
+          resultCell.appendChild(span);
+        } else {
+          resultCell.textContent = review.status || 'Unknown';
+        }
+        
+        row.appendChild(resultCell);
+        tbody.appendChild(row);
       });
-      
-      console.log(`Updated review table with ${reviews.length} reviews`);
     }
     
-    // Start auto-refresh interval
+    // Start auto-refresh
     function startAutoRefresh() {
-      if (autoRefreshInterval) {
-        console.log('Auto-refresh already running');
-        return; // Already running
-      }
-      console.log('Starting auto-refresh every 3 seconds');
-      autoRefreshInterval = setInterval(updateReviewHistory, 3000); // Refresh every 3 seconds
+      if (autoRefreshInterval) return; // Already running
+      
+      console.log('[HOME] Starting auto-refresh...');
+      autoRefreshInterval = setInterval(updateReviewHistory, 5000);
     }
-
-    // Make functions globally available for upload-handler.js
-    window.updateReviewHistory = updateReviewHistory;
-    window.startAutoRefresh = startAutoRefresh;
-
-    // Initialize on page load
-    console.log('Initializing review history auto-refresh...');
-    // Do an initial fetch and start auto-refresh
-    updateReviewHistory().then(() => {
+    
+    // Check if there are any active reviews on page load
+    const tableRows = document.querySelectorAll('#reviewHistoryBody tr');
+    let hasActiveReviews = false;
+    
+    tableRows.forEach(row => {
+      const statusCell = row.querySelector('.govuk-tag');
+      if (statusCell && (
+        statusCell.classList.contains('govuk-tag--blue') ||
+        statusCell.classList.contains('govuk-tag--yellow') ||
+        statusCell.classList.contains('govuk-tag--grey')
+      )) {
+        hasActiveReviews = true;
+      }
+    });
+    
+    // Start auto-refresh if there are active reviews
+    if (hasActiveReviews) {
+      console.log('[HOME] Active reviews detected, starting auto-refresh');
       startAutoRefresh();
+    }
+    
+    // Clean up interval when page is unloaded
+    window.addEventListener('beforeunload', () => {
+      if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+      }
     });
   </script>
 {% endblock %}

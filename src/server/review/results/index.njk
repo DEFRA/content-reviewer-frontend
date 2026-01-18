@@ -248,6 +248,16 @@
     const reviewId = '{{ reviewId }}';
     const resultsData = {{ results.rawData | dump | safe }};
 
+    // Export as PDF
+    document.getElementById('exportPdfBtn').addEventListener('click', () => {
+      window.location.href = `/review/export/${reviewId}/pdf`;
+    });
+
+    // Export as Word
+    document.getElementById('exportWordBtn').addEventListener('click', () => {
+      window.location.href = `/review/export/${reviewId}/word`;
+    });
+
     // Export as JSON
     document.getElementById('exportJsonBtn').addEventListener('click', () => {
       const dataStr = JSON.stringify(resultsData, null, 2);
