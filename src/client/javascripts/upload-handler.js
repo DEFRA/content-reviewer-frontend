@@ -236,6 +236,9 @@ document.addEventListener('DOMContentLoaded', function () {
     textContentInput.addEventListener('paste', () => {
       setTimeout(onTextInputChange, 10)
     })
+
+    // Initial state
+    updateMutualExclusion()
   }
 
   // Initial state

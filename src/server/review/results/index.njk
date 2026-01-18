@@ -314,6 +314,80 @@
       report += 'END OF REPORT\n';
       report += '='.repeat(80) + '\n';
       return report;
+{% endblock %}
+
+{% block bodyEnd %}
+  {{ super() }}
+  <script nonce="{{ cspNonce }}">
+    const reviewId = '{{ reviewId }}';
+    const resultsData = {{ results.rawData | dump | safe }};
+
+    // Export as PDF
+    document.getElementById('exportPdfBtn').addEventListener('click', () => {
+      window.location.href = `/review/export/${reviewId}/pdf`;
+    });
+
+    // Export as Word
+    document.getElementById('exportWordBtn').addEventListener('click', () => {
+      window.location.href = `/review/export/${reviewId}/word`;
+    });
+
+    // Export as JSON
+    document.getElementById('exportJsonBtn').addEventListener('click', () => {
+      const dataStr = JSON.stringify(resultsData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `review-results-${reviewId}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    });
+
+    // Export as Text
+    document.getElementById('exportTextBtn').addEventListener('click', () => {
+      const textContent = generateTextReport();
+      const textBlob = new Blob([textContent], { type: 'text/plain' });
+      const url = URL.createObjectURL(textBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `review-report-${reviewId}.txt`;
+      link.click();
+      URL.revokeObjectURL(url);
+    });
+
+    // Print
+    document.getElementById('printBtn').addEventListener('click', () => {
+      window.print();
+    });
+
+    // Generate text report
+    function generateTextReport() {
+      const results = {{ results | dump | safe }};
+      let report = '';
+      report += '='.repeat(80) + '\n';
+      report += 'GOV.UK CONTENT REVIEW REPORT\n';
+      report += '='.repeat(80) + '\n\n';
+      report += `Document: ${results.documentName}\n`;
+      report += `Review Date: ${results.reviewDate}\n`;
+      report += `AI Model: ${results.llmModel}\n`;
+      report += `Processing Time: ${results.processingTime}\n`;
+      report += `Overall Status: ${results.summary.overallStatus}\n`;
+      report += `Overall Score: ${results.summary.overallScore}/100\n\n`;
+      report += '='.repeat(80) + '\n';
+      report += 'SUMMARY\n';
+      report += '='.repeat(80) + '\n';
+      report += `Issues Found: ${results.summary.issuesFound}\n`;
+      report += `Words to Avoid: ${results.summary.wordsToAvoid}\n`;
+      report += `Passive Sentences: ${results.summary.passiveSentences}\n\n`;
+      report += '='.repeat(80) + '\n';
+      report += 'FULL REVIEW\n';
+      report += '='.repeat(80) + '\n\n';
+      report += results.fullReviewText;
+      report += '\n\n' + '='.repeat(80) + '\n';
+      report += 'END OF REPORT\n';
+      report += '='.repeat(80) + '\n';
+      return report;
     }
   </script>
   
