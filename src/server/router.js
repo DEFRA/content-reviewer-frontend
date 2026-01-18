@@ -45,7 +45,7 @@ export const router = {
 
       server.route({
         method: 'POST',
-        path: '/api/review-text',
+        path: '/api/review/text',
         handler: async (request, h) => {
           return textReviewApiController.reviewText(request, h)
         },
