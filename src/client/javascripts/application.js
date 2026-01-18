@@ -492,7 +492,7 @@ class ConversationManager {
         textContent.substring(0, 100) + '...'
       )
 
-      const response = await fetch('/api/review/text', {
+      const response = await fetch(`${backendUrl}/api/review/text`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
