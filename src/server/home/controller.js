@@ -9,8 +9,22 @@ const logger = createLogger()
 export const homeController = {
   async handler(request, h) {
     const startTime = Date.now()
-    logger.info('Home page request started')
-    console.log('[HOME-CONTROLLER] Processing home page request')
+    const timestamp = new Date().toISOString()
+
+    logger.info(`[${timestamp}] Home page request started`)
+    console.log(
+      `[${timestamp}] [HOME-CONTROLLER] ========================================`
+    )
+    console.log(`[${timestamp}] [HOME-CONTROLLER] Processing home page request`)
+    console.log(
+      `[${timestamp}] [HOME-CONTROLLER] Request URL: ${request.url.href}`
+    )
+    console.log(
+      `[${timestamp}] [HOME-CONTROLLER] Request method: ${request.method}`
+    )
+    console.log(
+      `[${timestamp}] [HOME-CONTROLLER] User agent: ${request.headers['user-agent']}`
+    )
 
     // Get flash messages from session
     const uploadSuccess = request.yar.flash('uploadSuccess')
@@ -113,7 +127,8 @@ export const homeController = {
       uploadSuccess: uploadSuccess.length > 0 ? uploadSuccess[0] : null,
       uploadError: uploadError.length > 0 ? uploadError[0] : null,
       reviewHistory,
-      backendUrl // Pass to template for client-side use
+      backendUrl, // Pass to template for client-side use
+      cacheBuster: Date.now() // Add cacheBuster for template
     }
 
     const totalProcessingTime = (Date.now() - startTime) / 1000
