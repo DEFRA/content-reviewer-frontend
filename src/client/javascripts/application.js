@@ -488,8 +488,8 @@ class ConversationManager {
   async submitTextReview(textContent) {
     // Get backend URL from global config
     const backendUrl =
-    window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001'
-    
+      window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001'
+
     try {
       console.log(
         'Submitting text for AI review:',
