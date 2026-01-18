@@ -402,7 +402,7 @@ document.addEventListener('DOMContentLoaded', function () {
       const title =
         textContent.substring(0, 10).trim() +
         (textContent.length > 10 ? '...' : '')
-      const response = await fetch('/api/review/text', {
+      const response = await fetch(`${backendUrl}/api/review/text`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: textContent, title }),
