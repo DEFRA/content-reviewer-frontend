@@ -19,7 +19,6 @@ document.addEventListener('DOMContentLoaded', function () {
   const uploadError = document.getElementById('uploadError')
   const uploadSuccess = document.getElementById('uploadSuccess')
   const errorMessage = document.getElementById('errorMessage')
-  const backendUrl = config.get('backendUrl')
   const form = document.getElementById('uploadForm')
 
   // Use function to get current file input (since it may be recreated)
@@ -379,6 +378,10 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   async function handleTextReview(textContent) {
+     // Get backend URL from global config
+    const backendUrl =
+    window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001'
+    
     try {
       uploadButton.disabled = true
       showProgress('Preparing review...', 0)
