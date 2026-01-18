@@ -1,3 +1,5 @@
+import fetch from 'node-fetch'
+
 /**
  * Review Status Poller Controller
  * Handles polling for AI review progress and completion
@@ -31,7 +33,7 @@ export const reviewStatusPollerController = {
       const backendUrl = config.get('backendUrl')
 
       // Fetch status from backend
-      const response = await fetch(`${backendUrl}/status/${reviewId}`)
+      const response = await fetch(`${backendUrl}/api/review/${reviewId}`)
 
       if (!response.ok) {
         throw new Error('Failed to fetch review status')

@@ -486,13 +486,17 @@ class ConversationManager {
   }
 
   async submitTextReview(textContent) {
+    // Get backend URL from global config
+    const backendUrl =
+      window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001'
+
     try {
       console.log(
         'Submitting text for AI review:',
         textContent.substring(0, 100) + '...'
       )
 
-      const response = await fetch('/api/review/text', {
+      const response = await fetch(`${backendUrl}/api/review/text`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

@@ -19,7 +19,6 @@ document.addEventListener('DOMContentLoaded', function () {
   const uploadError = document.getElementById('uploadError')
   const uploadSuccess = document.getElementById('uploadSuccess')
   const errorMessage = document.getElementById('errorMessage')
-
   const form = document.getElementById('uploadForm')
 
   // Use function to get current file input (since it may be recreated)
@@ -356,26 +355,30 @@ document.addEventListener('DOMContentLoaded', function () {
   })
 
   function showError(message) {
-    errorMessage.textContent = message
-    uploadError.hidden = false
-    uploadError.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    if (errorMessage) errorMessage.textContent = message
+    if (uploadError) {
+      uploadError.hidden = false
+      uploadError.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
   }
   function hideError() {
-    uploadError.hidden = true
+    if (uploadError) uploadError.hidden = true
   }
   function hideSuccess() {
-    uploadSuccess.hidden = true
+    if (uploadSuccess) uploadSuccess.hidden = true
   }
   function showProgress(statusText, percentage) {
-    uploadStatusText.textContent = statusText
-    uploadProgressText.textContent = percentage + '%'
+    if (uploadStatusText) uploadStatusText.textContent = statusText
+    if (uploadProgressText) uploadProgressText.textContent = percentage + '%'
     const roundedPercentage = Math.round(percentage / 10) * 10
-    progressBar.setAttribute('data-progress', roundedPercentage.toString())
-    uploadProgress.hidden = false
+    if (progressBar) {
+      progressBar.setAttribute('data-progress', roundedPercentage.toString())
+    }
+    if (uploadProgress) uploadProgress.hidden = false
   }
   function hideProgress() {
-    uploadProgress.hidden = true
-    progressBar.setAttribute('data-progress', '0')
+    if (uploadProgress) uploadProgress.hidden = true
+    if (progressBar) progressBar.setAttribute('data-progress', '0')
   }
 
   async function handleTextReview(textContent) {
@@ -405,7 +408,7 @@ document.addEventListener('DOMContentLoaded', function () {
       const response = await fetch('/api/review/text', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: textContent, title }),
+        body: JSON.stringify({ textContent, title }),
         credentials: 'include'
       })
 
