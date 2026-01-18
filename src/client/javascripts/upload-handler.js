@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const uploadError = document.getElementById('uploadError')
   const uploadSuccess = document.getElementById('uploadSuccess')
   const errorMessage = document.getElementById('errorMessage')
-
+  const backendUrl = config.get('backendUrl')
   const form = document.getElementById('uploadForm')
 
   // Use function to get current file input (since it may be recreated)
