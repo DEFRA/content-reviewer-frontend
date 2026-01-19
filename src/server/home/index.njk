@@ -159,7 +159,22 @@
       </div>
 
       <!-- Document Review History Table -->
-      <h2 class="govuk-heading-m govuk-!-margin-top-8">Review History</h2>
+      <div class="govuk-grid-row govuk-!-margin-top-8">
+        <div class="govuk-grid-column-one-half">
+          <h2 class="govuk-heading-m">Review History</h2>
+        </div>
+        <div class="govuk-grid-column-one-half" style="text-align: right;">
+          <div class="govuk-form-group" style="margin-bottom: 0;">
+            <label class="govuk-label" for="reviewLimit" style="display: inline-block; margin-right: 10px;">
+              Show:
+            </label>
+            <select class="govuk-select" id="reviewLimit" name="reviewLimit" style="width: auto; display: inline-block;">
+              <option value="20" selected>20 reviews</option>
+              <option value="100">100 reviews</option>
+            </select>
+          </div>
+        </div>
+      </div>
         
       <table class="govuk-table" id="reviewHistoryTable">
         <thead class="govuk-table__head">
@@ -245,6 +260,21 @@
     let autoRefreshInterval = null;
     let isRefreshing = false;
     
+    // Get the current limit from dropdown
+    function getCurrentLimit() {
+      const limitSelect = document.getElementById('reviewLimit');
+      return parseInt(limitSelect?.value || '20');
+    }
+    
+    // Add event listener to dropdown
+    const limitSelect = document.getElementById('reviewLimit');
+    if (limitSelect) {
+      limitSelect.addEventListener('change', async function() {
+        console.log('Review limit changed to:', this.value);
+        await updateReviewHistory();
+      });
+    }
+    
     // Function to update review history without page reload
     async function updateReviewHistory() {
       if (isRefreshing) return; // Prevent concurrent requests
@@ -252,7 +282,8 @@
       isRefreshing = true;
       try {
         const backendUrl = window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001';
-        const response = await fetch(`${backendUrl}/api/reviews?limit=100`, {
+        const limit = getCurrentLimit();
+        const response = await fetch(`${backendUrl}/api/reviews?limit=${limit}`, {
           method: 'GET',
           headers: {
             'Accept': 'application/json'
