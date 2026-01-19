@@ -252,7 +252,7 @@
       isRefreshing = true;
       try {
         const backendUrl = window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001';
-        const response = await fetch(`${backendUrl}/api/reviews?limit=20`, {
+        const response = await fetch(`${backendUrl}/api/reviews?limit=100`, {
           method: 'GET',
           headers: {
             'Accept': 'application/json'
