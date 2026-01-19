@@ -23,10 +23,9 @@ const contentSecurityPolicy = {
       'https://content-reviewer-backend.prod.cdp-int.defra.cloud'
     ],
     mediaSrc: ['self'],
-    styleSrc: ['self', 'unsafe-inline'],
+    styleSrc: ['self'],
     scriptSrc: [
       'self',
-      'unsafe-inline',
       "'sha256-GUQ5ad8JK5KmEWmROf3LZd9ge94daqNvd8xy9YS1iDw='"
     ],
     imgSrc: ['self', 'data:'],

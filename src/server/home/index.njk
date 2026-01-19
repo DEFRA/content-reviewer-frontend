@@ -250,10 +250,9 @@
       if (isRefreshing) return; // Prevent concurrent requests
       
       isRefreshing = true;
-      isRefreshing = true;
       try {
         const backendUrl = window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001';
-        const response = await fetch(`${backendUrl}/api/review-history?userId=all&limit=50`, {
+        const response = await fetch(`${backendUrl}/api/reviews?limit=20`, {
           method: 'GET',
           headers: {
             'Accept': 'application/json'
