@@ -56,15 +56,17 @@ export const homeController = {
     console.log('[HOME-CONTROLLER] Backend URL:', backendUrl)
 
     // Fetch review history from backend
+    // Default to 20, but support limit query param for future use
+    const limit = parseInt(request.query.limit) || 20
     let reviewHistory = []
     try {
       const backendRequestStart = Date.now()
       console.log('[HOME-CONTROLLER] Fetching review history from backend')
       logger.info('Initiating review history fetch for home page', {
-        endpoint: `${backendUrl}/api/reviews?limit=20`
+        endpoint: `${backendUrl}/api/reviews?limit=${limit}`
       })
 
-      const response = await fetch(`${backendUrl}/api/reviews?limit=20`)
+      const response = await fetch(`${backendUrl}/api/reviews?limit=${limit}`)
 
       const backendRequestEnd = Date.now()
       const backendRequestTime =
