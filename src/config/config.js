@@ -237,7 +237,7 @@ export const config = convict({
     s3Bucket: {
       doc: 'S3 bucket for uploaded files',
       format: String,
-      default: 'my-bucket',
+      default: 'dev-service-optimisation-c63f2',
       env: 'CDP_UPLOADER_S3_BUCKET'
     },
     s3Path: {
