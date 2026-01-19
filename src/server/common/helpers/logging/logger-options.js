@@ -26,6 +26,20 @@ export const loggerOptions = {
   },
   level: logConfig.level,
   ...formatters[logConfig.format],
+  // Set log level based on response status
+  // This ensures request logs use appropriate levels instead of defaulting to 'error'
+  customLogLevel: (req, res, err) => {
+    if (err || res.statusCode >= 500) {
+      return 'error'
+    }
+    if (res.statusCode >= 400) {
+      return 'warn'
+    }
+    if (res.statusCode >= 300) {
+      return 'info'
+    }
+    return 'info'
+  },
   nesting: true,
   mixin() {
     const mixinValues = {}
