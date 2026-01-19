@@ -61,10 +61,10 @@ export const homeController = {
       const backendRequestStart = Date.now()
       console.log('[HOME-CONTROLLER] Fetching review history from backend')
       logger.info('Initiating review history fetch for home page', {
-        endpoint: `${backendUrl}/api/reviews?limit=20`
+        endpoint: `${backendUrl}/api/reviews?limit=100`
       })
 
-      const response = await fetch(`${backendUrl}/api/reviews?limit=20`)
+      const response = await fetch(`${backendUrl}/api/reviews?limit=100`)
 
       const backendRequestEnd = Date.now()
       const backendRequestTime =
