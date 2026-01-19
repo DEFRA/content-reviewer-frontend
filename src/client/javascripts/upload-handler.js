@@ -333,11 +333,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (fileInput) fileInput.value = ''
         updateMutualExclusion()
         setTimeout(() => {
-          if (result.reviewId) {
-            window.location.href = `/review/status-poller/${result.reviewId}`
-          } else {
-            window.location.reload()
-          }
+          window.location.reload()
         }, 1500)
       } catch (error) {
         console.error('[UPLOAD-HANDLER] Upload error', error)
@@ -435,11 +431,7 @@ document.addEventListener('DOMContentLoaded', function () {
       textContentInput.value = ''
       updateMutualExclusion()
       setTimeout(() => {
-        if (result.reviewId) {
-          window.location.href = `/review/status-poller/${result.reviewId}`
-        } else {
-          window.location.reload()
-        }
+        window.location.reload()
       }, 1500)
     } catch (error) {
       console.error('[UPLOAD-HANDLER] Text review error', error)
