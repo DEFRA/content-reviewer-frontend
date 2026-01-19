@@ -46,33 +46,6 @@ export const config = convict({
     format: String,
     default: 'Content Review Tool'
   },
-  cdpEnvironment: {
-    doc: 'The CDP environment the app is running in',
-    format: [
-      'local',
-      'infra-dev',
-      'management',
-      'dev',
-      'test',
-      'perf-test',
-      'ext-test',
-      'prod'
-    ],
-    default: 'local',
-    env: 'ENVIRONMENT'
-  },
-  backendUrl: {
-    doc: 'Backend API URL - auto-computed from ENVIRONMENT, or override with BACKEND_URL',
-    format: String,
-    default: 'https://content-reviewer-backend.dev.cdp-int.defra.cloud',
-    env: 'BACKEND_URL'
-  },
-  cdpUploaderUrl: {
-    doc: 'CDP uploader service URL',
-    format: String,
-    default: 'https://cdp-uploader.dev.cdp-int.defra.cloud',
-    env: 'CDP_UPLOADER_URL'
-  },
   root: {
     doc: 'Project root',
     format: String,
@@ -103,7 +76,7 @@ export const config = convict({
     enabled: {
       doc: 'Is logging enabled',
       format: Boolean,
-      default: process.env.NODE_ENV !== 'test',
+      default: !isTest,
       env: 'LOG_ENABLED'
     },
     level: {
@@ -115,7 +88,8 @@ export const config = convict({
     format: {
       doc: 'Format to output logs in.',
       format: ['ecs', 'pino-pretty'],
-      default: isProduction ? 'ecs' : 'pino-pretty',
+      default:
+        isDevelopment && !process.env.ENVIRONMENT ? 'pino-pretty' : 'ecs',
       env: 'LOG_FORMAT'
     },
     redact: {
@@ -247,18 +221,24 @@ export const config = convict({
       env: 'TRACING_HEADER'
     }
   },
+  backendUrl: {
+    doc: 'Backend API URL',
+    format: String,
+    default: 'http://localhost:3001',
+    env: 'BACKEND_URL'
+  },
   cdpUploader: {
     url: {
-      doc: 'CDP Uploader service URL - defaults to backend URL',
+      doc: 'CDP Uploader service URL',
       format: String,
-      default: 'https://content-reviewer-backend.dev.cdp-int.defra.cloud',
+      default: 'http://localhost:7337',
       env: 'CDP_UPLOADER_URL'
     },
     s3Bucket: {
-      doc: 'S3 bucket for uploaded files - auto-computed from ENVIRONMENT',
+      doc: 'S3 bucket for uploaded files',
       format: String,
-      default: 'dev-service-optimisation-c63f2',
-      env: 'AWS_S3_BUCKET_NAME'
+      default: 'my-bucket',
+      env: 'CDP_UPLOADER_S3_BUCKET'
     },
     s3Path: {
       doc: 'S3 path prefix for uploaded files',
@@ -269,7 +249,7 @@ export const config = convict({
     maxFileSize: {
       doc: 'Maximum file size in bytes (10MB default)',
       format: Number,
-      default: 10485760,
+      default: 10 * 1000 * 1000,
       env: 'CDP_UPLOADER_MAX_FILE_SIZE'
     },
     allowedMimeTypes: {
@@ -281,14 +261,6 @@ export const config = convict({
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
       ],
       env: 'CDP_UPLOADER_MIME_TYPES'
-    }
-  },
-  aws: {
-    region: {
-      doc: 'AWS region for S3 operations',
-      format: String,
-      default: 'eu-west-2',
-      env: 'AWS_REGION'
     }
   }
 })

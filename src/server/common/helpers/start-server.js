@@ -13,7 +13,7 @@ async function startServer() {
   // Log critical configuration for debugging CDP deployment
   console.log('\n🔧 CONFIGURATION DEBUG - CRITICAL SETTINGS:')
   console.log('=========================================')
-  console.log('Environment:', config.get('cdpEnvironment'))
+  console.log('Environment:', process.env.ENVIRONMENT || 'local')
   console.log('Node Environment:', process.env.NODE_ENV)
   console.log('Port:', config.get('port'))
   console.log('Backend URL:', config.get('backendUrl'))
