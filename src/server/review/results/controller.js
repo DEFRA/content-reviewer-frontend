@@ -17,6 +17,12 @@ export const resultsController = {
 
       // Fetch review status and results from backend
       const response = await fetch(`${backendUrl}/api/results/${id}`)
+      const data = await response.json()
+
+      request.logger.info(
+        { reviewId: id, response: data.result.reviewContent },
+        'Review response retrieved from S3 frontend'
+      )
 
       if (!response.ok) {
         request.logger.error(
