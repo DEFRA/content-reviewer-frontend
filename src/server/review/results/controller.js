@@ -17,12 +17,8 @@ export const resultsController = {
 
       // Fetch review status and results from backend
       const response = await fetch(`${backendUrl}/api/results/${id}`)
-      const data = await response.json()
 
-      request.logger.info(
-        { reviewId: id, response: data.result.reviewContent },
-        'Review response retrieved from S3 frontend'
-      )
+      // Parse once after status check; then log available content safely
 
       if (!response.ok) {
         request.logger.error(
@@ -33,6 +29,13 @@ export const resultsController = {
       }
 
       const apiResponse = await response.json()
+      request.logger.info(
+        {
+          reviewId: id,
+          hasReviewContent: !!apiResponse?.data?.result?.reviewContent
+        },
+        'Review response retrieved from backend'
+      )
       request.logger.info(
         { reviewId: id, hasData: !!apiResponse.data },
         'Received API response'

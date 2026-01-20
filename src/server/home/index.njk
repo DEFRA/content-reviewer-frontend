@@ -216,7 +216,7 @@
               </td>
               <td class="govuk-table__cell">
                 {% if review.status === 'completed' %}
-                  <a href="/review/results/{{ review.id }}" class="govuk-link">View results</a>
+                  <a href="/review/results/{{ review.reviewId or review.id }}" class="govuk-link">View results</a>
                 {% elif review.status === 'failed' %}
                   <span class="govuk-error-message">Review failed</span>
                 {% elif review.status === 'processing' or review.status === 'analyzing' or review.status === 'reviewing' %}
@@ -467,7 +467,8 @@
         
         if (status === 'completed') {
           const link = document.createElement('a');
-          link.href = `/review/results/${review.id}`;
+          const reviewIdentifier = review.reviewId || review.id;
+          link.href = `/review/results/${reviewIdentifier}`;
           link.className = 'govuk-link';
           link.textContent = 'View results';
           resultCell.appendChild(link);

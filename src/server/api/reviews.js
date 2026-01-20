@@ -99,11 +99,17 @@ export async function getReviewsController(request, h) {
       'Review history fetched successfully'
     )
 
+    // Normalize review items to always include an `id` field
+    const normalizedReviews = (data.reviews || []).map((r) => ({
+      ...r,
+      id: r.id || r.reviewId // ensure id is present for frontend links
+    }))
+
     return h
       .response({
         success: true,
-        reviews: data.reviews || [],
-        count: data.reviews ? data.reviews.length : 0
+        reviews: normalizedReviews,
+        count: normalizedReviews.length
       })
       .code(200)
   } catch (error) {
