@@ -1,10 +1,11 @@
 export const resultsController = {
   handler: async (request, h) => {
     const { id } = request.params
-    const config = request.server.app.config
-    const backendUrl = config.get('backendUrl')
 
     try {
+      const config = request.server.app.config
+      const backendUrl = config.get('backendUrl')
+
       request.logger.info({ reviewId: id }, 'Fetching review results')
 
       // Fetch review status and results from backend

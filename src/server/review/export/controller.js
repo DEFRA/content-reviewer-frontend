@@ -12,10 +12,10 @@ import {
  * Fetch review results from backend API
  */
 async function fetchReviewResults(id, request) {
-  const config = request.server.app.config
-  const backendUrl = config.get('backendUrl')
-
   try {
+    const config = request.server.app.config
+    const backendUrl = config.get('backendUrl')
+
     const response = await fetch(`${backendUrl}/api/review/${id}`)
     if (!response.ok) {
       throw new Error(`Failed to fetch review results: ${response.status}`)
