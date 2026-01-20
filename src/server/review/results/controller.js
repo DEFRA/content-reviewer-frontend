@@ -7,12 +7,12 @@ export const resultsController = {
       const backendUrl = config.get('backendUrl')
 
       request.logger.info(
-        { reviewId: id, backendUrl, fullUrl: `${backendUrl}/api/review/${id}` },
+        { reviewId: id, backendUrl, fullUrl: `${backendUrl}/api/results/${id}` },
         'Fetching review results from backend'
       )
 
       // Fetch review status and results from backend
-      const response = await fetch(`${backendUrl}/api/review/${id}`)
+      const response = await fetch(`${backendUrl}/api/results/${id}`)
 
       if (!response.ok) {
         request.logger.error(
