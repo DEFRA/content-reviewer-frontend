@@ -157,7 +157,7 @@ const uploadController = {
             JSON.stringify(reviewPayload, null, 2)
           )
 
-          const reviewResponse = await fetch(`${backendUrl}/upload`, {
+          const reviewResponse = await fetch(`${backendUrl}/api/upload`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
