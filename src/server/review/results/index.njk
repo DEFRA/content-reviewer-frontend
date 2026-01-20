@@ -7,7 +7,7 @@
       <a href="/" class="govuk-back-link">Back to home</a>
       
       <h1 class="govuk-heading-xl">{{ heading }}</h1>
-      
+      {{ results.responseData | safe }}      
       <!-- Overall Status Banner -->
       {% set statusClass = 'govuk-tag--green' if results.summary.overallStatus == 'pass' else 
                            ('govuk-tag--blue' if results.summary.overallStatus == 'pass_with_recommendations' else 

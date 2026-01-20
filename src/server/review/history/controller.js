@@ -149,12 +149,12 @@ export const reviewHistoryController = {
       const backendRequestStart = Date.now()
       logger.info('Initiating delete request to backend', {
         reviewId,
-        endpoint: `${backendUrl}/api/review/${reviewId}`
+        endpoint: `${backendUrl}/api/results/${reviewId}`
       })
       console.log(
         '[REVIEW-HISTORY-CONTROLLER] Making delete request to backend'
       )
-      const response = await fetch(`${backendUrl}/api/review/${reviewId}`, {
+      const response = await fetch(`${backendUrl}/api/results/${reviewId}`, {
         method: 'DELETE'
       })
 
