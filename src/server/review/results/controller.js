@@ -17,14 +17,15 @@ export const resultsController = {
 
       // Fetch review status and results from backend
       const response = await fetch(`${backendUrl}/api/results/${id}`)
-      const data = await response.json()
+      const apiResponse = await response.json()
 
       request.logger.info(
-        { reviewId: id, response: data.result.reviewContent },
-        'Review response retrieved from S3 frontend'
+        {
+          reviewId: id,
+          hasReviewContent: !!apiResponse?.result?.reviewContent
+        },
+        'Review response retrieved from backend'
       )
-
-      // Parse once after status check; then log available content safely
 
       if (!response.ok) {
         request.logger.error(
@@ -33,29 +34,20 @@ export const resultsController = {
         )
         throw new Error(`Failed to fetch review results: ${response.status}`)
       }
-
-      const apiResponse = await response.json()
-      request.logger.info(
-        {
-          reviewId: id,
-          hasReviewContent: !!apiResponse?.data?.result?.reviewContent
-        },
-        'Review response retrieved from backend'
-      )
-      request.logger.info(
-        { reviewId: id, hasData: !!apiResponse.data },
-        'Received API response'
-      )
-
-      if (!apiResponse.success || !apiResponse.data) {
+      if (!apiResponse.success) {
         request.logger.error(
           { reviewId: id, apiResponse },
           'Invalid API response'
         )
         throw new Error('Invalid response from backend')
       }
-
-      const statusData = apiResponse.data
+      // Reuse existing variable names, adapt backend shape if needed
+      const statusData = apiResponse.data || {
+        status: apiResponse.status,
+        result: apiResponse.result,
+        completedAt: apiResponse.completedAt,
+        failedAt: apiResponse.failedAt
+      }
 
       // Check if review is completed
       if (statusData.status !== 'completed') {
