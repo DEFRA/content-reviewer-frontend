@@ -16,7 +16,7 @@ async function fetchReviewResults(id, request) {
     const config = request.server.app.config
     const backendUrl = config.get('backendUrl')
 
-    const response = await fetch(`${backendUrl}/api/review/${id}`)
+    const response = await fetch(`${backendUrl}/api/results/${id}`)
     if (!response.ok) {
       throw new Error(`Failed to fetch review results: ${response.status}`)
     }

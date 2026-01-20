@@ -7,7 +7,11 @@ export const resultsController = {
       const backendUrl = config.get('backendUrl')
 
       request.logger.info(
-        { reviewId: id, backendUrl, fullUrl: `${backendUrl}/api/results/${id}` },
+        {
+          reviewId: id,
+          backendUrl,
+          fullUrl: `${backendUrl}/api/results/${id}`
+        },
         'Fetching review results from backend'
       )
 
@@ -118,6 +122,7 @@ function transformReviewData(statusData) {
       statusData.updatedAt ||
       new Date().toISOString(),
     status: reviewResult.overallStatus || 'completed',
+    responseData: reviewResult.reviewContent || 'No data',
     s3Location: metadata.s3Key
       ? `${metadata.bucket}/${metadata.s3Key}`
       : statusData.s3ResultLocation || 'N/A',
