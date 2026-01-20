@@ -6,7 +6,10 @@ export const resultsController = {
       const config = request.server.app.config
       const backendUrl = config.get('backendUrl')
 
-      request.logger.info({ reviewId: id }, 'Fetching review results')
+      request.logger.info(
+        { reviewId: id, backendUrl, fullUrl: `${backendUrl}/api/review/${id}` },
+        'Fetching review results from backend'
+      )
 
       // Fetch review status and results from backend
       const response = await fetch(`${backendUrl}/api/review/${id}`)
@@ -75,14 +78,21 @@ export const resultsController = {
       })
     } catch (error) {
       request.logger.error(
-        { error: error.message, stack: error.stack, reviewId: id },
+        {
+          error: error.message,
+          errorName: error.name,
+          errorCode: error.code,
+          stack: error.stack,
+          reviewId: id
+        },
         'Failed to fetch review results'
       )
 
       return h.view('review/results/error', {
         pageTitle: 'Error',
         heading: 'Error Loading Results',
-        error: 'Unable to load review results. Please try again later.'
+        error:
+          'Unable to load review results. The backend service may be unavailable. Please try again later.'
       })
     }
   }
