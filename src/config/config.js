@@ -224,14 +224,14 @@ export const config = convict({
   backendUrl: {
     doc: 'Backend API URL',
     format: String,
-    default: 'http://localhost:3001',
+    default: 'https://content-reviewer-backend.dev.cdp-int.defra.cloud',
     env: 'BACKEND_URL'
   },
   cdpUploader: {
     url: {
       doc: 'CDP Uploader service URL',
       format: String,
-      default: 'http://localhost:7337',
+      default: 'https://content-reviewer-backend.dev.cdp-int.defra.cloud',
       env: 'CDP_UPLOADER_URL'
     },
     s3Bucket: {
