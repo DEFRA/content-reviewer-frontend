@@ -291,7 +291,13 @@
         })
         
         if (!response.ok) {
-          console.error('Failed to fetch review history');
+          console.error('Failed to fetch review history: HTTP', response.status);
+          // Stop auto-refresh on error to prevent spam
+          if (autoRefreshInterval) {
+            clearInterval(autoRefreshInterval);
+            autoRefreshInterval = null;
+            console.log('Auto-refresh stopped due to fetch error');
+          }
           return;
         }
         
@@ -335,6 +341,12 @@
         
       } catch (error) {
         console.error('Error updating review history:', error);
+        // Stop auto-refresh on network error to prevent continuous failed requests
+        if (autoRefreshInterval) {
+          clearInterval(autoRefreshInterval);
+          autoRefreshInterval = null;
+          console.log('Auto-refresh stopped due to network error');
+        }
       } finally {
         isRefreshing = false;
       }
