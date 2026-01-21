@@ -87,11 +87,14 @@ export const homeController = {
       if (response.ok) {
         const data = await response.json()
 
+        logger.info('Response from backend for review history',{data.reviews})
+        logger.info('Response from backend for review history',{data})          
+
         // Normalize and log missing IDs to catch "Missing review ID" links
         const normalized = (data.reviews || []).map((r) => ({
           ...r,
-          id: r.id || r.reviewId || r._id,
-          reviewId: r.reviewId || r.id || r._id
+          id: r.id || r.reviewId || r.jobId || r._id,
+          reviewId: r.reviewId || r.id || r.jobId || r._id
         }))
 
         const missingId = normalized.filter((r) => !r.id && !r.reviewId)
