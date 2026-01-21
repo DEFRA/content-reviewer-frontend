@@ -1,4 +1,4 @@
-@use "pkg:govuk-frontend" as *;
+@use 'pkg:govuk-frontend' as *;
 
 // Chat Interface Styles
 
@@ -13,29 +13,28 @@
   padding: 0;
 }
 
-
 // Sidebar
 .sidebar {
   width: 200px;
-  background-color: govuk-colour("black");
-  color: govuk-colour("white");
+  background-color: govuk-colour('black');
+  color: govuk-colour('white');
   display: flex;
   flex-direction: column;
-  border-right: 1px solid govuk-colour("mid-grey");
+  border-right: 1px solid govuk-colour('mid-grey');
   flex-shrink: 0;
   z-index: 100; // Ensure sidebar appears below header/navigation but above content
 }
 
 .sidebar-header {
   padding: govuk-spacing(4) govuk-spacing(3);
-  border-bottom: 1px solid govuk-colour("dark-grey");
+  border-bottom: 1px solid govuk-colour('dark-grey');
 }
 
 .sidebar-title {
   font-size: 19px;
   font-weight: 700;
   margin: 0 0 govuk-spacing(3);
-  color: govuk-colour("white");
+  color: govuk-colour('white');
   font-family: $govuk-font-family;
 }
 
@@ -55,19 +54,19 @@
 .conversation-item {
   padding: govuk-spacing(2) govuk-spacing(3);
   cursor: pointer;
-  border-bottom: 1px solid govuk-colour("dark-grey");
-  color: govuk-colour("white");
+  border-bottom: 1px solid govuk-colour('dark-grey');
+  color: govuk-colour('white');
   transition: background-color 0.2s ease;
-  
+
   &:hover {
-    background-color: govuk-colour("dark-grey");
-    color: govuk-colour("white");
+    background-color: govuk-colour('dark-grey');
+    color: govuk-colour('white');
   }
-  
+
   &.active {
-    background-color: govuk-colour("dark-grey");
-    border-left: 4px solid govuk-colour("blue");
-    color: govuk-colour("white");
+    background-color: govuk-colour('dark-grey');
+    border-left: 4px solid govuk-colour('blue');
+    color: govuk-colour('white');
   }
 }
 
@@ -77,8 +76,8 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: govuk-colour("white");
-  
+  color: govuk-colour('white');
+
   &.conversation-count {
     font-style: italic;
     opacity: 0.7;
@@ -88,9 +87,9 @@
 
 .conversation-item-info {
   padding: govuk-spacing(2) govuk-spacing(3);
-  color: govuk-colour("white");
-  border-bottom: 1px solid govuk-colour("dark-grey");
-  
+  color: govuk-colour('white');
+  border-bottom: 1px solid govuk-colour('dark-grey');
+
   p {
     font-size: 14px;
     margin: 0;
@@ -102,12 +101,12 @@
   .app-main-container {
     flex-direction: column;
   }
-  
+
   .sidebar {
     width: 100%;
     max-height: 200px;
     border-right: none;
-    border-bottom: 1px solid govuk-colour("mid-grey");
+    border-bottom: 1px solid govuk-colour('mid-grey');
   }
 }
 
@@ -117,21 +116,21 @@
   flex-direction: column;
   min-height: 700px;
   height: 90vh;
-  border: 1px solid govuk-colour("mid-grey");
-  background-color: govuk-colour("white");
+  border: 1px solid govuk-colour('mid-grey');
+  background-color: govuk-colour('white');
 }
 
 .chat-welcome {
   padding: govuk-spacing(4);
-  background-color: govuk-colour("light-grey");
-  border-bottom: 1px solid govuk-colour("mid-grey");
+  background-color: govuk-colour('light-grey');
+  border-bottom: 1px solid govuk-colour('mid-grey');
 }
 
 .chat-messages {
   flex: 1;
   overflow-y: auto;
   padding: govuk-spacing(4);
-  background-color: govuk-colour("light-grey");
+  background-color: govuk-colour('light-grey');
 }
 
 .message {
@@ -144,7 +143,7 @@
   max-width: 80%;
   padding: govuk-spacing(3);
   border-radius: 8px;
-  background-color: govuk-colour("white");
+  background-color: govuk-colour('white');
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   font-family: $govuk-font-family;
   font-size: 19px;
@@ -153,8 +152,8 @@
 }
 
 .bot-message .message-content {
-  background-color: govuk-colour("white");
-  border-left: 4px solid govuk-colour("blue");
+  background-color: govuk-colour('white');
+  border-left: 4px solid govuk-colour('blue');
 }
 
 .user-message {
@@ -163,7 +162,7 @@
 
 .user-message .message-content {
   background-color: #1d70b8;
-  color: govuk-colour("white");
+  color: govuk-colour('white');
 }
 
 .message-content p {
@@ -193,14 +192,14 @@
 
 .chat-input-container {
   padding: govuk-spacing(4);
-  background-color: govuk-colour("white");
-  border-top: 1px solid govuk-colour("mid-grey");
+  background-color: govuk-colour('white');
+  border-top: 1px solid govuk-colour('mid-grey');
 }
 
 // File Preview (above the input form)
 .file-preview {
-  background-color: govuk-colour("light-grey");
-  border: 1px solid govuk-colour("mid-grey");
+  background-color: govuk-colour('light-grey');
+  border: 1px solid govuk-colour('mid-grey');
   border-radius: 4px;
   padding: govuk-spacing(2);
   margin-bottom: govuk-spacing(2);
@@ -239,19 +238,19 @@
   font-family: $govuk-font-family;
   font-size: 16px;
   line-height: 1.3;
-  color: govuk-colour("dark-grey");
+  color: govuk-colour('dark-grey');
 }
 
 .file-preview-remove {
   background: none;
   border: none;
-  color: govuk-colour("red");
+  color: govuk-colour('red');
   font-size: 20px;
   cursor: pointer;
   padding: govuk-spacing(1);
   line-height: 1;
   flex-shrink: 0;
-  
+
   &:hover {
     color: #942514; // Darker red for hover
     transform: scale(1.1);
@@ -262,7 +261,7 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  
+
   .govuk-form-group {
     margin-bottom: govuk-spacing(2);
   }
@@ -287,38 +286,38 @@
 }
 
 .attach-button {
-  background-color: govuk-colour("green");
-  border: 2px solid govuk-colour("black");
+  background-color: govuk-colour('green');
+  border: 2px solid govuk-colour('black');
   border-radius: 0;
   padding: 8px govuk-spacing(4);
   font-family: $govuk-font-family;
   font-size: 19px;
   font-weight: 400;
   line-height: 1.1875;
-  color: govuk-colour("white");
+  color: govuk-colour('white');
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: govuk-spacing(2);
-  box-shadow: 0 2px 0 govuk-colour("black");
+  box-shadow: 0 2px 0 govuk-colour('black');
   height: 40px;
-  
+
   &::before {
     content: '📎';
     font-size: 18px;
     line-height: 1;
   }
-  
+
   &:hover {
-    background-color: govuk-colour("green");
-    box-shadow: 0 2px 0 govuk-colour("black");
+    background-color: govuk-colour('green');
+    box-shadow: 0 2px 0 govuk-colour('black');
   }
-  
+
   &:focus {
-    outline: 3px solid govuk-colour("yellow");
+    outline: 3px solid govuk-colour('yellow');
     outline-offset: 0;
-    background-color: govuk-colour("green");
+    background-color: govuk-colour('green');
   }
 
   &:active {
@@ -406,7 +405,7 @@
 .typing-indicator span {
   width: 8px;
   height: 8px;
-  background-color: govuk-colour("mid-grey");
+  background-color: govuk-colour('mid-grey');
   border-radius: 50%;
   animation: typing 1.4s infinite;
 }
@@ -437,11 +436,11 @@
 }
 
 .upload-option-card {
-  background-color: govuk-colour("light-grey");
+  background-color: govuk-colour('light-grey');
   border-radius: 4px;
   padding: govuk-spacing(3);
   margin-bottom: govuk-spacing(4);
-  
+
   .govuk-details {
     margin-bottom: 0;
     border: none;
@@ -453,21 +452,21 @@
   display: inline-block;
   vertical-align: middle;
   margin-right: govuk-spacing(2);
-  color: govuk-colour("blue");
+  color: govuk-colour('blue');
 }
 
 .govuk-details {
   .govuk-details__summary {
     cursor: pointer;
     font-weight: 600;
-    
+
     &:hover {
       .govuk-details__summary-text {
-        color: govuk-colour("dark-blue");
+        color: govuk-colour('dark-blue');
       }
     }
   }
-  
+
   .govuk-details__text {
     padding-top: govuk-spacing(3);
     margin-top: govuk-spacing(2);
@@ -479,26 +478,26 @@
   align-items: center;
   text-align: center;
   margin: govuk-spacing(4) 0;
-  
+
   &::before,
   &::after {
     content: '';
     flex: 1;
-    border-bottom: 2px solid govuk-colour("mid-grey");
+    border-bottom: 2px solid govuk-colour('mid-grey');
   }
-  
+
   span {
     padding: 0 govuk-spacing(3);
-    color: govuk-colour("dark-grey");
+    color: govuk-colour('dark-grey');
     font-weight: 600;
     font-size: 16px;
   }
 }
 
 .govuk-notification-banner--success {
-  border-color: govuk-colour("green");
-  
+  border-color: govuk-colour('green');
+
   .govuk-notification-banner__header {
-    background-color: govuk-colour("green");
+    background-color: govuk-colour('green');
   }
 }
