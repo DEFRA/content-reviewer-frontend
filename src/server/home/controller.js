@@ -89,7 +89,10 @@ export const homeController = {
 
         logger.info('Response from backend for review history',{data.reviews})
         logger.info('Response from backend for review history',{data})          
+        console.log('[HOME-CONTROLLER] Response from backend for review history', data)
+        console.log('[HOME-CONTROLLER] Response from backend for review history', data.reviews)
 
+        
         // Normalize and log missing IDs to catch "Missing review ID" links
         const normalized = (data.reviews || []).map((r) => ({
           ...r,
