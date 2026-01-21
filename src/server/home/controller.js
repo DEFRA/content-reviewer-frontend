@@ -110,7 +110,8 @@ export const homeController = {
           count: reviewHistory.length,
           totalFromResponse: data.total || data.count || 0,
           requestTime: `${backendRequestTime}s`,
-          missingIdCount: missingId.length
+          missingIdCount: missingId.length,
+          reviewid: data.reviews.id
         })
         if (missingId.length > 0) {
           logger.warn(
