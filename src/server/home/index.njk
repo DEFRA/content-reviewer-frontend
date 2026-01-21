@@ -267,7 +267,7 @@
     // Get the current limit from dropdown
     function getCurrentLimit() {
       const limitSelect = document.getElementById('reviewLimit');
-      return parseInt(limitSelect?.value || '20');
+      return parseInt(limitSelect?.value, 20);
     }
     
     // Add event listener to dropdown
