@@ -63,8 +63,7 @@ export const resultsController = {
         status: apiResponse.status,
         result: apiResponse.result,
         completedAt: apiResponse.completedAt,
-        failedAt: apiResponse.failedAt,
-        reviewId: apiResponse.jobId
+        failedAt: apiResponse.failedAt
       }
 
       // Check if review is completed
@@ -76,7 +75,7 @@ export const resultsController = {
         return h.view('review/results/pending', {
           pageTitle: 'Review In Progress',
           heading: 'Review In Progress',
-          reviewId: statusData.reviewId,
+          reviewId,
           currentStatus: statusData.status,
           progress: statusData.progress || 0
         })
@@ -131,73 +130,23 @@ export const resultsController = {
  * Transform backend status data to frontend display format
  */
 function transformReviewData(statusData) {
-  // Extract review result from the backend response
-  const reviewResult = statusData.result || {}
-  const metadata = statusData.metadata || {}
+  // Only consume and expose the API response attributes provided
+  // { id, jobId, status, result: { reviewContent, guardrailAssessment, stopReason, completedAt }, completedAt }
 
-  // Extract sections from the review result
-  const sections = reviewResult.sections || {}
-  const metrics = reviewResult.metrics || {}
-  const aiMetadata = reviewResult.aiMetadata || {}
+  const safeResult = statusData.result || {}
 
   return {
-    documentName: statusData.filename || 'Unknown Document',
-    reviewDate:
-      statusData.completedAt ||
-      statusData.updatedAt ||
-      new Date().toISOString(),
-    status: reviewResult.overallStatus || 'completed',
-    responseData: reviewResult.reviewContent || 'No data',
-    s3Location: metadata.s3Key
-      ? `${metadata.bucket}/${metadata.s3Key}`
-      : statusData.s3ResultLocation || 'N/A',
-    s3ResultLocation: statusData.s3ResultLocation || 'N/A',
-    llmModel: aiMetadata.model || 'Claude 3.7 Sonnet',
-    inferenceProfile: aiMetadata.inferenceProfile || 'N/A',
-    processingTime: calculateProcessingTime(
-      statusData.createdAt,
-      statusData.completedAt
-    ),
-
-    // Summary metrics
-    summary: {
-      overallScore: calculateOverallScore(reviewResult.overallStatus),
-      overallStatus: reviewResult.overallStatus || 'unknown',
-      issuesFound: metrics.totalIssues || 0,
-      wordsToAvoid: metrics.wordsToAvoidCount || 0,
-      passiveSentences: metrics.passiveSentencesCount || 0,
-      wordCount: metrics.wordCount || metadata.wordCount || 0
+    id: statusData.id,
+    jobId: statusData.jobId,
+    status: statusData.status,
+    result: {
+      reviewContent: safeResult.reviewContent,
+      guardrailAssessment: safeResult.guardrailAssessment,
+      stopReason: safeResult.stopReason
     },
+    completedAt: statusData.completedAt,
 
-    // AI usage metrics
-    aiUsage: {
-      inputTokens: aiMetadata.inputTokens || 0,
-      outputTokens: aiMetadata.outputTokens || 0,
-      totalTokens:
-        (aiMetadata.inputTokens || 0) + (aiMetadata.outputTokens || 0)
-    },
-
-    // Review sections from Bedrock AI response
-    sections: {
-      overallAssessment:
-        sections.overallAssessment || 'No assessment available',
-      contentQuality: sections.contentQuality || 'No data',
-      plainEnglish: sections.plainEnglishReview || 'No data',
-      styleGuide: sections.styleGuideCompliance || 'No data',
-      govspeak: sections.govspeakReview || 'No data',
-      accessibility: sections.accessibilityReview || 'No data',
-      passiveVoice: sections.passiveVoiceReview || 'No data',
-      summaryOfFindings: sections.summaryOfFindings || 'No data',
-      exampleImprovements: sections.exampleImprovements || 'No data'
-    },
-
-    // Full review text from Bedrock AI
-    fullReviewText:
-      reviewResult.reviewText ||
-      reviewResult.fullReview ||
-      'No review text available',
-
-    // Raw data for export
+    // Keep raw data for export buttons
     rawData: statusData
   }
 }
@@ -205,33 +154,4 @@ function transformReviewData(statusData) {
 /**
  * Calculate overall score from status
  */
-function calculateOverallScore(status) {
-  const scoreMap = {
-    pass: 95,
-    pass_with_recommendations: 80,
-    needs_improvement: 60,
-    fail: 40,
-    unknown: 0
-  }
-  return scoreMap[status] || 0
-}
-
-/**
- * Calculate processing time
- */
-function calculateProcessingTime(startTime, endTime) {
-  if (!startTime || !endTime) return 'N/A'
-
-  const start = new Date(startTime)
-  const end = new Date(endTime)
-  const diffMs = end - start
-  const diffSec = Math.round(diffMs / 1000)
-
-  if (diffSec < 60) {
-    return `${diffSec} seconds`
-  } else {
-    const minutes = Math.floor(diffSec / 60)
-    const seconds = diffSec % 60
-    return `${minutes}m ${seconds}s`
-  }
-}
+// Note: helpers removed as transform no longer derives summary/timing
