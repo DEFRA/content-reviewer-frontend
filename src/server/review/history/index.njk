@@ -95,8 +95,10 @@
                 {% endif %}
               </td>
               <td class="govuk-table__cell">
-                {% if review.status === 'completed' %}
+                {% if review.status === 'completed' and review.reviewId %}
                   <a href="/review/results/{{ review.reviewId }}" class="govuk-link">View</a>
+                {% elif review.status === 'completed' and not review.reviewId %}
+                  <span class="govuk-hint">Missing review ID</span>
                 {% elif review.status === 'failed' %}
                   <span class="govuk-body-s">Failed</span>
                 {% else %}
