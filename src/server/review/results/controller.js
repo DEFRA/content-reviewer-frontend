@@ -82,20 +82,18 @@ export const resultsController = {
       }
 
       request.logger.info({ reviewId }, 'Transforming review data')
-      // Transform backend data to frontend format
-      const reviewResults = transformReviewData(statusData)
+      // Transform backend data to frontend format (only fields used by the template)
+      const reviewResults = transformReviewData(statusData, reviewId)
 
       request.logger.info(
         {
           reviewId,
-          documentName: reviewResults.documentName,
-          hasS3Location: !!reviewResults.s3Location,
-          hasSections: !!reviewResults.sections,
-          sectionKeys: reviewResults.sections
-            ? Object.keys(reviewResults.sections)
-            : []
+          status: reviewResults.status,
+          hasReviewContent: !!reviewResults?.result?.reviewContent,
+          filename: reviewResults?.rawData?.filename,
+          s3ResultLocation: reviewResults?.rawData?.s3ResultLocation
         },
-        'Rendering results view'
+        'Rendering results view (simplified fields)'
       )
 
       return h.view('review/results/index', {
@@ -129,14 +127,14 @@ export const resultsController = {
 /**
  * Transform backend status data to frontend display format
  */
-function transformReviewData(statusData) {
+function transformReviewData(statusData, reviewId) {
   // Only consume and expose the API response attributes provided
   // { id, jobId, status, result: { reviewContent, guardrailAssessment, stopReason, completedAt }, completedAt }
 
   const safeResult = statusData.result || {}
 
   return {
-    id: statusData.id,
+    id: statusData.id || reviewId,
     jobId: statusData.jobId,
     status: statusData.status,
     result: {
