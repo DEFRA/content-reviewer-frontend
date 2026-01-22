@@ -1,0 +1,292 @@
+// Review Results Component Styles
+// Styles for the AI-generated review output with color-coded highlights and scores
+
+.review-output {
+  margin-top: 2rem;
+
+  section {
+    margin-bottom: 3rem;
+    padding: 1.5rem;
+    background-color: govuk-colour('light-grey');
+    border-left: 4px solid govuk-colour('blue');
+  }
+
+  h2 {
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+}
+
+// Summary Section with Category Scores
+.review-summary {
+  background-color: govuk-colour('light-grey');
+
+  .category-scores {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+
+    @media (min-width: 768px) {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  .score-item {
+    padding: 1rem;
+    border-radius: 4px;
+    border-left: 5px solid;
+    background-color: govuk-colour('white');
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+
+    .category-name {
+      font-weight: 700;
+      font-size: 1rem;
+      color: govuk-colour('black');
+    }
+
+    .category-score {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .category-note {
+      font-size: 0.875rem;
+      color: govuk-colour('dark-grey');
+    }
+  }
+
+  // Score color coding (severity-based)
+  .score-5 {
+    border-left-color: #00703c; // Dark green - Excellent
+    .category-score {
+      color: #00703c;
+    }
+  }
+
+  .score-4 {
+    border-left-color: #85994b; // Light green - Good
+    .category-score {
+      color: #85994b;
+    }
+  }
+
+  .score-3 {
+    border-left-color: #ffbf47; // Yellow - Acceptable
+    .category-score {
+      color: #f47738;
+    }
+  }
+
+  .score-2 {
+    border-left-color: #f47738; // Orange - Needs work
+    .category-score {
+      color: #f47738;
+    }
+  }
+
+  .score-1 {
+    border-left-color: #d4351c; // Red - Poor
+    .category-score {
+      color: #d4351c;
+    }
+  }
+}
+
+// Reviewed Content Section with Highlights
+.reviewed-content {
+  background-color: govuk-colour('white');
+  border-left-color: govuk-colour('dark-grey');
+
+  .content-body {
+    font-family: 'GDS Transport', arial, sans-serif;
+    font-size: 1rem;
+    line-height: 1.6;
+    color: govuk-colour('black');
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+}
+
+// Highlight styles (moved out to reduce nesting depth)
+.reviewed-content .content-body mark {
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+// Critical issues (red)
+.highlight-critical {
+  background-color: #ffe5e5;
+  color: #d4351c;
+  border-bottom: 2px solid #d4351c;
+}
+
+// High priority issues (orange)
+.highlight-high {
+  background-color: #fff4e6;
+  color: #f47738;
+  border-bottom: 2px solid #f47738;
+}
+
+// Medium priority issues (yellow)
+.highlight-medium {
+  background-color: #fff9e6;
+  color: #c2910f;
+  border-bottom: 2px solid #ffbf47;
+}
+
+// Low priority issues (blue)
+.highlight-low {
+  background-color: #e6f0ff;
+  color: #1d70b8;
+  border-bottom: 2px solid #1d70b8;
+}
+
+// Example Improvements Section
+.example-improvements {
+  background-color: govuk-colour('light-grey');
+  border-left-color: govuk-colour('blue');
+
+  .improvement-list {
+    list-style: none;
+    counter-reset: improvement-counter;
+    padding-left: 0;
+    margin: 0;
+  }
+
+  .improvement-item {
+    counter-increment: improvement-counter;
+    position: relative;
+    padding: 1.5rem 1.5rem 1.5rem 3rem;
+    margin-bottom: 1.5rem;
+    background-color: govuk-colour('white');
+    border-left: 5px solid;
+    border-radius: 4px;
+
+    &::before {
+      content: counter(improvement-counter);
+      position: absolute;
+      left: 1rem;
+      top: 1.5rem;
+      font-weight: 700;
+      font-size: 1.25rem;
+      color: govuk-colour('dark-grey');
+    }
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+}
+
+// Improvement item elements (moved out to reduce nesting)
+.improvement-item .issue-title {
+  display: block;
+  font-size: 1.125rem;
+  margin-bottom: 0.5rem;
+  color: govuk-colour('black');
+}
+
+.improvement-item .issue-description {
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  color: govuk-colour('dark-grey');
+}
+
+.improvement-item .issue-example {
+  background-color: govuk-colour('light-grey');
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+.improvement-item .issue-example p {
+  margin: 0.5rem 0;
+  font-size: 0.9rem;
+
+  &:first-child {
+    margin-top: 0;
+  }
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.improvement-item .issue-example strong {
+  font-weight: 700;
+}
+
+.improvement-item .issue-example .before-text {
+  color: govuk-colour('dark-grey');
+}
+
+.improvement-item .issue-example .after-text {
+  color: #00703c;
+}
+
+// Severity color coding
+.severity-critical {
+  border-left-color: #d4351c;
+
+  &::before {
+    color: #d4351c;
+  }
+
+  .issue-title {
+    color: #d4351c;
+  }
+}
+
+.severity-high {
+  border-left-color: #f47738;
+
+  &::before {
+    color: #f47738;
+  }
+
+  .issue-title {
+    color: #f47738;
+  }
+}
+
+.severity-medium {
+  border-left-color: #ffbf47;
+
+  &::before {
+    color: #f47738;
+  }
+
+  .issue-title {
+    color: #f47738;
+  }
+}
+
+.severity-low {
+  border-left-color: #1d70b8;
+
+  &::before {
+    color: #1d70b8;
+  }
+
+  .issue-title {
+    color: #1d70b8;
+  }
+}
+
+// Print styles
+@media print {
+  .review-output section {
+    page-break-inside: avoid;
+    border-left: none;
+    background-color: #ffffff;
+  }
+
+  .review-output mark {
+    background-color: transparent !important;
+    text-decoration: underline;
+  }
+}
