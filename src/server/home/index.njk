@@ -307,7 +307,7 @@
         // Normalize review data for client-side rendering
         const normalized = (data.reviews || []).map(r => ({
           ...r,
-          filename: r.fileName || r.filename || '',
+          filename: r.fileName || r.filename || 'Text Content',
           uploadedAt: r.createdAt || r.updatedAt || r.uploadedAt || null
         }));
 
