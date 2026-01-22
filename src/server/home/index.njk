@@ -283,7 +283,7 @@
       try {
         const backendUrl = window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001';
         const limit = document.getElementById('reviewLimit')?.value || 5;
-        const response = await fetch(`${backendUrl}/api/reviews?limit=${limit}`, {
+        const response = await fetch(`${backendUrl}/api/reviews?limit=${limitSelect}`, {
           method: 'GET',
           headers: {
             'Accept': 'application/json'
