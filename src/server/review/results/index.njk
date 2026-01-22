@@ -79,7 +79,17 @@
       <!-- AI Review Content -->
       {% if results.result and results.result.reviewContent %}
         <h2 class="govuk-heading-l">AI Review</h2>
-        <div class="govuk-inset-text">{{ results.result.reviewContent | safe }}</div>
+        <div class="govuk-body">
+          {{ results.result.reviewContent | safe }}
+        </div>
+      {% else %}
+        <div class="govuk-warning-text">
+          <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
+          <strong class="govuk-warning-text__text">
+            <span class="govuk-warning-text__assistive">Warning</span>
+            No review content available
+          </strong>
+        </div>
       {% endif %}
 
       <!-- Actions -->
