@@ -7,11 +7,12 @@
       <a href="/" class="govuk-back-link">Back to home</a>
       
       <h1 class="govuk-heading-xl">{{ heading }}</h1>
-      {{ results.responseData | safe }}      
       <!-- Overall Status Banner -->
-      {% set statusClass = 'govuk-tag--green' if results.summary.overallStatus == 'pass' else 
-                           ('govuk-tag--blue' if results.summary.overallStatus == 'pass_with_recommendations' else 
-                           ('govuk-tag--yellow' if results.summary.overallStatus == 'needs_improvement' else 'govuk-tag--red')) %}
+      {% set status = results.status or 'unknown' %}
+      {% set statusClass =
+        ('govuk-tag--green' if status == 'completed' else
+        ('govuk-tag--red' if status == 'failed' else 
+        ('govuk-tag--yellow' if status == 'processing' else 'govuk-tag--blue'))) %}
       
       <div class="govuk-notification-banner govuk-notification-banner--success" role="region" aria-labelledby="govuk-notification-banner-title" data-module="govuk-notification-banner">
         <div class="govuk-notification-banner__header">
@@ -21,7 +22,7 @@
         </div>
         <div class="govuk-notification-banner__content">
           <p class="govuk-notification-banner__heading">
-            Overall Status: <strong class="govuk-tag {{ statusClass }}">{{ results.summary.overallStatus | replace('_', ' ') | title }}</strong>
+            Overall Status: <strong class="govuk-tag {{ statusClass }}">{{ status | replace('_', ' ') | title }}</strong>
           </p>
         </div>
       </div>
@@ -30,27 +31,29 @@
       <dl class="govuk-summary-list govuk-!-margin-bottom-6">
         <div class="govuk-summary-list__row">
           <dt class="govuk-summary-list__key">Document</dt>
-          <dd class="govuk-summary-list__value">{{ results.documentName }}</dd>
+          <dd class="govuk-summary-list__value">{{ results.rawData.filename or '-' }}</dd>
         </div>
         <div class="govuk-summary-list__row">
-          <dt class="govuk-summary-list__key">Review Date</dt>
-          <dd class="govuk-summary-list__value">{{ results.reviewDate }}</dd>
+          <dt class="govuk-summary-list__key">Review ID</dt>
+          <dd class="govuk-summary-list__value">{{ results.id or reviewId }}</dd>
+        </div>
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">Status</dt>
+          <dd class="govuk-summary-list__value">{{ status }}</dd>
+        </div>
+        {% if results.jobId %}
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">Job ID</dt>
+          <dd class="govuk-summary-list__value">{{ results.jobId }}</dd>
+        </div>
+        {% endif %}
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">Completed At</dt>
+          <dd class="govuk-summary-list__value">{{ results.completedAt or '-' }}</dd>
         </div>
         <div class="govuk-summary-list__row">
           <dt class="govuk-summary-list__key">S3 Location</dt>
-          <dd class="govuk-summary-list__value"><code>{{ results.s3Location }}</code></dd>
-        </div>
-        <div class="govuk-summary-list__row">
-          <dt class="govuk-summary-list__key">AI Model</dt>
-          <dd class="govuk-summary-list__value">{{ results.llmModel }}</dd>
-        </div>
-        <div class="govuk-summary-list__row">
-          <dt class="govuk-summary-list__key">Processing Time</dt>
-          <dd class="govuk-summary-list__value">{{ results.processingTime }}</dd>
-        </div>
-        <div class="govuk-summary-list__row">
-          <dt class="govuk-summary-list__key">Tokens Used</dt>
-          <dd class="govuk-summary-list__value">{{ results.aiUsage.totalTokens }} (Input: {{ results.aiUsage.inputTokens }}, Output: {{ results.aiUsage.outputTokens }})</dd>
+          <dd class="govuk-summary-list__value"><code>{{ results.rawData.s3ResultLocation or '-' }}</code></dd>
         </div>
       </dl>
 
@@ -73,160 +76,11 @@
         </button>
       </div>
 
-      <!-- Review Summary -->
-      <h2 class="govuk-heading-l">Summary</h2>
-      
-      <div class="govuk-grid-row govuk-!-margin-bottom-6">
-        <div class="govuk-grid-column-one-quarter">
-          <div class="app-stat-card">
-            <h3 class="govuk-heading-s">Overall Score</h3>
-            <p class="govuk-body govuk-!-font-size-48 govuk-!-font-weight-bold">{{ results.summary.overallScore }}</p>
-          </div>
-        </div>
-        <div class="govuk-grid-column-one-quarter">
-          <div class="app-stat-card">
-            <h3 class="govuk-heading-s">Issues Found</h3>
-            <p class="govuk-body govuk-!-font-size-48 govuk-!-font-weight-bold">{{ results.summary.issuesFound }}</p>
-          </div>
-        </div>
-        <div class="govuk-grid-column-one-quarter">
-          <div class="app-stat-card">
-            <h3 class="govuk-heading-s">Words to Avoid</h3>
-            <p class="govuk-body govuk-!-font-size-24">{{ results.summary.wordsToAvoid }}</p>
-          </div>
-        </div>
-        <div class="govuk-grid-column-one-quarter">
-          <div class="app-stat-card">
-            <h3 class="govuk-heading-s">Passive Sentences</h3>
-            <p class="govuk-body govuk-!-font-size-24">{{ results.summary.passiveSentences }}</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Overall Assessment -->
-      <h2 class="govuk-heading-l">Overall Assessment</h2>
-      <div class="govuk-inset-text">
-        {{ results.sections.overallAssessment | safe }}
-      </div>
-
-      <!-- Detailed Sections -->
-      <h2 class="govuk-heading-l">Detailed Review</h2>
-      
-      <div class="govuk-accordion" data-module="govuk-accordion" id="review-sections">
-        
-        <!-- Content Quality -->
-        <div class="govuk-accordion__section">
-          <div class="govuk-accordion__section-header">
-            <h2 class="govuk-accordion__section-heading">
-              <span class="govuk-accordion__section-button" id="accordion-heading-1">
-                Content Quality
-              </span>
-            </h2>
-          </div>
-          <div id="accordion-content-1" class="govuk-accordion__section-content" aria-labelledby="accordion-heading-1">
-            <div class="govuk-body">{{ results.sections.contentQuality | safe }}</div>
-          </div>
-        </div>
-
-        <!-- Plain English Review -->
-        <div class="govuk-accordion__section">
-          <div class="govuk-accordion__section-header">
-            <h2 class="govuk-accordion__section-heading">
-              <span class="govuk-accordion__section-button" id="accordion-heading-2">
-                Plain English Review
-              </span>
-            </h2>
-          </div>
-          <div id="accordion-content-2" class="govuk-accordion__section-content" aria-labelledby="accordion-heading-2">
-            <div class="govuk-body">{{ results.sections.plainEnglish | safe }}</div>
-          </div>
-        </div>
-
-        <!-- Style Guide Compliance -->
-        <div class="govuk-accordion__section">
-          <div class="govuk-accordion__section-header">
-            <h2 class="govuk-accordion__section-heading">
-              <span class="govuk-accordion__section-button" id="accordion-heading-3">
-                GOV.UK Style Guide Compliance
-              </span>
-            </h2>
-          </div>
-          <div id="accordion-content-3" class="govuk-accordion__section-content" aria-labelledby="accordion-heading-3">
-            <div class="govuk-body">{{ results.sections.styleGuide | safe }}</div>
-          </div>
-        </div>
-
-        <!-- Govspeak Review -->
-        <div class="govuk-accordion__section">
-          <div class="govuk-accordion__section-header">
-            <h2 class="govuk-accordion__section-heading">
-              <span class="govuk-accordion__section-button" id="accordion-heading-4">
-                Govspeak & Formatting Review
-              </span>
-            </h2>
-          </div>
-          <div id="accordion-content-4" class="govuk-accordion__section-content" aria-labelledby="accordion-heading-4">
-            <div class="govuk-body">{{ results.sections.govspeak | safe }}</div>
-          </div>
-        </div>
-
-        <!-- Accessibility Review -->
-        <div class="govuk-accordion__section">
-          <div class="govuk-accordion__section-header">
-            <h2 class="govuk-accordion__section-heading">
-              <span class="govuk-accordion__section-button" id="accordion-heading-5">
-                Accessibility Review
-              </span>
-            </h2>
-          </div>
-          <div id="accordion-content-5" class="govuk-accordion__section-content" aria-labelledby="accordion-heading-5">
-            <div class="govuk-body">{{ results.sections.accessibility | safe }}</div>
-          </div>
-        </div>
-
-        <!-- Passive Voice Review -->
-        <div class="govuk-accordion__section">
-          <div class="govuk-accordion__section-header">
-            <h2 class="govuk-accordion__section-heading">
-              <span class="govuk-accordion__section-button" id="accordion-heading-6">
-                Passive Voice Analysis
-              </span>
-            </h2>
-          </div>
-          <div id="accordion-content-6" class="govuk-accordion__section-content" aria-labelledby="accordion-heading-6">
-            <div class="govuk-body">{{ results.sections.passiveVoice | safe }}</div>
-          </div>
-        </div>
-
-        <!-- Summary of Findings -->
-        <div class="govuk-accordion__section">
-          <div class="govuk-accordion__section-header">
-            <h2 class="govuk-accordion__section-heading">
-              <span class="govuk-accordion__section-button" id="accordion-heading-7">
-                Summary of Findings
-              </span>
-            </h2>
-          </div>
-          <div id="accordion-content-7" class="govuk-accordion__section-content" aria-labelledby="accordion-heading-7">
-            <div class="govuk-body">{{ results.sections.summaryOfFindings | safe }}</div>
-          </div>
-        </div>
-
-        <!-- Example Improvements -->
-        <div class="govuk-accordion__section">
-          <div class="govuk-accordion__section-header">
-            <h2 class="govuk-accordion__section-heading">
-              <span class="govuk-accordion__section-button" id="accordion-heading-8">
-                Example Improvements
-              </span>
-            </h2>
-          </div>
-          <div id="accordion-content-8" class="govuk-accordion__section-content" aria-labelledby="accordion-heading-8">
-            <div class="govuk-body">{{ results.sections.exampleImprovements | safe }}</div>
-          </div>
-        </div>
-
-      </div>
+      <!-- AI Review Content -->
+      {% if results.result and results.result.reviewContent %}
+        <h2 class="govuk-heading-l">AI Review</h2>
+        <div class="govuk-inset-text">{{ results.result.reviewContent | safe }}</div>
+      {% endif %}
 
       <!-- Actions -->
       <div class="govuk-button-group govuk-!-margin-top-6">
@@ -291,131 +145,48 @@
     function generateTextReport() {
       const results = {{ results | dump | safe }};
       let report = '';
+      const status = (results.summary && results.summary.overallStatus) || results.status || 'unknown';
+      const score = results.summary && results.summary.overallScore;
+      const issuesFound = results.summary && results.summary.issuesFound;
+      const wordsToAvoid = results.summary && results.summary.wordsToAvoid;
+      const passiveSentences = results.summary && results.summary.passiveSentences;
+      const documentName = results.rawData?.filename || results.documentName || 'N/A';
+      const reviewDate = results.completedAt || results.rawData?.createdAt || results.reviewDate || new Date().toISOString();
+      const model = results.llmModel || 'N/A';
+      const processingTime = results.processingTime || 'N/A';
+      const fullText = (results.result && results.result.reviewContent) || results.fullReviewText || '';
+
       report += '='.repeat(80) + '\n';
       report += 'GOV.UK CONTENT REVIEW REPORT\n';
       report += '='.repeat(80) + '\n\n';
-      report += `Document: ${results.documentName}\n`;
-      report += `Review Date: ${results.reviewDate}\n`;
-      report += `AI Model: ${results.llmModel}\n`;
-      report += `Processing Time: ${results.processingTime}\n`;
-      report += `Overall Status: ${results.summary.overallStatus}\n`;
-      report += `Overall Score: ${results.summary.overallScore}/100\n\n`;
-      report += '='.repeat(80) + '\n';
+      report += `Document: ${documentName}\n`;
+      report += `Review Date: ${reviewDate}\n`;
+      report += `AI Model: ${model}\n`;
+      report += `Processing Time: ${processingTime}\n`;
+      report += `Overall Status: ${status}\n`;
+      if (typeof score !== 'undefined' && score !== null) {
+        report += `Overall Score: ${score}/100\n`;
+      }
+      report += '\n' + '='.repeat(80) + '\n';
       report += 'SUMMARY\n';
       report += '='.repeat(80) + '\n';
-      report += `Issues Found: ${results.summary.issuesFound}\n`;
-      report += `Words to Avoid: ${results.summary.wordsToAvoid}\n`;
-      report += `Passive Sentences: ${results.summary.passiveSentences}\n\n`;
-      report += '='.repeat(80) + '\n';
+      if (typeof issuesFound !== 'undefined' && issuesFound !== null) {
+        report += `Issues Found: ${issuesFound}\n`;
+      }
+      if (typeof wordsToAvoid !== 'undefined' && wordsToAvoid !== null) {
+        report += `Words to Avoid: ${wordsToAvoid}\n`;
+      }
+      if (typeof passiveSentences !== 'undefined' && passiveSentences !== null) {
+        report += `Passive Sentences: ${passiveSentences}\n`;
+      }
+      report += '\n' + '='.repeat(80) + '\n';
       report += 'FULL REVIEW\n';
       report += '='.repeat(80) + '\n\n';
-      report += results.fullReviewText;
-      report += '\n\n' + '='.repeat(80) + '\n';
-      report += 'END OF REPORT\n';
-      report += '='.repeat(80) + '\n';
-      return report;
-{% endblock %}
-
-{% block bodyEnd %}
-  {{ super() }}
-  <script nonce="{{ cspNonce }}">
-    const reviewId = '{{ reviewId }}';
-    const resultsData = {{ results.rawData | dump | safe }};
-
-    // Export as PDF
-    document.getElementById('exportPdfBtn').addEventListener('click', () => {
-      window.location.href = `/review/export/${reviewId}/pdf`;
-    });
-
-    // Export as Word
-    document.getElementById('exportWordBtn').addEventListener('click', () => {
-      window.location.href = `/review/export/${reviewId}/word`;
-    });
-
-    // Export as JSON
-    document.getElementById('exportJsonBtn').addEventListener('click', () => {
-      const dataStr = JSON.stringify(resultsData, null, 2);
-      const dataBlob = new Blob([dataStr], { type: 'application/json' });
-      const url = URL.createObjectURL(dataBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `review-results-${reviewId}.json`;
-      link.click();
-      URL.revokeObjectURL(url);
-    });
-
-    // Export as Text
-    document.getElementById('exportTextBtn').addEventListener('click', () => {
-      const textContent = generateTextReport();
-      const textBlob = new Blob([textContent], { type: 'text/plain' });
-      const url = URL.createObjectURL(textBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `review-report-${reviewId}.txt`;
-      link.click();
-      URL.revokeObjectURL(url);
-    });
-
-    // Print
-    document.getElementById('printBtn').addEventListener('click', () => {
-      window.print();
-    });
-
-    // Generate text report
-    function generateTextReport() {
-      const results = {{ results | dump | safe }};
-      let report = '';
-      report += '='.repeat(80) + '\n';
-      report += 'GOV.UK CONTENT REVIEW REPORT\n';
-      report += '='.repeat(80) + '\n\n';
-      report += `Document: ${results.documentName}\n`;
-      report += `Review Date: ${results.reviewDate}\n`;
-      report += `AI Model: ${results.llmModel}\n`;
-      report += `Processing Time: ${results.processingTime}\n`;
-      report += `Overall Status: ${results.summary.overallStatus}\n`;
-      report += `Overall Score: ${results.summary.overallScore}/100\n\n`;
-      report += '='.repeat(80) + '\n';
-      report += 'SUMMARY\n';
-      report += '='.repeat(80) + '\n';
-      report += `Issues Found: ${results.summary.issuesFound}\n`;
-      report += `Words to Avoid: ${results.summary.wordsToAvoid}\n`;
-      report += `Passive Sentences: ${results.summary.passiveSentences}\n\n`;
-      report += '='.repeat(80) + '\n';
-      report += 'FULL REVIEW\n';
-      report += '='.repeat(80) + '\n\n';
-      report += results.fullReviewText;
+      report += fullText;
       report += '\n\n' + '='.repeat(80) + '\n';
       report += 'END OF REPORT\n';
       report += '='.repeat(80) + '\n';
       return report;
     }
   </script>
-  
-  <style nonce="{{ cspNonce }}">
-    .app-stat-card {
-      background: #f3f2f1;
-      padding: 1.5rem;
-      text-align: center;
-      border-left: 4px solid #1d70b8;
-      height: 100%;
-    }
-    .app-stat-card h3 {
-      margin-bottom: 0.5rem;
-    }
-    .app-confidence-badge {
-      margin-left: 10px;
-    }
-    
-    @media print {
-      .govuk-back-link,
-      .govuk-button-group,
-      #exportJsonBtn,
-      #exportTextBtn,
-      #exportPdfBtn,
-      #exportWordBtn,
-      #printBtn {
-        display: none;
-      }
-    }
-  </style>
 {% endblock %}

@@ -2,36 +2,26 @@
 
 {% block head %}
   {{ super() }}
-  <style nonce="{{ cspNonce }}">
+  <style>
     /* Animated loading dots */
     .loading-dots {
       display: inline-block;
       margin-left: 2px;
     }
-    
     .loading-dots span {
       animation: blink 1.4s infinite;
       animation-fill-mode: both;
     }
-    
     .loading-dots span:nth-child(2) {
       animation-delay: 0.2s;
     }
-    
     .loading-dots span:nth-child(3) {
       animation-delay: 0.4s;
     }
-    
     @keyframes blink {
-      0%, 80%, 100% {
-        opacity: 0;
-      }
-      40% {
-        opacity: 1;
-      }
+      0%, 80%, 100% { opacity: 0; }
+      40% { opacity: 1; }
     }
-    
-    /* Upload progress bar */
     .upload-progress-bar {
       background: #1d70b8;
       height: 10px;
@@ -39,6 +29,11 @@
       transition: width 0.3s ease;
       width: 0%;
     }
+    .text-align-right { text-align: right; }
+    .margin-bottom-0 { margin-bottom: 0; }
+    .inline-block { display: inline-block; }
+    .margin-right-10 { margin-right: 10px; }
+    .width-auto { width: auto; }
   </style>
 {% endblock %}
 
@@ -107,8 +102,8 @@
             </div>
           </div>
 
-          <!-- File Upload Option -->
-          <div class="govuk-form-group" id="fileFormGroup">
+          <!-- File Upload Option - COMMENTED OUT - File upload functionality disabled for demo -->
+          <!-- <div class="govuk-form-group" id="fileFormGroup">
             <label class="govuk-label govuk-label--s" for="file-upload">
               Upload a document (optional)
             </label>
@@ -119,12 +114,12 @@
             <div id="file-name-display" class="govuk-hint govuk-!-margin-top-2 js-hidden">
               Selected: <strong id="selected-file-name"></strong>
             </div>
-          </div>
+          </div> -->
 
           <!-- Text Content Option -->
           <div class="govuk-form-group" id="textFormGroup">
             <label class="govuk-label govuk-label--s" for="text-content">
-              Or type/paste your content directly
+              Type or paste your content for review
             </label>
             <textarea 
               class="govuk-textarea" 
@@ -163,12 +158,12 @@
         <div class="govuk-grid-column-one-half">
           <h2 class="govuk-heading-m">Review History</h2>
         </div>
-        <div class="govuk-grid-column-one-half" style="text-align: right;">
-          <div class="govuk-form-group" style="margin-bottom: 0;">
-            <label class="govuk-label" for="reviewLimit" style="display: inline-block; margin-right: 10px;">
+        <div class="govuk-grid-column-one-half text-align-right">
+          <div class="govuk-form-group margin-bottom-0">
+            <label class="govuk-label inline-block margin-right-10" for="reviewLimit">
               Show:
             </label>
-            <select class="govuk-select" id="reviewLimit" name="reviewLimit" style="width: auto; display: inline-block;">
+            <select class="govuk-select width-auto inline-block" id="reviewLimit" name="reviewLimit">
               <option value="20" selected>20 reviews</option>
               <option value="100">100 reviews</option>
             </select>
@@ -286,7 +281,7 @@
       isRefreshing = true;
       try {
         const backendUrl = window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001';
-        const limit = getCurrentLimit();
+        const limit = 20;
         const response = await fetch(`${backendUrl}/api/reviews?limit=${limit}`, {
           method: 'GET',
           headers: {

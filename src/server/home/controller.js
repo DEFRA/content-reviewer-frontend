@@ -86,15 +86,48 @@ export const homeController = {
 
       if (response.ok) {
         const data = await response.json()
-        reviewHistory = data.reviews || []
+
+        logger.info('Response from backend for review history', {
+          reviews: data.reviews
+        })
+        console.log(
+          '[HOME-CONTROLLER] Response ID from backend for review history',
+          data.reviews.id
+        )
+
+        // Normalize and log missing IDs to catch "Missing review ID" links
+        const normalized = (data.reviews || []).map((r) => ({
+          ...r,
+          id: r.id || r.reviewId || r.jobId || r._id,
+          reviewId: r.reviewId || r.id || r.jobId || r._id,
+          filename: r.fileName || r.filename || '', // map fileName to filename
+          uploadedAt: r.createdAt || r.updatedAt || r.uploadedAt || null // map createdAt/updatedAt to uploadedAt
+        }))
+
+        const missingId = normalized.filter((r) => !r.id && !r.reviewId)
+
+        reviewHistory = normalized
+
         logger.info('Review history retrieved successfully', {
           count: reviewHistory.length,
           totalFromResponse: data.total || data.count || 0,
-          requestTime: `${backendRequestTime}s`
+          requestTime: `${backendRequestTime}s`,
+          missingIdCount: missingId.length,
+          reviewid: data.reviews.id
         })
+        if (missingId.length > 0) {
+          logger.warn(
+            {
+              missingIdCount: missingId.length,
+              sample: missingId.slice(0, 3)
+            },
+            'Review history entries missing reviewId'
+          )
+        }
         console.log('[HOME-CONTROLLER] Review history fetched successfully:', {
           count: reviewHistory.length,
-          totalFromResponse: data.total || data.count || 0
+          totalFromResponse: data.total || data.count || 0,
+          missingIdCount: missingId.length
         })
       } else {
         logger.warn('Review history fetch failed with non-ok status', {
