@@ -87,6 +87,7 @@ export const homeController = {
       if (response.ok) {
         const data = await response.json()
 
+        console.log('Review history on home page:', data)
         logger.info('Response from backend for review history', {
           reviews: data.reviews
         })

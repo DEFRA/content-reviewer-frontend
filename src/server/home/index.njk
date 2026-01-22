@@ -102,8 +102,8 @@
             </div>
           </div>
 
-          <!-- File Upload Option -->
-          <div class="govuk-form-group" id="fileFormGroup">
+          <!-- File Upload Option - COMMENTED OUT - File upload functionality disabled for demo -->
+          <!-- <div class="govuk-form-group" id="fileFormGroup">
             <label class="govuk-label govuk-label--s" for="file-upload">
               Upload a document (optional)
             </label>
@@ -114,7 +114,7 @@
             <div id="file-name-display" class="govuk-hint govuk-!-margin-top-2 js-hidden">
               Selected: <strong id="selected-file-name"></strong>
             </div>
-          </div>
+          </div> -->
 
           <!-- Text Content Option -->
           <div class="govuk-form-group" id="textFormGroup">
@@ -159,17 +159,17 @@
           <h2 class="govuk-heading-m">Review History</h2>
         </div>
         <div class="govuk-grid-column-one-half text-align-right">
-          <div class="govuk-form-group margin-bottom-0">
+          <form id="reviewLimitForm" method="get" style="display:inline">
             <label class="govuk-label inline-block margin-right-10" for="reviewLimit">
               Show:
             </label>
-            <select class="govuk-select width-auto inline-block" id="reviewLimit" name="reviewLimit">
-              <option value="5" selected>5 reviews</option>
-              <option value="10">10 reviews</option>
-              <option value="50">50 reviews</option>
-              <option value="100">100 reviews</option>
+            <select class="govuk-select width-auto inline-block" id="reviewLimit" name="limit" onchange="document.getElementById('reviewLimitForm').submit()">
+              <option value="5" {% if (query.limit|default(5) == 5) %}selected{% endif %}>5 reviews</option>
+              <option value="10" {% if (query.limit|default(5) == 10) %}selected{% endif %}>10 reviews</option>
+              <option value="50" {% if (query.limit|default(5) == 50) %}selected{% endif %}>50 reviews</option>
+              <option value="100" {% if (query.limit|default(5) == 100) %}selected{% endif %}>100 reviews</option>
             </select>
-          </div>
+          </form>
         </div>
       </div>
         
@@ -250,11 +250,11 @@
 {% block bodyEnd %}
   {{ super() }}
   <script nonce="{{ cspNonce }}" src="{{ getAssetPath('upload-handler.js') }}"></script>
+  <!--
   <script nonce="{{ cspNonce }}">
     console.log('[HOME] Page loaded at', new Date().toISOString());
     console.log('[HOME] Backend URL:', window.APP_CONFIG?.backendApiUrl);
     console.log('[HOME] Cache buster:', '{{ cacheBuster }}');
-    
     // ============ AUTO-REFRESH LOGIC ============
     // Note: Upload form handling is now in upload-handler.js
     // Auto-refresh state
@@ -548,4 +548,5 @@
       }
     });
   </script>
+  -->
 {% endblock %}

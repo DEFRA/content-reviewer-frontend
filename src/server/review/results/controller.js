@@ -38,6 +38,7 @@ export const resultsController = {
         'Backend results fetch completed'
       )
       const apiResponse = await response.json()
+      console.log('API Response: Results controller', apiResponse)
 
       request.logger.info(
         {
