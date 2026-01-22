@@ -31,7 +31,7 @@
       <dl class="govuk-summary-list govuk-!-margin-bottom-6">
         <div class="govuk-summary-list__row">
           <dt class="govuk-summary-list__key">Document</dt>
-          <dd class="govuk-summary-list__value">{{ (results.result.reviewContent or '-') | slice(0, 10) }}</dd>
+          <dd class="govuk-summary-list__value">{{ (results.result.reviewContent) | slice(0, 10) }}</dd>
         </div>
         <div class="govuk-summary-list__row">
           <dt class="govuk-summary-list__key">Review ID</dt>
@@ -41,13 +41,6 @@
           <dt class="govuk-summary-list__key">Status</dt>
           <dd class="govuk-summary-list__value">{{ status }}</dd>
         </div>
-        <!--
-        {% if results.jobId %}
-        <div class="govuk-summary-list__row">
-          <dt class="govuk-summary-list__key">Job ID</dt>
-          <dd class="govuk-summary-list__value">{{ results.jobId }}</dd>
-        </div>
-        {% endif %}
         <div class="govuk-summary-list__row">
           <dt class="govuk-summary-list__key">Completed At</dt>
           <dd class="govuk-summary-list__value">{{ results.completedAt or '-' }}</dd>
