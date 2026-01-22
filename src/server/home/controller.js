@@ -56,8 +56,8 @@ export const homeController = {
     console.log('[HOME-CONTROLLER] Backend URL:', backendUrl)
 
     // Fetch review history from backend
-    // Default to 100, but support limit query param for future use
-    const limit = parseInt(request.query.limit) || 100
+    // Default to 5, but support limit query param for future use
+    const limit = parseInt(request.query.limit) || 5
     let reviewHistory = []
     try {
       const backendRequestStart = Date.now()

@@ -164,7 +164,9 @@
               Show:
             </label>
             <select class="govuk-select width-auto inline-block" id="reviewLimit" name="reviewLimit">
-              <option value="20" selected>20 reviews</option>
+              <option value="5" selected>5 reviews</option>
+              <option value="10">10 reviews</option>
+              <option value="50">50 reviews</option>
               <option value="100">100 reviews</option>
             </select>
           </div>
@@ -281,7 +283,7 @@
       isRefreshing = true;
       try {
         const backendUrl = window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001';
-        const limit = 20;
+        const limit = document.getElementById('reviewLimit')?.value || 5;
         const response = await fetch(`${backendUrl}/api/reviews?limit=${limit}`, {
           method: 'GET',
           headers: {
@@ -302,20 +304,23 @@
         
         const data = await response.json();
         console.log('Review history updated:', data.reviews ? data.reviews.length : 0, 'items');
-        
+        // Normalize review data for client-side rendering
+        const normalized = (data.reviews || []).map(r => ({
+          ...r,
+          filename: r.fileName || r.filename || '',
+          uploadedAt: r.createdAt || r.updatedAt || r.uploadedAt || null
+        }));
+
         // Update the table
-        updateReviewTable(data.reviews || []);
-        
+        updateReviewTable(normalized);
         // Check if there are still active reviews
-        const hasActiveReviews = data.reviews.some(r => 
+        const hasActiveReviews = normalized.some(r => 
           ['processing', 'analyzing', 'queued', 'reviewing', 'downloading', 'finalizing', 'uploaded', 'uploading'].includes(r.status)
         );
-        
         // Hide success message if no active reviews (all completed)
         if (!hasActiveReviews && uploadSuccess) {
           uploadSuccess.hidden = true;
         }
-        
         // Stop auto-refresh if no active reviews
         if (!hasActiveReviews && autoRefreshInterval) {
           console.log('No more active reviews - doing one final refresh in 3 seconds before stopping auto-refresh');
@@ -336,7 +341,7 @@
           }, 3000);
         }
         // Store last review data for re-check
-        window.lastReviewData = data.reviews || [];
+        window.lastReviewData = normalized;
         
       } catch (error) {
         console.error('Error updating review history:', error);
@@ -368,21 +373,23 @@
     // Helper to create status content with loading dots (CSP-compliant)
     function createStatusContent(cell, status) {
       const statusLower = (status || '').toLowerCase();
+      cell.classList.add('govuk-body');
       
-      if (['processing', 'analyzing', 'reviewing'].includes(statusLower)) {
-        const textNode = document.createTextNode(status.charAt(0).toUpperCase() + status.slice(1));
-        cell.appendChild(textNode);
+      // Clear existing content
+      while (cell.firstChild) {
+        cell.removeChild(cell.firstChild);
+      }
+      
+      if (statusLower === 'processing' || statusLower === 'analyzing' || statusLower === 'reviewing') {
         cell.appendChild(createLoadingDots());
       } else if (statusLower === 'queued') {
-        const textNode = document.createTextNode('Queued');
-        cell.appendChild(textNode);
+        cell.textContent = 'Queued';
         cell.appendChild(createLoadingDots());
-      } else if (['uploading', 'uploaded'].includes(statusLower)) {
-        const textNode = document.createTextNode(status.charAt(0).toUpperCase() + status.slice(1));
-        cell.appendChild(textNode);
+      } else if (statusLower === 'uploading' || statusLower === 'uploaded') {
+        cell.textContent = 'Uploading';
         cell.appendChild(createLoadingDots());
       } else {
-        cell.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+        cell.textContent = status;
       }
     }
     
