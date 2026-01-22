@@ -163,11 +163,10 @@
             <label class="govuk-label inline-block margin-right-10" for="reviewLimit">
               Show:
             </label>
-            <select class="govuk-select width-auto inline-block" id="reviewLimit" name="limit" onchange="document.getElementById('reviewLimitForm').submit()">
-              <option value="5" {% if (query.limit|default(5) == 5) %}selected{% endif %}>5 reviews</option>
-              <option value="10" {% if (query.limit|default(5) == 10) %}selected{% endif %}>10 reviews</option>
-              <option value="50" {% if (query.limit|default(5) == 50) %}selected{% endif %}>50 reviews</option>
-              <option value="100" {% if (query.limit|default(5) == 100) %}selected{% endif %}>100 reviews</option>
+            <select class="govuk-select width-auto inline-block" id="reviewLimit" name="reviewLimit">
+              <option value="5" selected>5 reviews</option>
+              <option value="10" selected>10 reviews</option>
+              <option value="50">50 reviews</option>
             </select>
           </form>
         </div>
@@ -177,7 +176,6 @@
         <thead class="govuk-table__head">
           <tr class="govuk-table__row">
             <th scope="col" class="govuk-table__header">Uploaded Document</th>
-            <th scope="col" class="govuk-table__header">Method</th>
             <th scope="col" class="govuk-table__header">Status</th>
             <th scope="col" class="govuk-table__header">Timestamp</th>
             <th scope="col" class="govuk-table__header">Result</th>
@@ -263,7 +261,7 @@
     // Get the current limit from dropdown
     function getCurrentLimit() {
       const limitSelect = document.getElementById('reviewLimit');
-      return parseInt(limitSelect?.value, 20);
+      return parseInt(limitSelect?.value, 5);
     }
     
     // Add event listener to dropdown
@@ -283,7 +281,7 @@
       try {
         const backendUrl = window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001';
         const limit = document.getElementById('reviewLimit')?.value || 5;
-        const response = await fetch(`${backendUrl}/api/reviews?limit=${limitSelect}`, {
+        const response = await fetch(`${backendUrl}/api/reviews?limit=${limit}`, {
           method: 'GET',
           headers: {
             'Accept': 'application/json'
@@ -413,12 +411,7 @@
         filenameCell.textContent = review.filename || 'N/A';
         row.appendChild(filenameCell);
         
-        // Method
-        const methodCell = document.createElement('td');
-        methodCell.className = 'govuk-table__cell';
-        methodCell.textContent = 'Review Content';
-        row.appendChild(methodCell);
-        
+      
         // Status
         const statusCell = document.createElement('td');
         statusCell.className = 'govuk-table__cell';
