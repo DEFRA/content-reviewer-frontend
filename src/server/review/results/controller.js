@@ -63,7 +63,8 @@ export const resultsController = {
         status: apiResponse.status,
         result: apiResponse.result,
         completedAt: apiResponse.completedAt,
-        failedAt: apiResponse.failedAt
+        failedAt: apiResponse.failedAt,
+        reviewId: apiResponse.jobId
       }
 
       // Check if review is completed
@@ -75,7 +76,7 @@ export const resultsController = {
         return h.view('review/results/pending', {
           pageTitle: 'Review In Progress',
           heading: 'Review In Progress',
-          reviewId,
+          reviewId: statusData.reviewId,
           currentStatus: statusData.status,
           progress: statusData.progress || 0
         })
