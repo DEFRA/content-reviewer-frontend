@@ -11,7 +11,7 @@ export const home = {
       server.route([
         {
           method: 'GET',
-          path: '/api/reviews',
+          path: '/',
           ...homeController
         }
       ])
