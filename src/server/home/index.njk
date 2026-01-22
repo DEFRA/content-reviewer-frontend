@@ -250,7 +250,6 @@
 {% block bodyEnd %}
   {{ super() }}
   <script nonce="{{ cspNonce }}" src="{{ getAssetPath('upload-handler.js') }}"></script>
-  <!--
   <script nonce="{{ cspNonce }}">
     console.log('[HOME] Page loaded at', new Date().toISOString());
     console.log('[HOME] Backend URL:', window.APP_CONFIG?.backendApiUrl);
@@ -454,7 +453,7 @@
         const timestampCell = document.createElement('td');
         timestampCell.className = 'govuk-table__cell';
         if (review.uploadedAt) {
-          const date = new Date(review.uploadedAt);
+          const date = new Date(review.uploadedAt || review.createdAt || review.updatedAt);
           timestampCell.textContent = date.toLocaleString('en-GB', {
             day: '2-digit',
             month: '2-digit',
@@ -548,5 +547,4 @@
       }
     });
   </script>
-  -->
 {% endblock %}
