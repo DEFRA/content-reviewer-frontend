@@ -154,8 +154,6 @@ export const homeController = {
       // Continue with empty history - don't break the page
     }
 
-    const chatMode = request.query?.ui === 'chat' || request.query?.chat === '1'
-
     const viewData = {
       pageTitle: 'Home',
       heading: 'Home',
@@ -163,8 +161,7 @@ export const homeController = {
       uploadError: uploadError.length > 0 ? uploadError[0] : null,
       reviewHistory,
       backendUrl, // Pass to template for client-side use
-      cacheBuster: Date.now(), // Add cacheBuster for template
-      chatMode
+      cacheBuster: Date.now() // Add cacheBuster for template
     }
 
     const totalProcessingTime = (Date.now() - startTime) / 1000

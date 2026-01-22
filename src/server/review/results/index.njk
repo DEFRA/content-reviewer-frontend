@@ -4,139 +4,93 @@
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-full">
       
-      <a href="/{{ chatMode ? '?ui=chat' : '' }}" class="govuk-back-link">Back to home</a>
+      <a href="/" class="govuk-back-link">Back to home</a>
       
       <h1 class="govuk-heading-xl">{{ heading }}</h1>
+      <!-- Overall Status Banner -->
       {% set status = results.status or 'unknown' %}
       {% set statusClass =
         ('govuk-tag--green' if status == 'completed' else
         ('govuk-tag--red' if status == 'failed' else 
         ('govuk-tag--yellow' if status == 'processing' else 'govuk-tag--blue'))) %}
-
-      {% if chatMode %}
-        <div class="chat-container">
-          <div class="chat-messages">
-            <div class="message bot-message">
-              <div class="message-content">
-                <div class="govuk-notification-banner govuk-notification-banner--success" role="region" aria-labelledby="govuk-notification-banner-title" data-module="govuk-notification-banner">
-                  <div class="govuk-notification-banner__header">
-                    <h2 class="govuk-notification-banner__title" id="govuk-notification-banner-title">Review Complete</h2>
-                  </div>
-                  <div class="govuk-notification-banner__content">
-                    <p class="govuk-notification-banner__heading">Overall Status: <strong class="govuk-tag {{ statusClass }}">{{ status | replace('_', ' ') | title }}</strong></p>
-                  </div>
-                </div>
-
-                <dl class="govuk-summary-list govuk-!-margin-bottom-6">
-                  <div class="govuk-summary-list__row">
-                    <dt class="govuk-summary-list__key">Document</dt>
-                    <dd class="govuk-summary-list__value">{{ results.rawData.filename or '-' }}</dd>
-                  </div>
-                  <div class="govuk-summary-list__row">
-                    <dt class="govuk-summary-list__key">Review ID</dt>
-                    <dd class="govuk-summary-list__value">{{ results.id or reviewId }}</dd>
-                  </div>
-                  <div class="govuk-summary-list__row">
-                    <dt class="govuk-summary-list__key">Status</dt>
-                    <dd class="govuk-summary-list__value">{{ status }}</dd>
-                  </div>
-                  {% if results.jobId %}
-                  <div class="govuk-summary-list__row">
-                    <dt class="govuk-summary-list__key">Job ID</dt>
-                    <dd class="govuk-summary-list__value">{{ results.jobId }}</dd>
-                  </div>
-                  {% endif %}
-                  <div class="govuk-summary-list__row">
-                    <dt class="govuk-summary-list__key">Completed At</dt>
-                    <dd class="govuk-summary-list__value">{{ results.completedAt or '-' }}</dd>
-                  </div>
-                  <div class="govuk-summary-list__row">
-                    <dt class="govuk-summary-list__key">S3 Location</dt>
-                    <dd class="govuk-summary-list__value"><code>{{ results.rawData.s3ResultLocation or '-' }}</code></dd>
-                  </div>
-                </dl>
-
-                {% if results.result and results.result.reviewContent %}
-                  <div class="govuk-!-margin-bottom-4">
-                    <h2 class="govuk-heading-m">AI Review</h2>
-                    <div class="govuk-inset-text">{{ results.result.reviewContent | safe }}</div>
-                  </div>
-                {% endif %}
-              </div>
-            </div>
-          </div>
+      
+      <div class="govuk-notification-banner govuk-notification-banner--success" role="region" aria-labelledby="govuk-notification-banner-title" data-module="govuk-notification-banner">
+        <div class="govuk-notification-banner__header">
+          <h2 class="govuk-notification-banner__title" id="govuk-notification-banner-title">
+            Review Complete
+          </h2>
         </div>
-
-        <div class="govuk-button-group govuk-!-margin-top-6 govuk-!-margin-bottom-8">
-          <button type="button" class="govuk-button" data-module="govuk-button" id="exportPdfBtn">Download as PDF</button>
-          <button type="button" class="govuk-button govuk-button--secondary" data-module="govuk-button" id="exportWordBtn">Download as Word</button>
-          <button type="button" class="govuk-button govuk-button--secondary" data-module="govuk-button" id="exportJsonBtn">Download Results (JSON)</button>
-          <button type="button" class="govuk-button govuk-button--secondary" data-module="govuk-button" id="exportTextBtn">Download Report (Text)</button>
-          <button type="button" class="govuk-button govuk-button--secondary" data-module="govuk-button" id="printBtn">Print Report</button>
+        <div class="govuk-notification-banner__content">
+          <p class="govuk-notification-banner__heading">
+            Overall Status: <strong class="govuk-tag {{ statusClass }}">{{ status | replace('_', ' ') | title }}</strong>
+          </p>
         </div>
+      </div>
 
-        <div class="govuk-button-group govuk-!-margin-top-6">
-          <a href="/upload{{ chatMode ? '?ui=chat' : '' }}" class="govuk-button" data-module="govuk-button">Review Another Document</a>
-          <a href="/{{ chatMode ? '?ui=chat' : '' }}" class="govuk-link">Back to home</a>
+      <!-- Document Information -->
+      <dl class="govuk-summary-list govuk-!-margin-bottom-6">
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">Document</dt>
+          <dd class="govuk-summary-list__value">{{ results.rawData.filename or '-' }}</dd>
         </div>
-      {% else %}
-        <!-- Original non-chat layout -->
-        <div class="govuk-notification-banner govuk-notification-banner--success" role="region" aria-labelledby="govuk-notification-banner-title" data-module="govuk-notification-banner">
-          <div class="govuk-notification-banner__header">
-            <h2 class="govuk-notification-banner__title" id="govuk-notification-banner-title">Review Complete</h2>
-          </div>
-          <div class="govuk-notification-banner__content">
-            <p class="govuk-notification-banner__heading">Overall Status: <strong class="govuk-tag {{ statusClass }}">{{ status | replace('_', ' ') | title }}</strong></p>
-          </div>
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">Review ID</dt>
+          <dd class="govuk-summary-list__value">{{ results.id or reviewId }}</dd>
         </div>
-
-        <dl class="govuk-summary-list govuk-!-margin-bottom-6">
-          <div class="govuk-summary-list__row">
-            <dt class="govuk-summary-list__key">Document</dt>
-            <dd class="govuk-summary-list__value">{{ results.rawData.filename or '-' }}</dd>
-          </div>
-          <div class="govuk-summary-list__row">
-            <dt class="govuk-summary-list__key">Review ID</dt>
-            <dd class="govuk-summary-list__value">{{ results.id or reviewId }}</dd>
-          </div>
-          <div class="govuk-summary-list__row">
-            <dt class="govuk-summary-list__key">Status</dt>
-            <dd class="govuk-summary-list__value">{{ status }}</dd>
-          </div>
-          {% if results.jobId %}
-          <div class="govuk-summary-list__row">
-            <dt class="govuk-summary-list__key">Job ID</dt>
-            <dd class="govuk-summary-list__value">{{ results.jobId }}</dd>
-          </div>
-          {% endif %}
-          <div class="govuk-summary-list__row">
-            <dt class="govuk-summary-list__key">Completed At</dt>
-            <dd class="govuk-summary-list__value">{{ results.completedAt or '-' }}</dd>
-          </div>
-          <div class="govuk-summary-list__row">
-            <dt class="govuk-summary-list__key">S3 Location</dt>
-            <dd class="govuk-summary-list__value"><code>{{ results.rawData.s3ResultLocation or '-' }}</code></dd>
-          </div>
-        </dl>
-
-        <div class="govuk-button-group govuk-!-margin-bottom-8">
-          <button type="button" class="govuk-button" data-module="govuk-button" id="exportPdfBtn">Download as PDF</button>
-          <button type="button" class="govuk-button govuk-button--secondary" data-module="govuk-button" id="exportWordBtn">Download as Word</button>
-          <button type="button" class="govuk-button govuk-button--secondary" data-module="govuk-button" id="exportJsonBtn">Download Results (JSON)</button>
-          <button type="button" class="govuk-button govuk-button--secondary" data-module="govuk-button" id="exportTextBtn">Download Report (Text)</button>
-          <button type="button" class="govuk-button govuk-button--secondary" data-module="govuk-button" id="printBtn">Print Report</button>
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">Status</dt>
+          <dd class="govuk-summary-list__value">{{ status }}</dd>
         </div>
-
-        {% if results.result and results.result.reviewContent %}
-          <h2 class="govuk-heading-l">AI Review</h2>
-          <div class="govuk-inset-text">{{ results.result.reviewContent | safe }}</div>
+        {% if results.jobId %}
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">Job ID</dt>
+          <dd class="govuk-summary-list__value">{{ results.jobId }}</dd>
+        </div>
         {% endif %}
-
-        <div class="govuk-button-group govuk-!-margin-top-6">
-          <a href="/upload{{ chatMode ? '?ui=chat' : '' }}" class="govuk-button" data-module="govuk-button">Review Another Document</a>
-          <a href="/{{ chatMode ? '?ui=chat' : '' }}" class="govuk-link">Back to home</a>
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">Completed At</dt>
+          <dd class="govuk-summary-list__value">{{ results.completedAt or '-' }}</dd>
         </div>
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">S3 Location</dt>
+          <dd class="govuk-summary-list__value"><code>{{ results.rawData.s3ResultLocation or '-' }}</code></dd>
+        </div>
+      </dl>
+
+      <!-- Export Options -->
+      <div class="govuk-button-group govuk-!-margin-bottom-8">
+        <button type="button" class="govuk-button" data-module="govuk-button" id="exportPdfBtn">
+          Download as PDF
+        </button>
+        <button type="button" class="govuk-button govuk-button--secondary" data-module="govuk-button" id="exportWordBtn">
+          Download as Word
+        </button>
+        <button type="button" class="govuk-button govuk-button--secondary" data-module="govuk-button" id="exportJsonBtn">
+          Download Results (JSON)
+        </button>
+        <button type="button" class="govuk-button govuk-button--secondary" data-module="govuk-button" id="exportTextBtn">
+          Download Report (Text)
+        </button>
+        <button type="button" class="govuk-button govuk-button--secondary" data-module="govuk-button" id="printBtn">
+          Print Report
+        </button>
+      </div>
+
+      <!-- AI Review Content -->
+      {% if results.result and results.result.reviewContent %}
+        <h2 class="govuk-heading-l">AI Review</h2>
+        <div class="govuk-inset-text">{{ results.result.reviewContent | safe }}</div>
       {% endif %}
+
+      <!-- Actions -->
+      <div class="govuk-button-group govuk-!-margin-top-6">
+        <a href="/upload" class="govuk-button" data-module="govuk-button">
+          Review Another Document
+        </a>
+        <a href="/" class="govuk-link">
+          Back to home
+        </a>
+      </div>
 
     </div>
   </div>
