@@ -4,7 +4,7 @@
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
       
-      <a href="/" class="govuk-back-link">Back to home</a>
+      <a href="/{{ chatMode ? '?ui=chat' : '' }}" class="govuk-back-link">Back to home</a>
       
       <h1 class="govuk-heading-l">{{ heading }}</h1>
 
@@ -22,7 +22,7 @@
       </div>
 
       <p class="govuk-body">
-        <a href="/review/status-poller/{{ reviewId }}" class="govuk-link">
+        <a href="/review/status-poller/{{ reviewId }}{{ chatMode ? '?ui=chat' : '' }}" class="govuk-link">
           View real-time progress
         </a>
       </p>
