@@ -47,116 +47,171 @@
     <div class="govuk-grid-column-full">
       
       <h1 class="govuk-heading-l">Content Review Assistant</h1>
-      
-      <!-- Upload Success Message -->
-      {% if uploadSuccess %}
-      <div class="govuk-notification-banner govuk-notification-banner--success" role="alert" aria-labelledby="upload-success-title" data-module="govuk-notification-banner">
-        <div class="govuk-notification-banner__header">
-          <h2 class="govuk-notification-banner__title" id="upload-success-title">
-            Success
-          </h2>
-        </div>
-        <div class="govuk-notification-banner__content">
-          <h3 class="govuk-notification-banner__heading">
-            Document uploaded successfully
-          </h3>
-          <p class="govuk-body">
-            <strong>{{ uploadSuccess.filename }}</strong> ({{ (uploadSuccess.size / 1024) | round(2) }} KB) has been uploaded and scanned.
-          </p>
-        </div>
-      </div>
-      {% endif %}
 
-      <!-- Upload Error Message -->
-      {% if uploadError %}
-      <div class="govuk-error-summary" aria-labelledby="error-summary-title" role="alert" tabindex="-1" data-module="govuk-error-summary">
-        <h2 class="govuk-error-summary__title" id="error-summary-title">
-          Upload failed
-        </h2>
-        <div class="govuk-error-summary__body">
-          <p class="govuk-body">{{ uploadError }}</p>
-        </div>
-      </div>
-      {% endif %}
+      {% if chatMode %}
+        <div class="chat-container">
+          <div class="chat-messages">
+            <div class="message bot-message">
+              <div class="message-content">
+                {% if uploadSuccess %}
+                  <div class="govuk-notification-banner govuk-notification-banner--success" role="alert" aria-labelledby="upload-success-title" data-module="govuk-notification-banner">
+                    <div class="govuk-notification-banner__header">
+                      <h2 class="govuk-notification-banner__title" id="upload-success-title">Success</h2>
+                    </div>
+                    <div class="govuk-notification-banner__content">
+                      <h3 class="govuk-notification-banner__heading">Document uploaded successfully</h3>
+                      <p class="govuk-body">
+                        <strong>{{ uploadSuccess.filename }}</strong> ({{ (uploadSuccess.size / 1024) | round(2) }} KB) has been uploaded and scanned.
+                      </p>
+                    </div>
+                  </div>
+                {% endif %}
 
-      <p class="govuk-body">
-        Upload a document or paste content below for review. The content will be analyzed for clarity, formatting and compliance with GOV.UK standards.
-      </p>
+                {% if uploadError %}
+                  <div class="govuk-error-summary" aria-labelledby="error-summary-title" role="alert" tabindex="-1" data-module="govuk-error-summary">
+                    <h2 class="govuk-error-summary__title" id="error-summary-title">Upload failed</h2>
+                    <div class="govuk-error-summary__body">
+                      <p class="govuk-body">{{ uploadError }}</p>
+                    </div>
+                  </div>
+                {% endif %}
 
-      <!-- Content Review Form -->
-      <div class="govuk-!-margin-bottom-6">
-        <form id="uploadForm" enctype="multipart/form-data">
-          
-          <!-- Upload Error Message (Dynamic) -->
-          <div id="uploadError" class="govuk-error-summary" hidden aria-labelledby="error-summary-title" role="alert" tabindex="-1">
-            <h2 class="govuk-error-summary__title" id="error-summary-title">
-              Upload failed
-            </h2>
-            <div class="govuk-error-summary__body">
-              <p class="govuk-body" id="errorMessage"></p>
+                <p class="govuk-body">
+                  Upload a document or paste content below for review. The content will be analyzed for clarity, formatting and compliance with GOV.UK standards.
+                </p>
+              </div>
             </div>
-          </div>
 
-          <!-- Upload Success Message (Dynamic) -->
-          <div id="uploadSuccess" class="govuk-notification-banner govuk-notification-banner--success" role="alert" hidden>
-            <div class="govuk-notification-banner__header">
-              <h2 class="govuk-notification-banner__title">Success</h2>
-            </div>
-            <div class="govuk-notification-banner__content">
-              <p class="govuk-body" id="successMessage"></p>
-            </div>
-          </div>
+            <div class="message user-message">
+              <div class="message-content">
+                <form id="uploadForm" enctype="multipart/form-data">
+                  <!-- Upload Error Message (Dynamic) -->
+                  <div id="uploadError" class="govuk-error-summary" hidden aria-labelledby="error-summary-title" role="alert" tabindex="-1">
+                    <h2 class="govuk-error-summary__title" id="error-summary-title">Upload failed</h2>
+                    <div class="govuk-error-summary__body">
+                      <p class="govuk-body" id="errorMessage"></p>
+                    </div>
+                  </div>
 
-          <!-- File Upload Option -->
-          <div class="govuk-form-group" id="fileFormGroup">
-            <label class="govuk-label govuk-label--s" for="file-upload">
-              Upload a document (optional)
-            </label>
-            <div class="govuk-hint">
-              Accepted file types: PDF (.pdf), Word (.doc, .docx). Maximum file size: 10MB
-            </div>
-            <input class="govuk-file-upload" id="file-upload" name="file" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
-            <div id="file-name-display" class="govuk-hint govuk-!-margin-top-2 js-hidden">
-              Selected: <strong id="selected-file-name"></strong>
-            </div>
-          </div>
+                  <!-- Upload Success Message (Dynamic) -->
+                  <div id="uploadSuccess" class="govuk-notification-banner govuk-notification-banner--success" role="alert" hidden>
+                    <div class="govuk-notification-banner__header">
+                      <h2 class="govuk-notification-banner__title">Success</h2>
+                    </div>
+                    <div class="govuk-notification-banner__content">
+                      <p class="govuk-body" id="successMessage"></p>
+                    </div>
+                  </div>
 
-          <!-- Text Content Option -->
-          <div class="govuk-form-group" id="textFormGroup">
-            <label class="govuk-label govuk-label--s" for="text-content">
-              Or type/paste your content directly
-            </label>
-            <textarea 
-              class="govuk-textarea" 
-              id="text-content" 
-              name="textContent" 
-              rows="8" 
-              placeholder="Type or paste content here..."
-              aria-describedby="text-content-hint"
-            ></textarea>
-          </div>
-          
-          <button 
-            type="submit" 
-            class="govuk-button"
-            data-module="govuk-button"
-            id="uploadButton"
-          >
-            Review Content
-          </button>
+                  <!-- File Upload Option -->
+                  <div class="govuk-form-group" id="fileFormGroup">
+                    <label class="govuk-label govuk-label--s" for="file-upload">Upload a document (optional)</label>
+                    <div class="govuk-hint">Accepted file types: PDF (.pdf), Word (.doc, .docx). Maximum file size: 10MB</div>
+                    <input class="govuk-file-upload" id="file-upload" name="file" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+                    <div id="file-name-display" class="govuk-hint govuk-!-margin-top-2 js-hidden">Selected: <strong id="selected-file-name"></strong></div>
+                  </div>
 
-          <!-- Upload Progress Indicator -->
-          <div id="uploadProgress" class="govuk-!-margin-top-4" hidden>
-            <div class="govuk-inset-text">
-              <p class="govuk-body" id="uploadStatusText"></p>
-              <div class="govuk-!-margin-top-2">
-                <div id="progressBar" class="upload-progress-bar" data-progress="0"></div>
-                <p class="govuk-body govuk-!-margin-top-1" id="uploadProgressText"></p>
+                  <!-- Text Content Option -->
+                  <div class="govuk-form-group" id="textFormGroup">
+                    <label class="govuk-label govuk-label--s" for="text-content">Or type/paste your content directly</label>
+                    <textarea class="govuk-textarea" id="text-content" name="textContent" rows="8" placeholder="Type or paste content here..." aria-describedby="text-content-hint"></textarea>
+                  </div>
+
+                  <div class="chat-buttons-row">
+                    <button type="submit" class="govuk-button" data-module="govuk-button" id="uploadButton">Review Content</button>
+                  </div>
+
+                  <!-- Upload Progress Indicator -->
+                  <div id="uploadProgress" class="govuk-!-margin-top-4" hidden>
+                    <div class="govuk-inset-text">
+                      <p class="govuk-body" id="uploadStatusText"></p>
+                      <div class="govuk-!-margin-top-2">
+                        <div id="progressBar" class="upload-progress-bar" data-progress="0"></div>
+                        <p class="govuk-body govuk-!-margin-top-1" id="uploadProgressText"></p>
+                      </div>
+                    </div>
+                  </div>
+                </form>
               </div>
             </div>
           </div>
-        </form>
-      </div>
+        </div>
+      {% else %}
+        <!-- Upload Success Message -->
+        {% if uploadSuccess %}
+        <div class="govuk-notification-banner govuk-notification-banner--success" role="alert" aria-labelledby="upload-success-title" data-module="govuk-notification-banner">
+          <div class="govuk-notification-banner__header">
+            <h2 class="govuk-notification-banner__title" id="upload-success-title">Success</h2>
+          </div>
+          <div class="govuk-notification-banner__content">
+            <h3 class="govuk-notification-banner__heading">Document uploaded successfully</h3>
+            <p class="govuk-body"><strong>{{ uploadSuccess.filename }}</strong> ({{ (uploadSuccess.size / 1024) | round(2) }} KB) has been uploaded and scanned.</p>
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Upload Error Message -->
+        {% if uploadError %}
+        <div class="govuk-error-summary" aria-labelledby="error-summary-title" role="alert" tabindex="-1" data-module="govuk-error-summary">
+          <h2 class="govuk-error-summary__title" id="error-summary-title">Upload failed</h2>
+          <div class="govuk-error-summary__body">
+            <p class="govuk-body">{{ uploadError }}</p>
+          </div>
+        </div>
+        {% endif %}
+
+        <p class="govuk-body">Upload a document or paste content below for review. The content will be analyzed for clarity, formatting and compliance with GOV.UK standards.</p>
+
+        <!-- Content Review Form -->
+        <div class="govuk-!-margin-bottom-6">
+          <form id="uploadForm" enctype="multipart/form-data">
+            <!-- Upload Error Message (Dynamic) -->
+            <div id="uploadError" class="govuk-error-summary" hidden aria-labelledby="error-summary-title" role="alert" tabindex="-1">
+              <h2 class="govuk-error-summary__title" id="error-summary-title">Upload failed</h2>
+              <div class="govuk-error-summary__body">
+                <p class="govuk-body" id="errorMessage"></p>
+              </div>
+            </div>
+
+            <!-- Upload Success Message (Dynamic) -->
+            <div id="uploadSuccess" class="govuk-notification-banner govuk-notification-banner--success" role="alert" hidden>
+              <div class="govuk-notification-banner__header">
+                <h2 class="govuk-notification-banner__title">Success</h2>
+              </div>
+              <div class="govuk-notification-banner__content">
+                <p class="govuk-body" id="successMessage"></p>
+              </div>
+            </div>
+
+            <!-- File Upload Option -->
+            <div class="govuk-form-group" id="fileFormGroup">
+              <label class="govuk-label govuk-label--s" for="file-upload">Upload a document (optional)</label>
+              <div class="govuk-hint">Accepted file types: PDF (.pdf), Word (.doc, .docx). Maximum file size: 10MB</div>
+              <input class="govuk-file-upload" id="file-upload" name="file" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+              <div id="file-name-display" class="govuk-hint govuk-!-margin-top-2 js-hidden">Selected: <strong id="selected-file-name"></strong></div>
+            </div>
+
+            <!-- Text Content Option -->
+            <div class="govuk-form-group" id="textFormGroup">
+              <label class="govuk-label govuk-label--s" for="text-content">Or type/paste your content directly</label>
+              <textarea class="govuk-textarea" id="text-content" name="textContent" rows="8" placeholder="Type or paste content here..." aria-describedby="text-content-hint"></textarea>
+            </div>
+            
+            <button type="submit" class="govuk-button" data-module="govuk-button" id="uploadButton">Review Content</button>
+
+            <!-- Upload Progress Indicator -->
+            <div id="uploadProgress" class="govuk-!-margin-top-4" hidden>
+              <div class="govuk-inset-text">
+                <p class="govuk-body" id="uploadStatusText"></p>
+                <div class="govuk-!-margin-top-2">
+                  <div id="progressBar" class="upload-progress-bar" data-progress="0"></div>
+                  <p class="govuk-body govuk-!-margin-top-1" id="uploadProgressText"></p>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+      {% endif %}
 
       <!-- Document Review History Table -->
       <div class="govuk-grid-row govuk-!-margin-top-8">
@@ -217,7 +272,7 @@
               <td class="govuk-table__cell">
                 {% if review.status === 'completed' %}
                   {% if review.reviewId or review.id %}
-                    <a href="/review/results/{{ review.reviewId or review.id }}" class="govuk-link">View results</a>
+                    <a href="/review/results/{{ review.reviewId or review.id }}{% if chatMode %}?ui=chat{% endif %}" class="govuk-link">View results</a>
                   {% else %}
                     <span class="govuk-hint">Missing review ID</span>
                   {% endif %}
@@ -257,6 +312,7 @@
     console.log('[HOME] Page loaded at', new Date().toISOString());
     console.log('[HOME] Backend URL:', window.APP_CONFIG?.backendApiUrl);
     console.log('[HOME] Cache buster:', '{{ cacheBuster }}');
+    const CHAT_MODE = {{ (chatMode or false) | dump | safe }};
     
     // ============ AUTO-REFRESH LOGIC ============
     // Note: Upload form handling is now in upload-handler.js
@@ -476,7 +532,7 @@
             link.textContent = 'Missing ID';
             link.removeAttribute('href');
           } else {
-            link.href = `/review/results/${reviewIdentifier}`;
+            link.href = `/review/results/${reviewIdentifier}${CHAT_MODE ? '?ui=chat' : ''}`;
           }
           link.className = 'govuk-link';
           link.textContent = 'View results';
