@@ -1,7 +1,6 @@
 export const resultsController = {
   handler: async (request, h) => {
     const { id: reviewId } = request.params
-    const chatMode = request.query?.ui === 'chat' || request.query?.chat === '1'
 
     if (!reviewId) {
       request.logger.warn('Missing review id for results route')
@@ -78,8 +77,7 @@ export const resultsController = {
           heading: 'Review In Progress',
           reviewId,
           currentStatus: statusData.status,
-          progress: statusData.progress || 0,
-          chatMode
+          progress: statusData.progress || 0
         })
       }
 
@@ -102,8 +100,7 @@ export const resultsController = {
         pageTitle: 'Review Results',
         heading: 'AI Content Review Results',
         reviewId,
-        results: reviewResults,
-        chatMode
+        results: reviewResults
       })
     } catch (error) {
       request.logger.error(
