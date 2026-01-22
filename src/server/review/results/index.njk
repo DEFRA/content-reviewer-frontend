@@ -41,23 +41,28 @@
           <dt class="govuk-summary-list__key">Status</dt>
           <dd class="govuk-summary-list__value">{{ status }}</dd>
         </div>
+        <!--
         {% if results.jobId %}
         <div class="govuk-summary-list__row">
           <dt class="govuk-summary-list__key">Job ID</dt>
           <dd class="govuk-summary-list__value">{{ results.jobId }}</dd>
         </div>
         {% endif %}
+        -->
         <div class="govuk-summary-list__row">
           <dt class="govuk-summary-list__key">Completed At</dt>
           <dd class="govuk-summary-list__value">{{ results.completedAt or '-' }}</dd>
         </div>
+        <!--
         <div class="govuk-summary-list__row">
           <dt class="govuk-summary-list__key">S3 Location</dt>
           <dd class="govuk-summary-list__value"><code>{{ results.rawData.s3ResultLocation or '-' }}</code></dd>
         </div>
+        -->
       </dl>
 
       <!-- Export Options -->
+      <!--
       <div class="govuk-button-group govuk-!-margin-bottom-8">
         <button type="button" class="govuk-button" data-module="govuk-button" id="exportPdfBtn">
           Download as PDF
@@ -75,12 +80,15 @@
           Print Report
         </button>
       </div>
+      -->
 
       <!-- AI Review Content -->
+      <!--
       {% if results.result and results.result.reviewContent %}
         <h2 class="govuk-heading-l">AI Review</h2>
         <div class="govuk-inset-text">{{ results.result.reviewContent | safe }}</div>
       {% endif %}
+      -->
 
       <!-- Actions -->
       <div class="govuk-button-group govuk-!-margin-top-6">
