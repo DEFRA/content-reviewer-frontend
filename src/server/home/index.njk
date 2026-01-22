@@ -102,8 +102,8 @@
             </div>
           </div>
 
-          <!-- File Upload Option - COMMENTED OUT - File upload functionality disabled for demo -->
-          <!-- <div class="govuk-form-group" id="fileFormGroup">
+          <!-- File Upload Option -->
+          <div class="govuk-form-group" id="fileFormGroup">
             <label class="govuk-label govuk-label--s" for="file-upload">
               Upload a document (optional)
             </label>
@@ -114,12 +114,12 @@
             <div id="file-name-display" class="govuk-hint govuk-!-margin-top-2 js-hidden">
               Selected: <strong id="selected-file-name"></strong>
             </div>
-          </div> -->
+          </div>
 
           <!-- Text Content Option -->
           <div class="govuk-form-group" id="textFormGroup">
             <label class="govuk-label govuk-label--s" for="text-content">
-              Type or paste your content for review
+              Or type/paste your content directly
             </label>
             <textarea 
               class="govuk-textarea" 
@@ -164,7 +164,9 @@
               Show:
             </label>
             <select class="govuk-select width-auto inline-block" id="reviewLimit" name="reviewLimit">
-              <option value="20" selected>20 reviews</option>
+              <option value="5" selected>5 reviews</option>
+              <option value="10">10 reviews</option>
+              <option value="50">50 reviews</option>
               <option value="100">100 reviews</option>
             </select>
           </div>
@@ -281,7 +283,7 @@
       isRefreshing = true;
       try {
         const backendUrl = window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001';
-        const limit = 20;
+        const limit = document.getElementById('reviewLimit')?.value || 5;
         const response = await fetch(`${backendUrl}/api/reviews?limit=${limit}`, {
           method: 'GET',
           headers: {
@@ -302,21 +304,23 @@
         
         const data = await response.json();
         console.log('Review history updated:', data.reviews ? data.reviews.length : 0, 'items');
-        
+        // Normalize review data for client-side rendering
+        const normalized = (data.reviews || []).map(r => ({
+          ...r,
+          filename: r.fileName || r.filename || 'Text Content',
+          uploadedAt: r.createdAt || r.updatedAt || r.uploadedAt || null
+        }));
+
         // Update the table
-        updateReviewTable(data.reviews || []);
-        
-        // Check if there are still active reviews (exclude completed)
-        const hasActiveReviews = data.reviews.some(r => 
-          r.status !== 'completed' &&
-          ['processing', 'analyzing', 'queued', 'reviewing', 'downloading', 'finalizing', 'uploaded', 'uploading', 'failed'].includes(r.status)
+        updateReviewTable(normalized);
+        // Check if there are still active reviews
+        const hasActiveReviews = normalized.some(r => 
+          ['processing', 'analyzing', 'queued', 'reviewing', 'downloading', 'finalizing', 'uploaded', 'uploading'].includes(r.status)
         );
-        
         // Hide success message if no active reviews (all completed)
         if (!hasActiveReviews && uploadSuccess) {
           uploadSuccess.hidden = true;
         }
-        
         // Stop auto-refresh if no active reviews
         if (!hasActiveReviews && autoRefreshInterval) {
           console.log('No more active reviews - doing one final refresh in 3 seconds before stopping auto-refresh');
@@ -337,7 +341,7 @@
           }, 3000);
         }
         // Store last review data for re-check
-        window.lastReviewData = data.reviews || [];
+        window.lastReviewData = normalized;
         
       } catch (error) {
         console.error('Error updating review history:', error);
@@ -368,4 +372,180 @@
     
     // Helper to create status content with loading dots (CSP-compliant)
     function createStatusContent(cell, status) {
-      const statusLower = (status |
+      const statusLower = (status || '').toLowerCase();
+      cell.classList.add('govuk-body');
+      
+      // Clear existing content
+      while (cell.firstChild) {
+        cell.removeChild(cell.firstChild);
+      }
+      
+      if (statusLower === 'processing' || statusLower === 'analyzing' || statusLower === 'reviewing') {
+        cell.appendChild(createLoadingDots());
+      } else if (statusLower === 'queued') {
+        cell.textContent = 'Queued';
+        cell.appendChild(createLoadingDots());
+      } else if (statusLower === 'uploading' || statusLower === 'uploaded') {
+        cell.textContent = 'Uploading';
+        cell.appendChild(createLoadingDots());
+      } else {
+        cell.textContent = status;
+      }
+    }
+    
+    // Update the review table with new data
+    function updateReviewTable(reviews) {
+      const tbody = document.getElementById('reviewHistoryBody');
+      
+      if (!reviews || reviews.length === 0) {
+        tbody.innerHTML = '<tr class="govuk-table__row"><td class="govuk-table__cell" colspan="5"><p class="govuk-body">No review history available.</p></td></tr>';
+        return;
+      }
+      
+      tbody.innerHTML = '';
+      
+      reviews.forEach(review => {
+        const row = document.createElement('tr');
+        row.className = 'govuk-table__row';
+        
+        // Filename
+        const filenameCell = document.createElement('td');
+        filenameCell.className = 'govuk-table__cell';
+        filenameCell.textContent = review.filename || 'N/A';
+        row.appendChild(filenameCell);
+        
+        // Method
+        const methodCell = document.createElement('td');
+        methodCell.className = 'govuk-table__cell';
+        methodCell.textContent = 'Review Content';
+        row.appendChild(methodCell);
+        
+        // Status
+        const statusCell = document.createElement('td');
+        statusCell.className = 'govuk-table__cell';
+        const statusTag = document.createElement('strong');
+        statusTag.className = 'govuk-tag';
+        
+        const status = (review.status || '').toLowerCase();
+        if (status === 'completed') {
+          statusTag.classList.add('govuk-tag--green');
+          statusTag.textContent = 'Completed';
+        } else if (['processing', 'analyzing', 'reviewing'].includes(status)) {
+          statusTag.classList.add('govuk-tag--blue');
+          createStatusContent(statusTag, review.status);
+        } else if (status === 'queued') {
+          statusTag.classList.add('govuk-tag--yellow');
+          createStatusContent(statusTag, 'Queued');
+        } else if (['uploading', 'uploaded'].includes(status)) {
+          statusTag.classList.add('govuk-tag--grey');
+          createStatusContent(statusTag, review.status);
+        } else if (status === 'failed') {
+          statusTag.classList.add('govuk-tag--red');
+          statusTag.textContent = 'Failed';
+        } else {
+          statusTag.classList.add('govuk-tag--grey');
+          statusTag.textContent = review.status ? review.status.charAt(0).toUpperCase() + review.status.slice(1) : 'Unknown';
+        }
+        
+        statusCell.appendChild(statusTag);
+        row.appendChild(statusCell);
+        
+        // Timestamp
+        const timestampCell = document.createElement('td');
+        timestampCell.className = 'govuk-table__cell';
+        if (review.uploadedAt) {
+          const date = new Date(review.uploadedAt);
+          timestampCell.textContent = date.toLocaleString('en-GB', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+        } else {
+          timestampCell.textContent = 'N/A';
+        }
+        row.appendChild(timestampCell);
+        
+        // Result
+        const resultCell = document.createElement('td');
+        resultCell.className = 'govuk-table__cell';
+        
+        if (status === 'completed') {
+          const link = document.createElement('a');
+          const reviewIdentifier = review.reviewId || review.id;
+          if (!reviewIdentifier) {
+            link.textContent = 'Missing ID';
+            link.removeAttribute('href');
+          } else {
+            link.href = `/review/results/${reviewIdentifier}`;
+          }
+          link.className = 'govuk-link';
+          link.textContent = 'View results';
+          resultCell.appendChild(link);
+        } else if (status === 'failed') {
+          const errorSpan = document.createElement('span');
+          errorSpan.className = 'govuk-error-message';
+          errorSpan.textContent = 'Review failed';
+          resultCell.appendChild(errorSpan);
+        } else if (['processing', 'analyzing', 'reviewing'].includes(status)) {
+          const span = document.createElement('span');
+          span.className = 'govuk-body';
+          createStatusContent(span, review.status);
+          resultCell.appendChild(span);
+        } else if (status === 'queued') {
+          const span = document.createElement('span');
+          span.className = 'govuk-body';
+          createStatusContent(span, 'Queued');
+          resultCell.appendChild(span);
+        } else if (['uploading', 'uploaded'].includes(status)) {
+          const span = document.createElement('span');
+          span.className = 'govuk-body';
+          createStatusContent(span, review.status);
+          resultCell.appendChild(span);
+        } else {
+          resultCell.textContent = review.status || 'Unknown';
+        }
+        
+        row.appendChild(resultCell);
+        tbody.appendChild(row);
+      });
+    }
+    
+    // Start auto-refresh
+    function startAutoRefresh() {
+      if (autoRefreshInterval) return; // Already running
+      
+      console.log('[HOME] Starting auto-refresh...');
+      autoRefreshInterval = setInterval(updateReviewHistory, 5000);
+    }
+    
+    // Check if there are any active reviews on page load
+    const tableRows = document.querySelectorAll('#reviewHistoryBody tr');
+    let hasActiveReviews = false;
+    
+    tableRows.forEach(row => {
+      const statusCell = row.querySelector('.govuk-tag');
+      if (statusCell && (
+        statusCell.classList.contains('govuk-tag--blue') ||
+        statusCell.classList.contains('govuk-tag--yellow') ||
+        statusCell.classList.contains('govuk-tag--grey')
+      )) {
+        hasActiveReviews = true;
+      }
+    });
+    
+    // Start auto-refresh if there are active reviews
+    if (hasActiveReviews) {
+      console.log('[HOME] Active reviews detected, starting auto-refresh');
+      startAutoRefresh();
+    }
+    
+    // Clean up interval when page is unloaded
+    window.addEventListener('beforeunload', () => {
+      if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+      }
+    });
+  </script>
+{% endblock %}

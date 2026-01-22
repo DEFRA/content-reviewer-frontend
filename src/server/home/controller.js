@@ -56,8 +56,8 @@ export const homeController = {
     console.log('[HOME-CONTROLLER] Backend URL:', backendUrl)
 
     // Fetch review history from backend
-    // Default to 100, but support limit query param for future use
-    const limit = parseInt(request.query.limit) || 100
+    // Default to 5, but support limit query param for future use
+    const limit = parseInt(request.query.limit) || 5
     let reviewHistory = []
     try {
       const backendRequestStart = Date.now()
@@ -100,7 +100,7 @@ export const homeController = {
           ...r,
           id: r.id || r.reviewId || r.jobId || r._id,
           reviewId: r.reviewId || r.id || r.jobId || r._id,
-          filename: r.fileName || r.filename || '', // map fileName to filename
+          filename: r.fileName || r.filename || 'Text Content', // map fileName to filename
           uploadedAt: r.createdAt || r.updatedAt || r.uploadedAt || null // map createdAt/updatedAt to uploadedAt
         }))
 
