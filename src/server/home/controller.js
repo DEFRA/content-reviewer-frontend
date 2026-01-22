@@ -99,7 +99,9 @@ export const homeController = {
         const normalized = (data.reviews || []).map((r) => ({
           ...r,
           id: r.id || r.reviewId || r.jobId || r._id,
-          reviewId: r.reviewId || r.id || r.jobId || r._id
+          reviewId: r.reviewId || r.id || r.jobId || r._id,
+          filename: r.fileName || r.filename || '', // map fileName to filename
+          uploadedAt: r.createdAt || r.updatedAt || r.uploadedAt || null // map createdAt/updatedAt to uploadedAt
         }))
 
         const missingId = normalized.filter((r) => !r.id && !r.reviewId)
