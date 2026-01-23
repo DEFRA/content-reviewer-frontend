@@ -31,7 +31,7 @@
       <dl class="govuk-summary-list govuk-!-margin-bottom-6">
         <div class="govuk-summary-list__row">
           <dt class="govuk-summary-list__key">Document</dt>
-          <dd class="govuk-summary-list__value">{{ (results.result.reviewContent) | slice(0, 10) }}</dd>
+          <dd class="govuk-summary-list__value">{{ results.rawData.filename or 'Text Content' }}</dd>
         </div>
         <div class="govuk-summary-list__row">
           <dt class="govuk-summary-list__key">Review ID</dt>
@@ -45,12 +45,6 @@
           <dt class="govuk-summary-list__key">Completed At</dt>
           <dd class="govuk-summary-list__value">{{ results.completedAt or '-' }}</dd>
         </div>
-        <!--
-        <div class="govuk-summary-list__row">
-          <dt class="govuk-summary-list__key">S3 Location</dt>
-          <dd class="govuk-summary-list__value"><code>{{ results.rawData.s3ResultLocation or '-' }}</code></dd>
-        </div>
-        -->
       </dl>
 
       <!-- Export Options -->
@@ -76,17 +70,8 @@
 
       <!-- AI Review Content -->
       {% if results.result and results.result.reviewContent %}
-        <div class="govuk-body">
-          {{ results.result.reviewContent | safe }}
-        </div>
-      {% else %}
-        <div class="govuk-warning-text">
-          <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
-          <strong class="govuk-warning-text__text">
-            <span class="govuk-warning-text__assistive">Warning</span>
-            No review content available
-          </strong>
-        </div>
+        <div class="govuk-inset-text">{{ results.result.reviewContent | safe }}</div>
+      {% endif %}
 
       <!-- Actions -->
       <div class="govuk-button-group govuk-!-margin-top-6">
