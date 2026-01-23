@@ -75,7 +75,7 @@
       {% endif %}
 
       <p class="govuk-body">
-        Upload a document or paste content below for review. The content will be analyzed for clarity, formatting and compliance with GOV.UK standards.
+        Type or paste content below for review. The content will be analyzed for clarity, formatting and compliance with GOV.UK standards.
       </p>
 
       <!-- Content Review Form -->
@@ -119,7 +119,7 @@
           <!-- Text Content Option -->
           <div class="govuk-form-group" id="textFormGroup">
             <label class="govuk-label govuk-label--s" for="text-content">
-              Or type/paste your content directly
+              type/paste your content directly
             </label>
             <textarea 
               class="govuk-textarea" 
@@ -186,7 +186,6 @@
             {% for review in reviewHistory %}
             <tr class="govuk-table__row">
               <td class="govuk-table__cell">{{ review.filename }}</td>
-              <td class="govuk-table__cell">Review Content</td>
               <td class="govuk-table__cell">
                 {% if review.status === 'completed' %}
                   <strong class="govuk-tag govuk-tag--green">Completed</strong>
