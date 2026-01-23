@@ -70,39 +70,49 @@
     }
   }
 
-  // Score color coding (severity-based)
-  .score-5 {
-    border-left-color: #00703c; // Dark green - Excellent
+  // Category-based color coding for score boxes
+  // Plain English - Blue
+  .score-item:nth-child(1) {
+    border-left-color: #1d70b8;
+
     .category-score {
-      color: #00703c;
+      color: #1d70b8;
     }
   }
 
-  .score-4 {
-    border-left-color: #85994b; // Light green - Good
+  // Clarity & Structure - Purple
+  .score-item:nth-child(2) {
+    border-left-color: #6f42c1;
+
     .category-score {
-      color: #85994b;
+      color: #6f42c1;
     }
   }
 
-  .score-3 {
-    border-left-color: #ffbf47; // Yellow - Acceptable
-    .category-score {
-      color: #f47738;
-    }
-  }
+  // Accessibility - Red
+  .score-item:nth-child(3) {
+    border-left-color: #d4351c;
 
-  .score-2 {
-    border-left-color: #f47738; // Orange - Needs work
-    .category-score {
-      color: #f47738;
-    }
-  }
-
-  .score-1 {
-    border-left-color: #d4351c; // Red - Poor
     .category-score {
       color: #d4351c;
+    }
+  }
+
+  // GOV.UK Style Compliance - Orange
+  .score-item:nth-child(4) {
+    border-left-color: #f47738;
+
+    .category-score {
+      color: #f47738;
+    }
+  }
+
+  // Content Completeness - Green
+  .score-item:nth-child(5) {
+    border-left-color: #00703c;
+
+    .category-score {
+      color: #00703c;
     }
   }
 }
