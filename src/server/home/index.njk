@@ -119,7 +119,7 @@
           <!-- Text Content Option -->
           <div class="govuk-form-group" id="textFormGroup">
             <label class="govuk-label govuk-label--s" for="text-content">
-              Or type/paste your content directly
+              Type/paste your content directly
             </label>
             <textarea 
               class="govuk-textarea" 
@@ -158,18 +158,6 @@
         <div class="govuk-grid-column-one-half">
           <h2 class="govuk-heading-m">Review History</h2>
         </div>
-        <div class="govuk-grid-column-one-half text-align-right">
-          <form id="reviewLimitForm" method="get" style="display:inline">
-            <label class="govuk-label inline-block margin-right-10" for="reviewLimit">
-              Show:
-            </label>
-            <select class="govuk-select width-auto inline-block" id="reviewLimit" name="reviewLimit">
-              <option value="5" selected>5 reviews</option>
-              <option value="10" selected>10 reviews</option>
-              <option value="50">50 reviews</option>
-            </select>
-          </form>
-        </div>
       </div>
         
       <table class="govuk-table" id="reviewHistoryTable">
@@ -185,8 +173,7 @@
           {% if reviewHistory and reviewHistory.length > 0 %}
             {% for review in reviewHistory %}
             <tr class="govuk-table__row">
-              <td class="govuk-table__cell">{{ review.filename }}</td>
-              <td class="govuk-table__cell">Review Content</td>
+              <td class="govuk-table__cell">{{ review.filename | 'Text Content' }}</td>
               <td class="govuk-table__cell">
                 {% if review.status === 'completed' %}
                   <strong class="govuk-tag govuk-tag--green">Completed</strong>
@@ -203,8 +190,8 @@
                 {% endif %}
               </td>
               <td class="govuk-table__cell">
-                {% if review.uploadedAt %}
-                  {{ review.uploadedAt | formatDate('dd/MM/yyyy, HH:mm') }}
+                {% if review.uploadedAt or review.createdAt or review.updatedAt %}
+                  {{ review.uploadedAt | review.createdAt | review.updatedAt | formatDate('dd/MM/yyyy, HH:mm') }}
                 {% else %}
                   N/A
                 {% endif %}
@@ -281,7 +268,7 @@
       try {
         const backendUrl = window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001';
         const limit = document.getElementById('reviewLimit')?.value || 5;
-        const response = await fetch(`${backendUrl}/api/reviews?limit=${limit}`, {
+        const response = await fetch(`${backendUrl}/api/reviews?limit=5`, {
           method: 'GET',
           headers: {
             'Accept': 'application/json'
