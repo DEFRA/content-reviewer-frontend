@@ -185,7 +185,7 @@
         <tbody class="govuk-table__body" id="reviewHistoryBody">
           {% if reviewHistory and reviewHistory.length > 0 %}
             {% for review in reviewHistory %}
-            <tr class="govuk-table__row">
+            <tr class="govuk-table__row" data-review-id="{{ review.reviewId or review.id }}">
               <td class="govuk-table__cell">{{ review.filename }}</td>
               <td class="govuk-table__cell">
                 {% if review.status === 'completed' %}
@@ -232,7 +232,7 @@
             {% endfor %}
           {% else %}
             <tr class="govuk-table__row">
-              <td class="govuk-table__cell" colspan="5">
+              <td class="govuk-table__cell" colspan="4">
                 <p class="govuk-body">No review history available.</p>
               </td>
             </tr>
@@ -444,118 +444,186 @@
       const tbody = document.getElementById('reviewHistoryBody');
       
       if (!reviews || reviews.length === 0) {
-        tbody.innerHTML = '<tr class="govuk-table__row"><td class="govuk-table__cell" colspan="5"><p class="govuk-body">No review history available.</p></td></tr>';
+        tbody.innerHTML = '<tr class="govuk-table__row"><td class="govuk-table__cell" colspan="4"><p class="govuk-body">No review history available.</p></td></tr>';
         return;
       }
       
-      tbody.innerHTML = '';
+      // Get existing rows mapped by review ID
+      const existingRows = new Map();
+      const existingRowElements = tbody.querySelectorAll('tr[data-review-id]');
+      existingRowElements.forEach(row => {
+        const reviewId = row.getAttribute('data-review-id');
+        existingRows.set(reviewId, row);
+      });
       
-      reviews.forEach(review => {
-        const row = document.createElement('tr');
-        row.className = 'govuk-table__row';
-        
-        // Filename
-        const filenameCell = document.createElement('td');
-        filenameCell.className = 'govuk-table__cell';
-        filenameCell.textContent = review.filename || 'N/A';
-        row.appendChild(filenameCell);
-        
+      console.log('[HOME] Updating table - existing rows:', existingRows.size, 'new reviews:', reviews.length);
       
-        // Status
-        const statusCell = document.createElement('td');
-        statusCell.className = 'govuk-table__cell';
-        const statusTag = document.createElement('strong');
-        statusTag.className = 'govuk-tag';
+      // Clear tbody only if there are no existing rows
+      if (existingRows.size === 0) {
+        tbody.innerHTML = '';
+      }
+      
+      reviews.forEach((review, index) => {
+        const reviewId = review.reviewId || review.id;
+        const existingRow = existingRows.get(reviewId);
         
-        const status = (review.status || '').toLowerCase();
-        if (status === 'completed') {
-          statusTag.classList.add('govuk-tag--green');
-          statusTag.textContent = 'Completed';
-        } else if (status === 'processing') {
-          statusTag.classList.add('govuk-tag--blue');
-          createStatusContent(statusTag, 'Processing');
-        } else if (status === 'pending') {
-          statusTag.classList.add('govuk-tag--yellow');
-          createStatusContent(statusTag, 'Pending');
-        } else if (status === 'failed') {
-          statusTag.classList.add('govuk-tag--red');
-          statusTag.textContent = 'Failed';
-        } else {
-          statusTag.classList.add('govuk-tag--grey');
-          statusTag.textContent = review.status ? review.status.charAt(0).toUpperCase() + review.status.slice(1) : 'Unknown';
-        }
-        
-        statusCell.appendChild(statusTag);
-        row.appendChild(statusCell);
-        
-        // Timestamp
-        const timestampCell = document.createElement('td');
-        timestampCell.className = 'govuk-table__cell';
-        const timestamp = review.uploadedAt || review.createdAt || review.updatedAt;
-        
-        // Debug logging for timestamp issues
-        if (!timestamp) {
-          console.warn('[HOME] Review missing all timestamp fields:', {
-            id: review.id,
-            uploadedAt: review.uploadedAt,
-            createdAt: review.createdAt,
-            updatedAt: review.updatedAt,
-            status: review.status
-          });
-        }
-        
-        if (timestamp) {
-          const date = new Date(timestamp);
-          timestampCell.textContent = date.toLocaleString('en-GB', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-          });
-        } else {
-          timestampCell.textContent = 'N/A';
-        }
-        row.appendChild(timestampCell);
-        
-        // Result
-        const resultCell = document.createElement('td');
-        resultCell.className = 'govuk-table__cell';
-        
-        if (status === 'completed') {
-          const link = document.createElement('a');
-          const reviewIdentifier = review.reviewId || review.id;
-          if (!reviewIdentifier) {
-            link.textContent = 'Missing ID';
-            link.removeAttribute('href');
-          } else {
-            link.href = `/review/results/${reviewIdentifier}`;
+        if (existingRow) {
+          // Update only Status and Result columns (keep Document Name and Timestamp unchanged)
+          console.log('[HOME] Updating existing row for review:', reviewId);
+          
+          const cells = existingRow.querySelectorAll('td');
+          // cells[0] = Document Name (keep unchanged)
+          // cells[1] = Status (update)
+          // cells[2] = Timestamp (keep unchanged)
+          // cells[3] = Result (update)
+          
+          if (cells[1]) {
+            updateStatusCell(cells[1], review);
           }
+          
+          if (cells[3]) {
+            updateResultCell(cells[3], review);
+          }
+          
+          // Remove from map to track processed rows
+          existingRows.delete(reviewId);
+        } else {
+          // Create new row for new reviews
+          console.log('[HOME] Creating new row for review:', reviewId);
+          const row = createReviewRow(review);
+          tbody.appendChild(row);
+        }
+      });
+      
+      // Remove any rows that are no longer in the response (optional - could keep them)
+      // existingRows.forEach((row, reviewId) => {
+      //   console.log('[HOME] Removing obsolete row:', reviewId);
+      //   row.remove();
+      // });
+    }
+    
+    // Helper function to create a complete review row (for new reviews)
+    function createReviewRow(review) {
+      const row = document.createElement('tr');
+      row.className = 'govuk-table__row';
+      const reviewId = review.reviewId || review.id;
+      row.setAttribute('data-review-id', reviewId);
+      
+      // Document Name (cell 0)
+      const filenameCell = document.createElement('td');
+      filenameCell.className = 'govuk-table__cell';
+      filenameCell.textContent = review.filename || 'N/A';
+      row.appendChild(filenameCell);
+      
+      // Status (cell 1)
+      const statusCell = document.createElement('td');
+      statusCell.className = 'govuk-table__cell';
+      updateStatusCell(statusCell, review);
+      row.appendChild(statusCell);
+      
+      // Timestamp (cell 2)
+      const timestampCell = document.createElement('td');
+      timestampCell.className = 'govuk-table__cell';
+      const timestamp = review.uploadedAt || review.createdAt || review.updatedAt;
+      
+      if (timestamp) {
+        const date = new Date(timestamp);
+        timestampCell.textContent = date.toLocaleString('en-GB', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      } else {
+        timestampCell.textContent = 'N/A';
+      }
+      row.appendChild(timestampCell);
+      
+      // Result (cell 3)
+      const resultCell = document.createElement('td');
+      resultCell.className = 'govuk-table__cell';
+      updateResultCell(resultCell, review);
+      row.appendChild(resultCell);
+      
+      return row;
+    }
+    
+    // Helper function to update the Status cell
+    function updateStatusCell(cell, review) {
+      // Clear existing content
+      cell.innerHTML = '';
+      
+      const statusTag = document.createElement('strong');
+      statusTag.className = 'govuk-tag';
+      
+      const status = (review.status || '').toLowerCase();
+      if (status === 'completed') {
+        statusTag.classList.add('govuk-tag--green');
+        statusTag.textContent = 'Completed';
+      } else if (status === 'processing') {
+        statusTag.classList.add('govuk-tag--blue');
+        createStatusContent(statusTag, 'Processing');
+      } else if (status === 'pending') {
+        statusTag.classList.add('govuk-tag--yellow');
+        createStatusContent(statusTag, 'Pending');
+      } else if (status === 'failed') {
+        statusTag.classList.add('govuk-tag--red');
+        statusTag.textContent = 'Failed';
+      } else {
+        statusTag.classList.add('govuk-tag--grey');
+        statusTag.textContent = review.status ? review.status.charAt(0).toUpperCase() + review.status.slice(1) : 'Unknown';
+      }
+      
+      cell.appendChild(statusTag);
+    }
+    
+    // Helper function to update the Result cell
+    function updateResultCell(cell, review) {
+      // Clear existing content
+      cell.innerHTML = '';
+      
+      const status = (review.status || '').toLowerCase();
+      
+      if (status === 'completed') {
+        const link = document.createElement('a');
+        const reviewIdentifier = review.reviewId || review.id;
+        if (!reviewIdentifier) {
+          const span = document.createElement('span');
+          span.className = 'govuk-hint';
+          span.textContent = 'Missing review ID';
+          cell.appendChild(span);
+        } else {
+          link.href = `/review/results/${reviewIdentifier}`;
           link.className = 'govuk-link';
           link.textContent = 'View results';
-          resultCell.appendChild(link);
-        } else if (status === 'failed') {
-          const errorSpan = document.createElement('span');
-          errorSpan.className = 'govuk-error-message';
-          errorSpan.textContent = 'Review failed';
-          resultCell.appendChild(errorSpan);
-        } else if (status === 'processing') {
-          const span = document.createElement('span');
-          span.className = 'govuk-body';
-          createStatusContent(span, 'Processing');
-          resultCell.appendChild(span);
-        } else if (status === 'pending') {
-          const span = document.createElement('span');
-          span.className = 'govuk-body';
-          createStatusContent(span, 'Pending');
-          resultCell.appendChild(span);
-        } else {
-          resultCell.textContent = review.status || 'Unknown';
+          cell.appendChild(link);
         }
-        
-        row.appendChild(resultCell);
-        tbody.appendChild(row);
-      });
+      } else if (status === 'failed') {
+        const errorSpan = document.createElement('span');
+        errorSpan.className = 'govuk-error-message';
+        if (review.errorMessage) {
+          errorSpan.textContent = `Failed (${review.errorMessage})`;
+        } else {
+          errorSpan.textContent = 'Review failed';
+        }
+        cell.appendChild(errorSpan);
+      } else if (status === 'processing') {
+        const span = document.createElement('span');
+        span.className = 'govuk-body';
+        createStatusContent(span, 'Processing');
+        cell.appendChild(span);
+      } else if (status === 'pending') {
+        const span = document.createElement('span');
+        span.className = 'govuk-body';
+        createStatusContent(span, 'Pending');
+        cell.appendChild(span);
+      } else {
+        const span = document.createElement('span');
+        span.className = 'govuk-body';
+        span.textContent = review.status || 'Unknown';
+        cell.appendChild(span);
+      }
     }
     
     // Start auto-refresh
