@@ -24,6 +24,7 @@
       </div>
 
       <!-- Export Options -->
+      <!-- DISABLED: PDF/Word Export functionality
       <div class="govuk-button-group govuk-!-margin-bottom-8">
         <button type="button" class="govuk-button" data-module="govuk-button" id="exportPdfBtn">
           Download as PDF
@@ -32,6 +33,7 @@
           Download as Word
         </button>
       </div>
+      -->
 
       <!-- AI Review Content -->
       {% if results.result and results.result.reviewContent %}
@@ -64,6 +66,8 @@
   <script nonce="{{ cspNonce }}">
     const reviewId = '{{ reviewId }}';
 
+    // DISABLED: PDF/Word Export functionality
+    /*
     // Export as PDF
     document.getElementById('exportPdfBtn').addEventListener('click', () => {
       window.location.href = `/review/export/${reviewId}/pdf`;
@@ -73,5 +77,6 @@
     document.getElementById('exportWordBtn').addEventListener('click', () => {
       window.location.href = `/review/export/${reviewId}/word`;
     });
+    */
   </script>
 {% endblock %}

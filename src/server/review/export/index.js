@@ -1,9 +1,12 @@
-import { exportController } from './controller.js'
+// DISABLED: PDF/Word Export
+// import { exportController } from './controller.js'
 
 export default {
   plugin: {
     name: 'review-export',
     register: async (server) => {
+      // DISABLED: PDF/Word Export routes
+      /*
       server.route([
         {
           method: 'GET',
@@ -16,6 +19,7 @@ export default {
           handler: exportController.exportWord
         }
       ])
+      */
     }
   }
 }
