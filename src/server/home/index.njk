@@ -2,7 +2,7 @@
 
 {% block head %}
   {{ super() }}
-  <style>
+  <style nonce="{{ cspNonce }}">
     /* Animated loading dots */
     .loading-dots {
       display: inline-block;
@@ -215,7 +215,11 @@
                     <span class="govuk-hint">Missing review ID</span>
                   {% endif %}
                 {% elif review.status === 'failed' %}
-                  <span class="govuk-error-message">Review failed</span>
+                  {% if review.errorMessage %}
+                    <span class="govuk-error-message">Failed ({{ review.errorMessage }})</span>
+                  {% else %}
+                    <span class="govuk-error-message">Review failed</span>
+                  {% endif %}
                 {% elif review.status === 'processing' %}
                   <span class="govuk-body">Processing...</span>
                 {% elif review.status === 'pending' %}
