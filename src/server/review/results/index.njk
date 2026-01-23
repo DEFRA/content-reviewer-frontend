@@ -14,12 +14,10 @@
         ('govuk-tag--red' if status == 'failed' else 
         ('govuk-tag--yellow' if status == 'processing' else 'govuk-tag--blue'))) %}
       
-      <div class="govuk-notification-banner govuk-notification-banner--success" role="region" aria-labelledby="govuk-notification-banner-title" data-module="govuk-notification-banner">
-        <div class="govuk-notification-banner__content">
-          <p class="govuk-notification-banner__heading">
-            Overall Status: <strong class="govuk-tag {{ statusClass }}">{{ status | replace('_', ' ') | title }}</strong>
-          </p>
-        </div>
+      <div class="govuk-!-margin-bottom-6">
+        <p class="govuk-body">
+          Overall Status: <strong class="govuk-tag {{ statusClass }}">{{ status | replace('_', ' ') | title }}</strong>
+        </p>
       </div>
 
       <!-- Export Options -->
@@ -34,7 +32,6 @@
 
       <!-- AI Review Content -->
       {% if results.result and results.result.reviewContent %}
-        <h2 class="govuk-heading-l">AI Review</h2>
         <div class="review-results-container">
           {{ results.result.reviewContent | safe }}
         </div>
