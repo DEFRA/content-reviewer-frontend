@@ -16,10 +16,12 @@ export const textReviewApiController = {
     logger.info('Text review API request started')
 
     try {
-      const { textContent } = request.payload
+      const { textContent, title } = request.payload
 
       logger.info('Processing text review request', {
         hasTextContent: !!textContent,
+        hasTitle: !!title,
+        title: title,
         contentType: typeof textContent,
         userAgent: request.headers['user-agent'],
         clientIP: request.info.remoteAddress
@@ -105,7 +107,10 @@ export const textReviewApiController = {
         },
         body: JSON.stringify({
           content: textContent,
-          title: 'Text Content',
+          title:
+            title ||
+            textContent.substring(0, 10).trim() +
+              (textContent.length > 10 ? '...' : ''),
           userId: request.headers['x-user-id'] || 'anonymous',
           sessionId: request.headers['x-session-id'] || null
         })

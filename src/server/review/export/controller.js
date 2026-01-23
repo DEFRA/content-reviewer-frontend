@@ -39,82 +39,25 @@ async function fetchReviewResults(id, request) {
 /**
  * Transform backend status data to export format
  */
-function transformReviewData(statusData) {
-  const reviewResult = statusData.result || {}
-  const metadata = statusData.metadata || {}
-  const aiMetadata = reviewResult.aiMetadata || {}
+function transformReviewData(statusData, reviewId) {
+  // Only consume and expose the API response attributes provided
+  // { id, jobId, status, result: { reviewContent, guardrailAssessment, stopReason, completedAt }, completedAt }
+
+  const safeResult = statusData.result || {}
 
   return {
-    documentName: statusData.filename || 'Unknown Document',
-    reviewDate:
-      statusData.completedAt ||
-      statusData.updatedAt ||
-      new Date().toISOString(),
-    status: reviewResult.overallStatus || 'completed',
-    llmModel: aiMetadata.model || 'Claude 3.7 Sonnet',
-    processingTime: calculateProcessingTime(
-      statusData.createdAt,
-      statusData.completedAt
-    ),
-    summary: {
-      overallScore: calculateOverallScore(reviewResult.overallStatus),
-      overallStatus: reviewResult.overallStatus || 'unknown',
-      issuesFound: reviewResult.metrics?.totalIssues || 0,
-      wordsToAvoid: reviewResult.metrics?.wordsToAvoidCount || 0,
-      passiveSentences: reviewResult.metrics?.passiveSentencesCount || 0,
-      wordCount: reviewResult.metrics?.wordCount || metadata.wordCount || 0
+    id: statusData.id || reviewId,
+    jobId: statusData.jobId,
+    status: statusData.status,
+    result: {
+      reviewContent: safeResult.reviewContent,
+      guardrailAssessment: safeResult.guardrailAssessment,
+      stopReason: safeResult.stopReason
     },
-    sections: {
-      overallAssessment:
-        reviewResult.sections?.overallAssessment || 'No assessment available',
-      contentQuality: reviewResult.sections?.contentQuality || 'No data',
-      plainEnglish: reviewResult.sections?.plainEnglishReview || 'No data',
-      styleGuide: reviewResult.sections?.styleGuideCompliance || 'No data',
-      govspeak: reviewResult.sections?.govspeakReview || 'No data',
-      accessibility: reviewResult.sections?.accessibilityReview || 'No data',
-      passiveVoice: reviewResult.sections?.passiveVoiceReview || 'No data',
-      summaryOfFindings: reviewResult.sections?.summaryOfFindings || 'No data',
-      exampleImprovements:
-        reviewResult.sections?.exampleImprovements || 'No data'
-    },
-    fullReviewText:
-      reviewResult.reviewText ||
-      reviewResult.fullReview ||
-      'No review text available'
-  }
-}
+    completedAt: statusData.completedAt,
 
-/**
- * Calculate overall score from status
- */
-function calculateOverallScore(status) {
-  const scoreMap = {
-    pass: 95,
-    pass_with_recommendations: 80,
-    needs_improvement: 60,
-    fail: 40,
-    unknown: 0
-  }
-  return scoreMap[status] || 0
-}
-
-/**
- * Calculate processing time
- */
-function calculateProcessingTime(startTime, endTime) {
-  if (!startTime || !endTime) return 'N/A'
-
-  const start = new Date(startTime)
-  const end = new Date(endTime)
-  const diffMs = end - start
-  const diffSec = Math.round(diffMs / 1000)
-
-  if (diffSec < 60) {
-    return `${diffSec} seconds`
-  } else {
-    const minutes = Math.floor(diffSec / 60)
-    const seconds = diffSec % 60
-    return `${minutes}m ${seconds}s`
+    // Keep raw data for export buttons
+    rawData: statusData
   }
 }
 
@@ -127,6 +70,7 @@ export const exportController = {
 
     try {
       const results = await fetchReviewResults(id, request)
+      const rawData = results.rawData || results
 
       // Create PDF document
       const doc = new PDFDocument({ margin: 50 })
@@ -157,95 +101,52 @@ export const exportController = {
         doc.fontSize(16).text('Document Information', { underline: true })
         doc.moveDown(0.5)
         doc.fontSize(12)
-        doc.text(`Document: ${results.documentName}`)
+        doc.text(`Document: ${rawData.fileName || 'N/A'}`)
+        doc.text(`Review ID: ${rawData.id || id}`)
+        doc.text(`Status: ${rawData.status || 'N/A'}`)
         doc.text(
-          `Review Date: ${new Date(results.reviewDate).toLocaleString('en-GB')}`
+          `Created: ${rawData.createdAt ? new Date(rawData.createdAt).toLocaleString('en-GB') : 'N/A'}`
         )
-        doc.text(`Status: ${results.status}`)
-        doc.text(`LLM Model: ${results.llmModel}`)
-        doc.text(`Processing Time: ${results.processingTime}`)
+        doc.text(
+          `Updated: ${rawData.updatedAt ? new Date(rawData.updatedAt).toLocaleString('en-GB') : 'N/A'}`
+        )
+        if (rawData.completedAt) {
+          doc.text(
+            `Completed: ${new Date(rawData.completedAt).toLocaleString('en-GB')}`
+          )
+        }
         doc.moveDown()
 
-        // Summary
-        doc.fontSize(16).text('Summary', { underline: true })
-        doc.moveDown(0.5)
-        doc.fontSize(12)
-        doc.text(`Overall Score: ${results.summary.overallScore}/100`)
-        doc.text(`Overall Status: ${results.summary.overallStatus}`)
-        doc.text(`Issues Found: ${results.summary.issuesFound}`)
-        doc.text(`Word Count: ${results.summary.wordCount}`)
-        doc.text(`Words to Avoid: ${results.summary.wordsToAvoid}`)
-        doc.text(`Passive Sentences: ${results.summary.passiveSentences}`)
-        doc.moveDown()
-
-        // Review Sections
-        doc.addPage()
-        doc.fontSize(16).text('Detailed Review', { underline: true })
-        doc.moveDown(0.5)
-
-        // Overall Assessment
-        doc.fontSize(14).text('Overall Assessment', { underline: true })
-        doc
-          .fontSize(11)
-          .text(results.sections.overallAssessment, { align: 'justify' })
-        doc.moveDown()
-
-        // Content Quality
-        doc.fontSize(14).text('Content Quality', { underline: true })
-        doc
-          .fontSize(11)
-          .text(results.sections.contentQuality, { align: 'justify' })
-        doc.moveDown()
-
-        // Plain English Review
-        doc.fontSize(14).text('Plain English Review', { underline: true })
-        doc
-          .fontSize(11)
-          .text(results.sections.plainEnglish, { align: 'justify' })
-        doc.moveDown()
-
-        // Style Guide Compliance
-        doc
-          .fontSize(14)
-          .text('GOV.UK Style Guide Compliance', { underline: true })
-        doc.fontSize(11).text(results.sections.styleGuide, { align: 'justify' })
-        doc.moveDown()
-
-        // Add page break if needed
-        if (doc.y > 700) {
+        // Review Content
+        if (rawData.result && rawData.result.reviewContent) {
           doc.addPage()
+          doc.fontSize(16).text('Review Content', { underline: true })
+          doc.moveDown(0.5)
+          doc
+            .fontSize(11)
+            .text(rawData.result.reviewContent, { align: 'justify' })
+          doc.moveDown()
         }
 
-        // Govspeak Review
-        doc
-          .fontSize(14)
-          .text('Govspeak & Formatting Review', { underline: true })
-        doc.fontSize(11).text(results.sections.govspeak, { align: 'justify' })
-        doc.moveDown()
+        // Additional Result Data
+        if (rawData.result) {
+          if (rawData.result.guardrailAssessment) {
+            doc.addPage()
+            doc.fontSize(16).text('Guardrail Assessment', { underline: true })
+            doc.moveDown(0.5)
+            doc
+              .fontSize(11)
+              .text(JSON.stringify(rawData.result.guardrailAssessment, null, 2))
+            doc.moveDown()
+          }
 
-        // Accessibility Review
-        doc.fontSize(14).text('Accessibility Review', { underline: true })
-        doc
-          .fontSize(11)
-          .text(results.sections.accessibility, { align: 'justify' })
-        doc.moveDown()
-
-        // Passive Voice Analysis
-        doc.fontSize(14).text('Passive Voice Analysis', { underline: true })
-        doc
-          .fontSize(11)
-          .text(results.sections.passiveVoice, { align: 'justify' })
-        doc.moveDown()
-
-        // Example Improvements
-        if (doc.y > 700) {
-          doc.addPage()
+          if (rawData.result.stopReason) {
+            doc.fontSize(14).text('Stop Reason', { underline: true })
+            doc.moveDown(0.5)
+            doc.fontSize(11).text(rawData.result.stopReason)
+            doc.moveDown()
+          }
         }
-        doc.fontSize(14).text('Example Improvements', { underline: true })
-        doc
-          .fontSize(11)
-          .text(results.sections.exampleImprovements, { align: 'justify' })
-        doc.moveDown()
 
         // Footer
         doc.moveDown(2)
@@ -275,6 +176,7 @@ export const exportController = {
 
     try {
       const results = await fetchReviewResults(id, request)
+      const rawData = results.rawData || results
 
       // Create document sections
       const sections = [
@@ -297,173 +199,53 @@ export const exportController = {
             new Paragraph({
               children: [
                 new TextRun({ text: 'Document: ', bold: true }),
-                new TextRun(results.documentName)
+                new TextRun(rawData.fileName || 'N/A')
               ]
             }),
             new Paragraph({
               children: [
-                new TextRun({ text: 'Review Date: ', bold: true }),
-                new TextRun(
-                  new Date(results.reviewDate).toLocaleString('en-GB')
-                )
+                new TextRun({ text: 'Review ID: ', bold: true }),
+                new TextRun(rawData.id || id)
               ]
             }),
             new Paragraph({
               children: [
                 new TextRun({ text: 'Status: ', bold: true }),
-                new TextRun(results.status)
+                new TextRun(rawData.status || 'N/A')
               ]
             }),
             new Paragraph({
               children: [
-                new TextRun({ text: 'LLM Model: ', bold: true }),
-                new TextRun(results.llmModel)
+                new TextRun({ text: 'Created: ', bold: true }),
+                new TextRun(
+                  rawData.createdAt
+                    ? new Date(rawData.createdAt).toLocaleString('en-GB')
+                    : 'N/A'
+                )
               ]
             }),
             new Paragraph({
               children: [
-                new TextRun({ text: 'Processing Time: ', bold: true }),
-                new TextRun(results.processingTime)
+                new TextRun({ text: 'Updated: ', bold: true }),
+                new TextRun(
+                  rawData.updatedAt
+                    ? new Date(rawData.updatedAt).toLocaleString('en-GB')
+                    : 'N/A'
+                )
               ],
               spacing: { after: 200 }
             }),
 
-            // Summary
+            // Review Content
             new Paragraph({
-              text: 'Summary',
+              text: 'Review Content',
               heading: HeadingLevel.HEADING_2,
               spacing: { before: 400, after: 200 }
             }),
             new Paragraph({
-              children: [
-                new TextRun({ text: 'Overall Score: ', bold: true }),
-                new TextRun(`${results.summary.overallScore}/100`)
-              ]
-            }),
-            new Paragraph({
-              children: [
-                new TextRun({ text: 'Overall Status: ', bold: true }),
-                new TextRun(results.summary.overallStatus)
-              ]
-            }),
-            new Paragraph({
-              children: [
-                new TextRun({ text: 'Issues Found: ', bold: true }),
-                new TextRun(String(results.summary.issuesFound))
-              ]
-            }),
-            new Paragraph({
-              children: [
-                new TextRun({ text: 'Word Count: ', bold: true }),
-                new TextRun(String(results.summary.wordCount))
-              ]
-            }),
-            new Paragraph({
-              children: [
-                new TextRun({ text: 'Words to Avoid: ', bold: true }),
-                new TextRun(String(results.summary.wordsToAvoid))
-              ]
-            }),
-            new Paragraph({
-              children: [
-                new TextRun({ text: 'Passive Sentences: ', bold: true }),
-                new TextRun(String(results.summary.passiveSentences))
-              ],
-              spacing: { after: 200 }
-            }),
-
-            // Review Sections
-            new Paragraph({
-              text: 'Detailed Review',
-              heading: HeadingLevel.HEADING_2,
-              spacing: { before: 400, after: 200 }
-            }),
-
-            // Overall Assessment
-            new Paragraph({
-              text: 'Overall Assessment',
-              heading: HeadingLevel.HEADING_3,
-              spacing: { before: 200, after: 100 }
-            }),
-            new Paragraph({
-              text: results.sections.overallAssessment,
-              spacing: { after: 200 }
-            }),
-
-            // Content Quality
-            new Paragraph({
-              text: 'Content Quality',
-              heading: HeadingLevel.HEADING_3,
-              spacing: { before: 200, after: 100 }
-            }),
-            new Paragraph({
-              text: results.sections.contentQuality,
-              spacing: { after: 200 }
-            }),
-
-            // Plain English Review
-            new Paragraph({
-              text: 'Plain English Review',
-              heading: HeadingLevel.HEADING_3,
-              spacing: { before: 200, after: 100 }
-            }),
-            new Paragraph({
-              text: results.sections.plainEnglish,
-              spacing: { after: 200 }
-            }),
-
-            // Style Guide Compliance
-            new Paragraph({
-              text: 'GOV.UK Style Guide Compliance',
-              heading: HeadingLevel.HEADING_3,
-              spacing: { before: 200, after: 100 }
-            }),
-            new Paragraph({
-              text: results.sections.styleGuide,
-              spacing: { after: 200 }
-            }),
-
-            // Govspeak Review
-            new Paragraph({
-              text: 'Govspeak & Formatting Review',
-              heading: HeadingLevel.HEADING_3,
-              spacing: { before: 200, after: 100 }
-            }),
-            new Paragraph({
-              text: results.sections.govspeak,
-              spacing: { after: 200 }
-            }),
-
-            // Accessibility Review
-            new Paragraph({
-              text: 'Accessibility Review',
-              heading: HeadingLevel.HEADING_3,
-              spacing: { before: 200, after: 100 }
-            }),
-            new Paragraph({
-              text: results.sections.accessibility,
-              spacing: { after: 200 }
-            }),
-
-            // Passive Voice Analysis
-            new Paragraph({
-              text: 'Passive Voice Analysis',
-              heading: HeadingLevel.HEADING_3,
-              spacing: { before: 200, after: 100 }
-            }),
-            new Paragraph({
-              text: results.sections.passiveVoice,
-              spacing: { after: 200 }
-            }),
-
-            // Example Improvements
-            new Paragraph({
-              text: 'Example Improvements',
-              heading: HeadingLevel.HEADING_3,
-              spacing: { before: 200, after: 100 }
-            }),
-            new Paragraph({
-              text: results.sections.exampleImprovements,
+              text:
+                (rawData.result && rawData.result.reviewContent) ||
+                'No review content available',
               spacing: { after: 400 }
             }),
 

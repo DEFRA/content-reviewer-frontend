@@ -119,7 +119,7 @@
           <!-- Text Content Option -->
           <div class="govuk-form-group" id="textFormGroup">
             <label class="govuk-label govuk-label--s" for="text-content">
-              type/paste your content directly
+              Type/paste your content directly
             </label>
             <textarea 
               class="govuk-textarea" 
@@ -163,10 +163,10 @@
             <label class="govuk-label inline-block margin-right-10" for="reviewLimit">
               Show:
             </label>
-            <select class="govuk-select width-auto inline-block" id="reviewLimit" name="reviewLimit">
-              <option value="5" selected>5 reviews</option>
-              <option value="10" selected>10 reviews</option>
-              <option value="50">50 reviews</option>
+            <select class="govuk-select width-auto inline-block" id="reviewLimit" name="limit" onchange="this.form.submit()">
+              <option value="5" {% if (currentLimit == 5) %}selected{% endif %}>5 reviews</option>
+              <option value="10" {% if (currentLimit == 10) %}selected{% endif %}>10 reviews</option>
+              <option value="50" {% if (currentLimit == 50) %}selected{% endif %}>50 reviews</option>
             </select>
           </form>
         </div>
@@ -189,12 +189,12 @@
               <td class="govuk-table__cell">
                 {% if review.status === 'completed' %}
                   <strong class="govuk-tag govuk-tag--green">Completed</strong>
-                {% elif review.status === 'processing' or review.status === 'analyzing' or review.status === 'reviewing' %}
-                  <strong class="govuk-tag govuk-tag--blue">{{ review.status | title }}<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></strong>
+                {% elif review.status === 'processing' or review.status === 'analyzing' or review.status === 'reviewing' or review.status === 'downloading' or review.status === 'finalizing' %}
+                  <strong class="govuk-tag govuk-tag--blue">{{ review.status | title }}...</strong>
                 {% elif review.status === 'queued' %}
-                  <strong class="govuk-tag govuk-tag--yellow">Queued<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></strong>
+                  <strong class="govuk-tag govuk-tag--yellow">Queued...</strong>
                 {% elif review.status === 'uploading' or review.status === 'uploaded' %}
-                  <strong class="govuk-tag govuk-tag--grey">{{ review.status | title }}<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></strong>
+                  <strong class="govuk-tag govuk-tag--grey">{{ review.status | title }}...</strong>
                 {% elif review.status === 'failed' %}
                   <strong class="govuk-tag govuk-tag--red">Failed</strong>
                 {% else %}
@@ -217,12 +217,12 @@
                   {% endif %}
                 {% elif review.status === 'failed' %}
                   <span class="govuk-error-message">Review failed</span>
-                {% elif review.status === 'processing' or review.status === 'analyzing' or review.status === 'reviewing' %}
-                  <span class="govuk-body">{{ review.status | title }}<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></span>
+                {% elif review.status === 'processing' or review.status === 'analyzing' or review.status === 'reviewing' or review.status === 'downloading' or review.status === 'finalizing' %}
+                  <span class="govuk-body">In Progress...</span>
                 {% elif review.status === 'queued' %}
-                  <span class="govuk-body">Queued<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></span>
+                  <span class="govuk-body">Queued...</span>
                 {% elif review.status === 'uploading' or review.status === 'uploaded' %}
-                  <span class="govuk-body">{{ review.status | title }}<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></span>
+                  <span class="govuk-body">Uploading...</span>
                 {% else %}
                   <span class="govuk-body">{{ review.status }}</span>
                 {% endif %}
@@ -280,7 +280,7 @@
       try {
         const backendUrl = window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001';
         const limit = document.getElementById('reviewLimit')?.value || 5;
-        const response = await fetch(`${backendUrl}/api/reviews?limit=5`, {
+        const response = await fetch(`${backendUrl}/api/reviews?limit=${limit}`, {
           method: 'GET',
           headers: {
             'Accept': 'application/json'
@@ -299,44 +299,56 @@
         }
         
         const data = await response.json();
-        console.log('Review history updated:', data.reviews ? data.reviews.length : 0, 'items');
+        console.log('[HOME] Review history updated:', { 
+          count: data.reviews ? data.reviews.length : 0,
+          reviews: data.reviews 
+        });
+        
         // Normalize review data for client-side rendering
         const normalized = (data.reviews || []).map(r => ({
           ...r,
           filename: r.fileName || r.filename || 'Text Content',
-          uploadedAt: r.createdAt || r.updatedAt || r.uploadedAt || null
+          uploadedAt: r.uploadedAt || r.createdAt || r.updatedAt || null
         }));
+        
+        console.log('[HOME] Normalized reviews:', normalized.map(r => ({ 
+          id: r.id || r.reviewId, 
+          filename: r.filename, 
+          status: r.status,
+          uploadedAt: r.uploadedAt,
+          createdAt: r.createdAt,
+          updatedAt: r.updatedAt
+        })));
 
         // Update the table
         updateReviewTable(normalized);
-        // Check if there are still active reviews
-        const hasActiveReviews = normalized.some(r => 
-          ['processing', 'analyzing', 'queued', 'reviewing', 'downloading', 'finalizing', 'uploaded', 'uploading'].includes(r.status)
-        );
+        
+        // Check if there are still active reviews (not completed or failed)
+        const hasActiveReviews = normalized.some(r => {
+          const status = (r.status || '').toLowerCase();
+          return ['processing', 'analyzing', 'queued', 'reviewing', 'downloading', 'finalizing', 'uploaded', 'uploading'].includes(status);
+        });
+        
+        console.log('[HOME] Active reviews check after update:', { 
+          hasActiveReviews, 
+          totalReviews: normalized.length,
+          statuses: normalized.map(r => r.status)
+        });
+        
         // Hide success message if no active reviews (all completed)
         if (!hasActiveReviews && uploadSuccess) {
           uploadSuccess.hidden = true;
         }
+        
         // Stop auto-refresh if no active reviews
         if (!hasActiveReviews && autoRefreshInterval) {
-          console.log('No more active reviews - doing one final refresh in 3 seconds before stopping auto-refresh');
+          console.log('[HOME] No more active reviews - stopping auto-refresh');
           clearInterval(autoRefreshInterval);
           autoRefreshInterval = null;
-          setTimeout(async () => {
-            await updateReviewHistory();
-            // After final refresh, check again for active reviews
-            const stillActive = (window.lastReviewData || []).some(r => 
-              ['processing', 'analyzing', 'queued', 'reviewing', 'downloading', 'finalizing', 'uploaded', 'uploading'].includes(r.status)
-            );
-            if (stillActive) {
-              // If still active, restart auto-refresh
-              startAutoRefresh();
-            } else {
-              console.log('Final refresh done, auto-refresh stopped.');
-            }
-          }, 3000);
+          console.log('[HOME] Auto-refresh stopped. All reviews completed or failed.');
         }
-        // Store last review data for re-check
+        
+        // Store last review data for reference
         window.lastReviewData = normalized;
         
       } catch (error) {
@@ -376,17 +388,29 @@
         cell.removeChild(cell.firstChild);
       }
       
-      if (statusLower === 'processing' || statusLower === 'analyzing' || statusLower === 'reviewing') {
-        cell.appendChild(createLoadingDots());
+      // Map status to display text with three dots
+      let displayText = '';
+      if (statusLower === 'processing') {
+        displayText = 'Processing...';
+      } else if (statusLower === 'analyzing') {
+        displayText = 'Analyzing...';
+      } else if (statusLower === 'reviewing') {
+        displayText = 'Reviewing...';
+      } else if (statusLower === 'downloading') {
+        displayText = 'Downloading...';
+      } else if (statusLower === 'finalizing') {
+        displayText = 'Finalizing...';
       } else if (statusLower === 'queued') {
-        cell.textContent = 'Queued';
-        cell.appendChild(createLoadingDots());
-      } else if (statusLower === 'uploading' || statusLower === 'uploaded') {
-        cell.textContent = 'Uploading';
-        cell.appendChild(createLoadingDots());
+        displayText = 'Queued...';
+      } else if (statusLower === 'uploading') {
+        displayText = 'Uploading...';
+      } else if (statusLower === 'uploaded') {
+        displayText = 'Uploaded...';
       } else {
-        cell.textContent = status;
+        displayText = status;
       }
+      
+      cell.textContent = displayText;
     }
     
     // Update the review table with new data
@@ -421,7 +445,7 @@
         if (status === 'completed') {
           statusTag.classList.add('govuk-tag--green');
           statusTag.textContent = 'Completed';
-        } else if (['processing', 'analyzing', 'reviewing'].includes(status)) {
+        } else if (['processing', 'analyzing', 'reviewing', 'downloading', 'finalizing'].includes(status)) {
           statusTag.classList.add('govuk-tag--blue');
           createStatusContent(statusTag, review.status);
         } else if (status === 'queued') {
@@ -444,8 +468,9 @@
         // Timestamp
         const timestampCell = document.createElement('td');
         timestampCell.className = 'govuk-table__cell';
-        if (review.uploadedAt) {
-          const date = new Date(review.uploadedAt || review.createdAt || review.updatedAt);
+        const timestamp = review.uploadedAt || review.createdAt || review.updatedAt;
+        if (timestamp) {
+          const date = new Date(timestamp);
           timestampCell.textContent = date.toLocaleString('en-GB', {
             day: '2-digit',
             month: '2-digit',
@@ -505,31 +530,46 @@
     
     // Start auto-refresh
     function startAutoRefresh() {
-      if (autoRefreshInterval) return; // Already running
+      if (autoRefreshInterval) {
+        console.log('[HOME] Auto-refresh already running');
+        return; // Already running
+      }
       
-      console.log('[HOME] Starting auto-refresh...');
+      console.log('[HOME] Starting auto-refresh with 5 second interval...');
       autoRefreshInterval = setInterval(updateReviewHistory, 5000);
     }
     
     // Check if there are any active reviews on page load
     const tableRows = document.querySelectorAll('#reviewHistoryBody tr');
     let hasActiveReviews = false;
+    let activeStatuses = [];
     
     tableRows.forEach(row => {
       const statusCell = row.querySelector('.govuk-tag');
-      if (statusCell && (
-        statusCell.classList.contains('govuk-tag--blue') ||
-        statusCell.classList.contains('govuk-tag--yellow') ||
-        statusCell.classList.contains('govuk-tag--grey')
-      )) {
-        hasActiveReviews = true;
+      if (statusCell) {
+        const statusText = statusCell.textContent.trim();
+        if (statusCell.classList.contains('govuk-tag--blue') ||
+            statusCell.classList.contains('govuk-tag--yellow') ||
+            statusCell.classList.contains('govuk-tag--grey')) {
+          hasActiveReviews = true;
+          activeStatuses.push(statusText);
+        }
       }
     });
+    
+    console.log('[HOME] Active reviews check:', { hasActiveReviews, count: activeStatuses.length, statuses: activeStatuses });
     
     // Start auto-refresh if there are active reviews
     if (hasActiveReviews) {
       console.log('[HOME] Active reviews detected, starting auto-refresh');
+      // Do an immediate update first to get latest status
+      updateReviewHistory().then(() => {
+        console.log('[HOME] Initial update complete');
+      });
+      // Then start the interval
       startAutoRefresh();
+    } else {
+      console.log('[HOME] No active reviews detected, auto-refresh not started');
     }
     
     // Clean up interval when page is unloaded
