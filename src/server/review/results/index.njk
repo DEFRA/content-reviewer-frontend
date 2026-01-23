@@ -15,11 +15,6 @@
         ('govuk-tag--yellow' if status == 'processing' else 'govuk-tag--blue'))) %}
       
       <div class="govuk-notification-banner govuk-notification-banner--success" role="region" aria-labelledby="govuk-notification-banner-title" data-module="govuk-notification-banner">
-        <div class="govuk-notification-banner__header">
-          <h2 class="govuk-notification-banner__title" id="govuk-notification-banner-title">
-            Review Complete
-          </h2>
-        </div>
         <div class="govuk-notification-banner__content">
           <p class="govuk-notification-banner__heading">
             Overall Status: <strong class="govuk-tag {{ statusClass }}">{{ status | replace('_', ' ') | title }}</strong>
@@ -27,28 +22,7 @@
         </div>
       </div>
 
-      <!-- Document Information -->
-      <dl class="govuk-summary-list govuk-!-margin-bottom-6">
-        <div class="govuk-summary-list__row">
-          <dt class="govuk-summary-list__key">Document</dt>
-          <dd class="govuk-summary-list__value">{{ results.rawData.filename or 'Text Content' }}</dd>
-        </div>
-        <div class="govuk-summary-list__row">
-          <dt class="govuk-summary-list__key">Review ID</dt>
-          <dd class="govuk-summary-list__value">{{ results.id or reviewId }}</dd>
-        </div>
-        <div class="govuk-summary-list__row">
-          <dt class="govuk-summary-list__key">Status</dt>
-          <dd class="govuk-summary-list__value">{{ status }}</dd>
-        </div>
-        <div class="govuk-summary-list__row">
-          <dt class="govuk-summary-list__key">Completed At</dt>
-          <dd class="govuk-summary-list__value">{{ results.completedAt or '-' }}</dd>
-        </div>
-      </dl>
-
       <!-- Export Options -->
-      <!--
       <div class="govuk-button-group govuk-!-margin-bottom-8">
         <button type="button" class="govuk-button" data-module="govuk-button" id="exportPdfBtn">
           Download as PDF
@@ -56,17 +30,7 @@
         <button type="button" class="govuk-button govuk-button--secondary" data-module="govuk-button" id="exportWordBtn">
           Download as Word
         </button>
-        <button type="button" class="govuk-button govuk-button--secondary" data-module="govuk-button" id="exportJsonBtn">
-          Download Results (JSON)
-        </button>
-        <button type="button" class="govuk-button govuk-button--secondary" data-module="govuk-button" id="exportTextBtn">
-          Download Report (Text)
-        </button>
-        <button type="button" class="govuk-button govuk-button--secondary" data-module="govuk-button" id="printBtn">
-          Print Report
-        </button>
       </div>
-      -->
 
       <!-- AI Review Content -->
       {% if results.result and results.result.reviewContent %}
@@ -75,11 +39,8 @@
 
       <!-- Actions -->
       <div class="govuk-button-group govuk-!-margin-top-6">
-        <a href="/upload" class="govuk-button" data-module="govuk-button">
+        <a href="/" class="govuk-button" data-module="govuk-button">
           Review Another Document
-        </a>
-        <a href="/" class="govuk-link">
-          Back to home
         </a>
       </div>
 
@@ -91,7 +52,6 @@
   {{ super() }}
   <script nonce="{{ cspNonce }}">
     const reviewId = '{{ reviewId }}';
-    const resultsData = {{ results.rawData | dump | safe }};
 
     // Export as PDF
     document.getElementById('exportPdfBtn').addEventListener('click', () => {
@@ -102,82 +62,5 @@
     document.getElementById('exportWordBtn').addEventListener('click', () => {
       window.location.href = `/review/export/${reviewId}/word`;
     });
-
-    // Export as JSON
-    document.getElementById('exportJsonBtn').addEventListener('click', () => {
-      const dataStr = JSON.stringify(resultsData, null, 2);
-      const dataBlob = new Blob([dataStr], { type: 'application/json' });
-      const url = URL.createObjectURL(dataBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `review-results-${reviewId}.json`;
-      link.click();
-      URL.revokeObjectURL(url);
-    });
-
-    // Export as Text
-    document.getElementById('exportTextBtn').addEventListener('click', () => {
-      const textContent = generateTextReport();
-      const textBlob = new Blob([textContent], { type: 'text/plain' });
-      const url = URL.createObjectURL(textBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `review-report-${reviewId}.txt`;
-      link.click();
-      URL.revokeObjectURL(url);
-    });
-
-    // Print
-    document.getElementById('printBtn').addEventListener('click', () => {
-      window.print();
-    });
-
-    // Generate text report
-    function generateTextReport() {
-      const results = {{ results | dump | safe }};
-      let report = '';
-      const status = (results.summary && results.summary.overallStatus) || results.status || 'unknown';
-      const score = results.summary && results.summary.overallScore;
-      const issuesFound = results.summary && results.summary.issuesFound;
-      const wordsToAvoid = results.summary && results.summary.wordsToAvoid;
-      const passiveSentences = results.summary && results.summary.passiveSentences;
-      const documentName = results.rawData?.filename || results.documentName || 'N/A';
-      const reviewDate = results.completedAt || results.rawData?.createdAt || results.reviewDate || new Date().toISOString();
-      const model = results.llmModel || 'N/A';
-      const processingTime = results.processingTime || 'N/A';
-      const fullText = (results.result && results.result.reviewContent) || results.fullReviewText || '';
-
-      report += '='.repeat(80) + '\n';
-      report += 'GOV.UK CONTENT REVIEW REPORT\n';
-      report += '='.repeat(80) + '\n\n';
-      report += `Document: ${documentName}\n`;
-      report += `Review Date: ${reviewDate}\n`;
-      report += `AI Model: ${model}\n`;
-      report += `Processing Time: ${processingTime}\n`;
-      report += `Overall Status: ${status}\n`;
-      if (typeof score !== 'undefined' && score !== null) {
-        report += `Overall Score: ${score}/100\n`;
-      }
-      report += '\n' + '='.repeat(80) + '\n';
-      report += 'SUMMARY\n';
-      report += '='.repeat(80) + '\n';
-      if (typeof issuesFound !== 'undefined' && issuesFound !== null) {
-        report += `Issues Found: ${issuesFound}\n`;
-      }
-      if (typeof wordsToAvoid !== 'undefined' && wordsToAvoid !== null) {
-        report += `Words to Avoid: ${wordsToAvoid}\n`;
-      }
-      if (typeof passiveSentences !== 'undefined' && passiveSentences !== null) {
-        report += `Passive Sentences: ${passiveSentences}\n`;
-      }
-      report += '\n' + '='.repeat(80) + '\n';
-      report += 'FULL REVIEW\n';
-      report += '='.repeat(80) + '\n\n';
-      report += fullText;
-      report += '\n\n' + '='.repeat(80) + '\n';
-      report += 'END OF REPORT\n';
-      report += '='.repeat(80) + '\n';
-      return report;
-    }
   </script>
 {% endblock %}

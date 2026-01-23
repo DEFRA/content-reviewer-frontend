@@ -164,7 +164,8 @@ export const homeController = {
       uploadError: uploadError.length > 0 ? uploadError[0] : null,
       reviewHistory,
       backendUrl, // Pass to template for client-side use
-      cacheBuster: Date.now() // Add cacheBuster for template
+      cacheBuster: Date.now(), // Add cacheBuster for template
+      currentLimit: limit // Pass the current limit to template
     }
 
     const totalProcessingTime = (Date.now() - startTime) / 1000
