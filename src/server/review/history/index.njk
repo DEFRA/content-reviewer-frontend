@@ -25,7 +25,7 @@
         <a href="/upload" class="govuk-button" data-module="govuk-button">
           Upload New Document
         </a>
-        <button type="button" class="govuk-button govuk-button--secondary" data-module="govuk-button" onclick="window.location.reload()">
+        <button type="button" class="govuk-button govuk-button--secondary" data-module="govuk-button" id="refreshListBtn">
           Refresh List
         </button>
       </div>
@@ -105,8 +105,8 @@
                   <a href="/review/status-poller/{{ review.reviewId }}" class="govuk-link">Track</a>
                 {% endif %}
                  | 
-                <form method="POST" action="/review/history/{{ review.reviewId }}/delete" style="display: inline;">
-                  <button type="submit" class="govuk-link" style="background:none;border:none;padding:0;cursor:pointer;color:#1d70b8;text-decoration:underline;" onclick="return confirm('Are you sure you want to delete this review?')">
+                <form method="POST" action="/review/history/{{ review.reviewId }}/delete" class="display-inline delete-review-form">
+                  <button type="submit" class="govuk-link button-link">
                     Delete
                   </button>
                 </form>
@@ -138,6 +138,24 @@
 {% block bodyEnd %}
   {{ super() }}
   <script nonce="{{ cspNonce }}">
+    // Refresh button event listener
+    const refreshBtn = document.getElementById('refreshListBtn');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', function() {
+        window.location.reload();
+      });
+    }
+
+    // Delete confirmation for all delete forms
+    const deleteForms = document.querySelectorAll('.delete-review-form');
+    deleteForms.forEach(function(form) {
+      form.addEventListener('submit', function(e) {
+        if (!confirm('Are you sure you want to delete this review?')) {
+          e.preventDefault();
+        }
+      });
+    });
+
     // Auto-refresh every 10 seconds if there are processing reviews
     const hasProcessing = {{ (reviews | selectattr('status', 'in', ['processing', 'analyzing', 'queued']) | list | length > 0) | dump }};
     

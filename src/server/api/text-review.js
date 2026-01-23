@@ -21,7 +21,7 @@ export const textReviewApiController = {
       logger.info('Processing text review request', {
         hasTextContent: !!textContent,
         hasTitle: !!title,
-        title: title,
+        title,
         contentType: typeof textContent,
         userAgent: request.headers['user-agent'],
         clientIP: request.info.remoteAddress

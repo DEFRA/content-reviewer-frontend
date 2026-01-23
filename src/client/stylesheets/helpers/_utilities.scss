@@ -20,3 +20,86 @@
 .govuk-file-upload--disabled + .govuk-hint {
   opacity: 0.5;
 }
+
+// Utility classes for layout and display
+.text-align-right {
+  text-align: right;
+}
+
+.margin-bottom-0 {
+  margin-bottom: 0;
+}
+
+.inline-block {
+  display: inline-block;
+}
+
+.display-inline {
+  display: inline;
+}
+
+.display-none {
+  display: none;
+}
+
+.margin-right-10 {
+  margin-right: 10px;
+}
+
+.width-auto {
+  width: auto;
+}
+
+// Button that looks like a link
+.button-link {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: #1d70b8;
+  text-decoration: underline;
+
+  &:hover {
+    color: #003078;
+  }
+}
+
+// Width utilities for table columns
+.width-10 {
+  width: 10%;
+}
+
+.width-25 {
+  width: 25%;
+}
+
+.width-40 {
+  width: 40%;
+}
+
+// Upload handler styles for mutual exclusion
+.app-disabled {
+  opacity: 0.6 !important;
+  filter: grayscale(60%) !important;
+  pointer-events: none !important;
+}
+
+.app-disabled .govuk-file-upload,
+.app-disabled .govuk-textarea {
+  opacity: 0.6 !important;
+  background: #f3f2f1 !important;
+}
+
+.app-disabled .govuk-label {
+  color: #6f777a !important;
+}
+
+.app-highlight {
+  border: 2px solid #1d70b8 !important;
+  padding: 15px !important;
+  background-color: #f0f4f8 !important;
+}
+
+.app-clear-button {
+  font-size: 0.8em !important;
+}

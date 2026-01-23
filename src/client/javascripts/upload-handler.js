@@ -48,36 +48,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // ============ MUTUAL EXCLUSION LOGIC ============
   console.log('[UPLOAD-HANDLER] Setting up mutual exclusion logic')
-  function ensureDisabledStyles() {
-    const existing = document.getElementById('app-disabled-styles')
-    if (existing) return
-    const style = document.createElement('style')
-    style.id = 'app-disabled-styles'
-    style.type = 'text/css'
-    style.innerHTML = `
-      .app-disabled {
-        opacity: 0.6 !important;
-        filter: grayscale(60%) !important;
-        pointer-events: none !important;
-      }
-      .app-disabled .govuk-file-upload,
-      .app-disabled .govuk-textarea {
-        opacity: 0.6 !important;
-        background: #f3f2f1 !important;
-      }
-      .app-disabled .govuk-label { color: #6f777a !important; }
-      .app-highlight {
-        border: 2px solid #1d70b8 !important;
-        padding: 15px !important;
-        background-color: #f0f4f8 !important;
-      }
-      .app-clear-button {
-        font-size: 0.8em !important;
-      }
-    `
-    document.head.appendChild(style)
-  }
-  ensureDisabledStyles()
+  // Styles for mutual exclusion are now in utilities.scss - no need to inject dynamically
 
   // Add clear buttons for both inputs for better UX
   function addClearButton(input, label, onClear) {

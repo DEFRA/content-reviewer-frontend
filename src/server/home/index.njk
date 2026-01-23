@@ -34,6 +34,7 @@
     .inline-block { display: inline-block; }
     .margin-right-10 { margin-right: 10px; }
     .width-auto { width: auto; }
+    .display-inline { display: inline; }
   </style>
 {% endblock %}
 
@@ -159,11 +160,11 @@
           <h2 class="govuk-heading-m">Review History</h2>
         </div>
         <div class="govuk-grid-column-one-half text-align-right">
-          <form id="reviewLimitForm" method="get" style="display:inline">
+          <form id="reviewLimitForm" method="get" class="display-inline">
             <label class="govuk-label inline-block margin-right-10" for="reviewLimit">
               Show:
             </label>
-            <select class="govuk-select width-auto inline-block" id="reviewLimit" name="limit" onchange="this.form.submit()">
+            <select class="govuk-select width-auto inline-block" id="reviewLimit" name="limit">
               <option value="5" {% if (currentLimit == 5) %}selected{% endif %}>5 reviews</option>
               <option value="10" {% if (currentLimit == 10) %}selected{% endif %}>10 reviews</option>
               <option value="50" {% if (currentLimit == 50) %}selected{% endif %}>50 reviews</option>
@@ -189,12 +190,10 @@
               <td class="govuk-table__cell">
                 {% if review.status === 'completed' %}
                   <strong class="govuk-tag govuk-tag--green">Completed</strong>
-                {% elif review.status === 'processing' or review.status === 'analyzing' or review.status === 'reviewing' or review.status === 'downloading' or review.status === 'finalizing' %}
-                  <strong class="govuk-tag govuk-tag--blue">{{ review.status | title }}...</strong>
-                {% elif review.status === 'queued' %}
-                  <strong class="govuk-tag govuk-tag--yellow">Queued...</strong>
-                {% elif review.status === 'uploading' or review.status === 'uploaded' %}
-                  <strong class="govuk-tag govuk-tag--grey">{{ review.status | title }}...</strong>
+                {% elif review.status === 'processing' %}
+                  <strong class="govuk-tag govuk-tag--blue">Processing...</strong>
+                {% elif review.status === 'pending' %}
+                  <strong class="govuk-tag govuk-tag--yellow">Pending...</strong>
                 {% elif review.status === 'failed' %}
                   <strong class="govuk-tag govuk-tag--red">Failed</strong>
                 {% else %}
@@ -217,12 +216,10 @@
                   {% endif %}
                 {% elif review.status === 'failed' %}
                   <span class="govuk-error-message">Review failed</span>
-                {% elif review.status === 'processing' or review.status === 'analyzing' or review.status === 'reviewing' or review.status === 'downloading' or review.status === 'finalizing' %}
-                  <span class="govuk-body">In Progress...</span>
-                {% elif review.status === 'queued' %}
-                  <span class="govuk-body">Queued...</span>
-                {% elif review.status === 'uploading' or review.status === 'uploaded' %}
-                  <span class="govuk-body">Uploading...</span>
+                {% elif review.status === 'processing' %}
+                  <span class="govuk-body">Processing...</span>
+                {% elif review.status === 'pending' %}
+                  <span class="govuk-body">Pending...</span>
                 {% else %}
                   <span class="govuk-body">{{ review.status }}</span>
                 {% endif %}
@@ -266,9 +263,9 @@
     // Add event listener to dropdown
     const limitSelect = document.getElementById('reviewLimit');
     if (limitSelect) {
-      limitSelect.addEventListener('change', async function() {
+      limitSelect.addEventListener('change', function() {
         console.log('Review limit changed to:', this.value);
-        await updateReviewHistory();
+        this.form.submit();
       });
     }
     
@@ -278,9 +275,9 @@
       
       isRefreshing = true;
       try {
-        const backendUrl = window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001';
         const limit = document.getElementById('reviewLimit')?.value || 5;
-        const response = await fetch(`${backendUrl}/api/reviews?limit=${limit}`, {
+        // Call frontend proxy route instead of backend directly to avoid CORS issues
+        const response = await fetch(`/api/reviews?limit=${limit}`, {
           method: 'GET',
           headers: {
             'Accept': 'application/json'
@@ -304,12 +301,37 @@
           reviews: data.reviews 
         });
         
+        // Log raw backend data to debug fileName issues
+        console.log('[HOME] Raw review data from backend:', data.reviews.map(r => ({
+          id: r.id,
+          fileName: r.fileName,
+          filename: r.filename,
+          status: r.status,
+          createdAt: r.createdAt,
+          uploadedAt: r.uploadedAt,
+          updatedAt: r.updatedAt,
+          hasCreatedAt: !!r.createdAt,
+          hasUploadedAt: !!r.uploadedAt,
+          hasUpdatedAt: !!r.updatedAt
+        })));
+        
         // Normalize review data for client-side rendering
-        const normalized = (data.reviews || []).map(r => ({
-          ...r,
-          filename: r.fileName || r.filename || 'Text Content',
-          uploadedAt: r.uploadedAt || r.createdAt || r.updatedAt || null
-        }));
+        const normalized = (data.reviews || []).map(r => {
+          // Determine filename - preserve the original if it exists
+          let displayFilename = r.fileName || r.filename;
+          
+          // If fileName/filename is missing or empty for text content, use first 10 chars
+          if (!displayFilename || displayFilename === 'Text Content') {
+            // Try to get from content if available, otherwise keep 'Text Content'
+            displayFilename = r.fileName || r.filename || 'Text Content';
+          }
+          
+          return {
+            ...r,
+            filename: displayFilename,
+            uploadedAt: r.uploadedAt || r.createdAt || r.updatedAt || null
+          };
+        });
         
         console.log('[HOME] Normalized reviews:', normalized.map(r => ({ 
           id: r.id || r.reviewId, 
@@ -445,15 +467,12 @@
         if (status === 'completed') {
           statusTag.classList.add('govuk-tag--green');
           statusTag.textContent = 'Completed';
-        } else if (['processing', 'analyzing', 'reviewing', 'downloading', 'finalizing'].includes(status)) {
+        } else if (status === 'processing') {
           statusTag.classList.add('govuk-tag--blue');
-          createStatusContent(statusTag, review.status);
-        } else if (status === 'queued') {
+          createStatusContent(statusTag, 'Processing');
+        } else if (status === 'pending') {
           statusTag.classList.add('govuk-tag--yellow');
-          createStatusContent(statusTag, 'Queued');
-        } else if (['uploading', 'uploaded'].includes(status)) {
-          statusTag.classList.add('govuk-tag--grey');
-          createStatusContent(statusTag, review.status);
+          createStatusContent(statusTag, 'Pending');
         } else if (status === 'failed') {
           statusTag.classList.add('govuk-tag--red');
           statusTag.textContent = 'Failed';
@@ -469,6 +488,18 @@
         const timestampCell = document.createElement('td');
         timestampCell.className = 'govuk-table__cell';
         const timestamp = review.uploadedAt || review.createdAt || review.updatedAt;
+        
+        // Debug logging for timestamp issues
+        if (!timestamp) {
+          console.warn('[HOME] Review missing all timestamp fields:', {
+            id: review.id,
+            uploadedAt: review.uploadedAt,
+            createdAt: review.createdAt,
+            updatedAt: review.updatedAt,
+            status: review.status
+          });
+        }
+        
         if (timestamp) {
           const date = new Date(timestamp);
           timestampCell.textContent = date.toLocaleString('en-GB', {
@@ -504,20 +535,15 @@
           errorSpan.className = 'govuk-error-message';
           errorSpan.textContent = 'Review failed';
           resultCell.appendChild(errorSpan);
-        } else if (['processing', 'analyzing', 'reviewing'].includes(status)) {
+        } else if (status === 'processing') {
           const span = document.createElement('span');
           span.className = 'govuk-body';
-          createStatusContent(span, review.status);
+          createStatusContent(span, 'Processing');
           resultCell.appendChild(span);
-        } else if (status === 'queued') {
+        } else if (status === 'pending') {
           const span = document.createElement('span');
           span.className = 'govuk-body';
-          createStatusContent(span, 'Queued');
-          resultCell.appendChild(span);
-        } else if (['uploading', 'uploaded'].includes(status)) {
-          const span = document.createElement('span');
-          span.className = 'govuk-body';
-          createStatusContent(span, review.status);
+          createStatusContent(span, 'Pending');
           resultCell.appendChild(span);
         } else {
           resultCell.textContent = review.status || 'Unknown';
