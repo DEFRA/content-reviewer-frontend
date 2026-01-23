@@ -25,10 +25,14 @@ export async function getReviewsController(request, h) {
   const startTime = Date.now()
   const requestLogger = request.logger
 
+  // Get limit from query parameter, default to 10
+  const limit = request.query.limit || 10
+
   logger.info('Review history API request started', {
     userAgent: request.headers['user-agent'],
     clientIP: request.info.remoteAddress,
-    backendUrl
+    backendUrl,
+    limit
   })
 
   try {
@@ -36,12 +40,12 @@ export async function getReviewsController(request, h) {
     requestLogger.info('Fetching review history from backend')
 
     const backendRequestStart = Date.now()
-    const endpoint = `${backendUrl}/api/reviews?limit=50`
+    const endpoint = `${backendUrl}/api/reviews?limit=${limit}`
 
     logger.info('Initiating backend request for review history', {
       endpoint,
       method: 'GET',
-      limit: 50
+      limit
     })
 
     // Fetch review history from backend
@@ -119,7 +123,7 @@ export async function getReviewsController(request, h) {
       error: error.message,
       stack: error.stack,
       totalProcessingTime: `${totalProcessingTime}s`,
-      endpoint: `${backendUrl}/api/reviews?limit=50`
+      endpoint: `${backendUrl}/api/reviews?limit=${limit}`
     })
 
     requestLogger.error(

@@ -7,6 +7,7 @@
       <a href="/" class="govuk-back-link">Back to home</a>
       
       <h1 class="govuk-heading-xl">{{ heading }}</h1>
+      
       <!-- Overall Status Banner -->
       {% set status = results.status or 'unknown' %}
       {% set statusClass =
@@ -14,10 +15,12 @@
         ('govuk-tag--red' if status == 'failed' else 
         ('govuk-tag--yellow' if status == 'processing' else 'govuk-tag--blue'))) %}
       
-      <div class="govuk-!-margin-bottom-6">
-        <p class="govuk-body">
-          Overall Status: <strong class="govuk-tag {{ statusClass }}">{{ status | replace('_', ' ') | title }}</strong>
-        </p>
+      <div class="govuk-notification-banner" role="region" aria-labelledby="govuk-notification-banner-title" data-module="govuk-notification-banner">
+        <div class="govuk-notification-banner__content govuk-notification-banner__content--success">
+          <p class="govuk-notification-banner__heading">
+            Overall Status: <strong class="govuk-tag {{ statusClass }}">{{ status | replace('_', ' ') | title }}</strong>
+          </p>
+        </div>
       </div>
 
       <!-- Export Options -->
