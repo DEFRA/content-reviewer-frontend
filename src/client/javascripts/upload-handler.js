@@ -369,9 +369,10 @@ document.addEventListener('DOMContentLoaded', function () {
         )
       }
       showProgress('Submitting for review...', 30)
+      // Extract first 3 words for title
+      const words = textContent.trim().split(/\s+/)
       const title =
-        textContent.substring(0, 10).trim() +
-        (textContent.length > 10 ? '...' : '')
+        words.slice(0, 3).join(' ') + (words.length > 3 ? '...' : '')
       const response = await fetch('/api/review/text', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
