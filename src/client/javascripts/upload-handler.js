@@ -303,9 +303,21 @@ document.addEventListener('DOMContentLoaded', function () {
         showProgress('Upload complete!', 100)
         if (fileInput) fileInput.value = ''
         updateMutualExclusion()
+
+        // Simple reload after delay - backend writes are synchronous
+        const reviewId = result.reviewId || result.jobId || result.id
+        console.log('[UPLOAD-HANDLER] File uploaded with ID:', reviewId)
+
+        if (!reviewId) {
+          console.warn('[UPLOAD-HANDLER] No reviewId in upload response')
+        }
+
+        // Wait 2.5 seconds for backend to write to storage, then reload
+        console.log('[UPLOAD-HANDLER] Page will reload in 2.5 seconds...')
         setTimeout(() => {
+          console.log('[UPLOAD-HANDLER] Reloading page to show new review')
           window.location.reload()
-        }, 1500)
+        }, 2500)
       } catch (error) {
         console.error('[UPLOAD-HANDLER] Upload error', error)
         showError(error.message || 'Upload failed. Please try again.')
@@ -407,9 +419,21 @@ document.addEventListener('DOMContentLoaded', function () {
       showProgress('Review submitted!', 100)
       textContentInput.value = ''
       updateMutualExclusion()
+
+      // Simple reload after delay - backend writes are synchronous
+      const reviewId = result.reviewId
+      console.log('[UPLOAD-HANDLER] Review submitted with ID:', reviewId)
+
+      if (!reviewId) {
+        console.warn('[UPLOAD-HANDLER] No reviewId in response')
+      }
+
+      // Wait 2.5 seconds for backend to write to storage, then reload
+      console.log('[UPLOAD-HANDLER] Page will reload in 2.5 seconds...')
       setTimeout(() => {
+        console.log('[UPLOAD-HANDLER] Reloading page to show new review')
         window.location.reload()
-      }, 1500)
+      }, 2500)
     } catch (error) {
       console.error('[UPLOAD-HANDLER] Text review error', error)
       showError(error.message || 'Text review failed. Please try again.')
