@@ -30,46 +30,48 @@
   }
 }
 
-// Summary Section with Category Scores
+// Summary Section with Category Scores - HIDDEN (can be restored later)
 .review-summary {
-  background-color: govuk-colour('light-grey');
+  display: none;
 
-  .category-scores {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 1rem;
+  // background-color: govuk-colour('light-grey');
 
-    @media (min-width: 768px) {
-      grid-template-columns: repeat(2, 1fr);
-    }
-  }
+  // .category-scores {
+  //   display: grid;
+  //   grid-template-columns: 1fr;
+  //   gap: 1rem;
 
-  .score-item {
-    padding: 1rem;
-    border-radius: 4px;
-    border-left: 5px solid #1d70b8;
-    background-color: govuk-colour('white');
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+  //   @media (min-width: 768px) {
+  //     grid-template-columns: repeat(2, 1fr);
+  //   }
+  // }
 
-    .category-name {
-      font-weight: 700;
-      font-size: 1rem;
-      color: govuk-colour('black');
-    }
+  // .score-item {
+  //   padding: 1rem;
+  //   border-radius: 4px;
+  //   border-left: 5px solid #1d70b8;
+  //   background-color: govuk-colour('white');
+  //   display: flex;
+  //   flex-direction: column;
+  //   gap: 0.5rem;
 
-    .category-score {
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: #1d70b8;
-    }
+  //   .category-name {
+  //     font-weight: 700;
+  //     font-size: 1rem;
+  //     color: govuk-colour('black');
+  //   }
 
-    .category-note {
-      font-size: 0.875rem;
-      color: govuk-colour('dark-grey');
-    }
-  }
+  //   .category-score {
+  //     font-size: 1.5rem;
+  //     font-weight: 700;
+  //     color: #1d70b8;
+  //   }
+
+  //   .category-note {
+  //     font-size: 0.875rem;
+  //     color: govuk-colour('dark-grey');
+  //   }
+  // }
 }
 
 // Reviewed Content Section with Highlights
@@ -198,43 +200,10 @@
   color: #00703c;
 }
 
-// Severity color coding
-.severity-critical {
-  border-left-color: #d4351c;
-
-  &::before {
-    color: #d4351c;
-  }
-
-  .issue-title {
-    color: #d4351c;
-  }
-}
-
-.severity-high {
-  border-left-color: #f47738;
-
-  &::before {
-    color: #f47738;
-  }
-
-  .issue-title {
-    color: #f47738;
-  }
-}
-
-.severity-medium {
-  border-left-color: #ffbf47;
-
-  &::before {
-    color: #f47738;
-  }
-
-  .issue-title {
-    color: #f47738;
-  }
-}
-
+// Unified severity styling (accessibility improvement)
+.severity-critical,
+.severity-high,
+.severity-medium,
 .severity-low {
   border-left-color: #1d70b8;
 
