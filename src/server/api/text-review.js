@@ -100,6 +100,19 @@ export const textReviewApiController = {
         `Submitting text content to backend: ${textContent.length} characters`
       )
 
+      // Generate title from first 3 words if not provided
+      let finalTitle = title
+      if (!finalTitle) {
+        const words = textContent
+          .trim()
+          .split(/\s+/)
+          .filter((w) => w.length > 0)
+        finalTitle =
+          words.length > 0
+            ? words.slice(0, 3).join(' ').substring(0, 50) + '...'
+            : 'Text Content'
+      }
+
       const response = await fetch(`${backendUrl}/api/review/text`, {
         method: 'POST',
         headers: {
@@ -107,10 +120,7 @@ export const textReviewApiController = {
         },
         body: JSON.stringify({
           content: textContent,
-          title:
-            title ||
-            textContent.substring(0, 10).trim() +
-              (textContent.length > 10 ? '...' : ''),
+          title: finalTitle,
           userId: request.headers['x-user-id'] || 'anonymous',
           sessionId: request.headers['x-session-id'] || null
         })
