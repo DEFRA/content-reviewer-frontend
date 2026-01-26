@@ -109,8 +109,8 @@ export const textReviewApiController = {
           content: textContent,
           title:
             title ||
-            textContent.substring(0, 10).trim() +
-              (textContent.length > 10 ? '...' : ''),
+            textContent.split(/\s+/).slice(0, 3).join(' ').substring(0, 50) +
+              '...',
           userId: request.headers['x-user-id'] || 'anonymous',
           sessionId: request.headers['x-session-id'] || null
         })
