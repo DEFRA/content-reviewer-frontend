@@ -314,20 +314,22 @@ document.addEventListener('DOMContentLoaded', function () {
           showProgress('Confirming upload...', 100)
 
           let attempts = 0
-          const maxAttempts = 10
+          const maxAttempts = 15 // Increased from 10 to 15 (7.5 seconds total)
           const pollInterval = 500 // 500ms between attempts
 
           const pollForReview = async () => {
             try {
               attempts++
               console.log(
-                `[UPLOAD-HANDLER] Poll attempt ${attempts}/${maxAttempts}`
+                `[UPLOAD-HANDLER] Poll attempt ${attempts}/${maxAttempts} for file review ${reviewId}`
               )
 
               const backendUrl =
                 window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001'
+
+              // Check for specific review by ID instead of listing all reviews
               const checkResponse = await fetch(
-                `${backendUrl}/api/reviews?limit=20`,
+                `${backendUrl}/api/review/${reviewId}`,
                 {
                   credentials: 'include'
                 }
@@ -335,27 +337,27 @@ document.addEventListener('DOMContentLoaded', function () {
 
               if (checkResponse.ok) {
                 const data = await checkResponse.json()
-                const found = data.reviews?.some(
-                  (r) =>
-                    r.id === reviewId ||
-                    r.reviewId === reviewId ||
-                    r.jobId === reviewId
-                )
-
-                if (found) {
+                if (data.success && data.data) {
                   console.log(
-                    '[UPLOAD-HANDLER] File review confirmed in backend, reloading page'
+                    '[UPLOAD-HANDLER] File review confirmed in backend:',
+                    data.data.status
                   )
                   window.location.reload()
                   return
                 }
+              } else if (checkResponse.status === 404) {
+                console.log(
+                  '[UPLOAD-HANDLER] File review not found yet, will retry...'
+                )
               }
 
               if (attempts < maxAttempts) {
                 setTimeout(pollForReview, pollInterval)
               } else {
-                console.log(
-                  '[UPLOAD-HANDLER] Max poll attempts reached, reloading anyway'
+                console.warn(
+                  '[UPLOAD-HANDLER] Max poll attempts reached for file upload after',
+                  (maxAttempts * pollInterval) / 1000,
+                  'seconds - review may not be visible immediately after reload'
                 )
                 window.location.reload()
               }
@@ -484,6 +486,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
       // Poll backend to confirm review is available before reloading
       const reviewId = result.reviewId
+      console.log('[UPLOAD-HANDLER] Extracted reviewId from result:', reviewId)
+
+      if (!reviewId) {
+        console.error(
+          '[UPLOAD-HANDLER] No reviewId in response, result:',
+          result
+        )
+        // Fallback to timed reload
+        setTimeout(() => {
+          window.location.reload()
+        }, 3000)
+        return
+      }
+
       if (reviewId) {
         console.log(
           '[UPLOAD-HANDLER] Polling for review availability:',
@@ -492,20 +508,22 @@ document.addEventListener('DOMContentLoaded', function () {
         showProgress('Confirming submission...', 100)
 
         let attempts = 0
-        const maxAttempts = 10
+        const maxAttempts = 15 // Increased from 10 to 15 (7.5 seconds total)
         const pollInterval = 500 // 500ms between attempts
 
         const pollForReview = async () => {
           try {
             attempts++
             console.log(
-              `[UPLOAD-HANDLER] Poll attempt ${attempts}/${maxAttempts}`
+              `[UPLOAD-HANDLER] Poll attempt ${attempts}/${maxAttempts} for review ${reviewId}`
             )
 
             const backendUrl =
               window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001'
+
+            // Check for specific review by ID instead of listing all reviews
             const checkResponse = await fetch(
-              `${backendUrl}/api/reviews?limit=20`,
+              `${backendUrl}/api/review/${reviewId}`,
               {
                 credentials: 'include'
               }
@@ -513,24 +531,27 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (checkResponse.ok) {
               const data = await checkResponse.json()
-              const found = data.reviews?.some(
-                (r) => r.id === reviewId || r.reviewId === reviewId
-              )
-
-              if (found) {
+              if (data.success && data.data) {
                 console.log(
-                  '[UPLOAD-HANDLER] Review confirmed in backend, reloading page'
+                  '[UPLOAD-HANDLER] Review confirmed in backend:',
+                  data.data.status
                 )
                 window.location.reload()
                 return
               }
+            } else if (checkResponse.status === 404) {
+              console.log(
+                '[UPLOAD-HANDLER] Review not found yet, will retry...'
+              )
             }
 
             if (attempts < maxAttempts) {
               setTimeout(pollForReview, pollInterval)
             } else {
-              console.log(
-                '[UPLOAD-HANDLER] Max poll attempts reached, reloading anyway'
+              console.warn(
+                '[UPLOAD-HANDLER] Max poll attempts reached after',
+                (maxAttempts * pollInterval) / 1000,
+                'seconds - review may not be visible immediately after reload'
               )
               window.location.reload()
             }
