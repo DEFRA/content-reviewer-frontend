@@ -47,7 +47,7 @@
   .score-item {
     padding: 1rem;
     border-radius: 4px;
-    border-left: 5px solid;
+    border-left: 5px solid #1d70b8;
     background-color: govuk-colour('white');
     display: flex;
     flex-direction: column;
@@ -62,57 +62,12 @@
     .category-score {
       font-size: 1.5rem;
       font-weight: 700;
+      color: #1d70b8;
     }
 
     .category-note {
       font-size: 0.875rem;
       color: govuk-colour('dark-grey');
-    }
-  }
-
-  // Category-based color coding for score boxes
-  // Plain English - Blue
-  .score-item:nth-child(1) {
-    border-left-color: #1d70b8;
-
-    .category-score {
-      color: #1d70b8;
-    }
-  }
-
-  // Clarity & Structure - Purple
-  .score-item:nth-child(2) {
-    border-left-color: #6f42c1;
-
-    .category-score {
-      color: #6f42c1;
-    }
-  }
-
-  // Accessibility - Red
-  .score-item:nth-child(3) {
-    border-left-color: #d4351c;
-
-    .category-score {
-      color: #d4351c;
-    }
-  }
-
-  // GOV.UK Style Compliance - Yellow
-  .score-item:nth-child(4) {
-    border-left-color: #ffbf47;
-
-    .category-score {
-      color: #ffbf47;
-    }
-  }
-
-  // Content Completeness - Green
-  .score-item:nth-child(5) {
-    border-left-color: #00703c;
-
-    .category-score {
-      color: #00703c;
     }
   }
 }
@@ -141,30 +96,13 @@
   font-family: 'GDS Transport', arial, sans-serif;
 }
 
-// Category-based color coding for highlights
-// Plain English - Blue
-.highlight-plain-english {
-  background-color: #e6f0ff;
-}
-
-// Clarity & Structure - Purple
-.highlight-clarity {
-  background-color: #f3e8ff;
-}
-
-// Accessibility - Red (critical)
-.highlight-accessibility {
-  background-color: #ffe5e5;
-}
-
-// GOV.UK Style Compliance - Yellow
-.highlight-govuk-style {
-  background-color: #fff9e6;
-}
-
-// Content Completeness - Green
+// Unified color coding for all highlights (accessibility improvement)
+.highlight-plain-english,
+.highlight-clarity,
+.highlight-accessibility,
+.highlight-govuk-style,
 .highlight-completeness {
-  background-color: #e5f5e5;
+  background-color: #e6f0ff;
 }
 
 // Example Improvements Section
@@ -205,6 +143,17 @@
 }
 
 // Improvement item elements (moved out to reduce nesting)
+.improvement-item .category-badge {
+  display: inline-block;
+  font-size: 0.875rem;
+  font-weight: 700;
+  padding: 0.25rem 0.5rem;
+  margin-bottom: 0.5rem;
+  background-color: #1d70b8;
+  color: govuk-colour('white');
+  border-radius: 3px;
+}
+
 .improvement-item .issue-title {
   display: block;
   font-size: 1.125rem;
