@@ -352,7 +352,7 @@
         // Check if there are still active reviews (not completed or failed)
         const hasActiveReviews = normalized.some(r => {
           const status = (r.status || '').toLowerCase();
-          return ['processing', 'analyzing', 'queued', 'reviewing', 'downloading', 'finalizing', 'uploaded', 'uploading'].includes(status);
+          return ['pending', 'processing', 'analyzing', 'queued', 'reviewing', 'downloading', 'finalizing', 'uploaded', 'uploading'].includes(status);
         });
         
         console.log('[HOME] Active reviews check after update:', { 
@@ -416,7 +416,9 @@
       
       // Map status to display text with three dots
       let displayText = '';
-      if (statusLower === 'processing') {
+      if (statusLower === 'pending') {
+        displayText = 'Pending...';
+      } else if (statusLower === 'processing') {
         displayText = 'Processing...';
       } else if (statusLower === 'analyzing') {
         displayText = 'Analyzing...';
@@ -660,14 +662,39 @@
     // Start auto-refresh if there are active reviews
     if (hasActiveReviews) {
       console.log('[HOME] Active reviews detected, starting auto-refresh');
-      // Do an immediate update first to get latest status
+      // Do an immediate update first to get latest status AND update UI with dynamic content
       updateReviewHistory().then(() => {
-        console.log('[HOME] Initial update complete');
+        console.log('[HOME] Initial update complete - dynamic content loaded');
       });
       // Then start the interval
       startAutoRefresh();
     } else {
-      console.log('[HOME] No active reviews detected, auto-refresh not started');
+      console.log('[HOME] No active reviews detected on initial load');
+      // Even if no active reviews detected, do ONE immediate update
+      // This handles the case where server-rendered content might have pending reviews
+      // but the DOM query didn't find them (timing issue or format mismatch)
+      console.log('[HOME] Performing single update to sync client-side state');
+      updateReviewHistory().then(() => {
+        console.log('[HOME] Initial sync complete - checking for active reviews again');
+        // After the update, check again if we should start auto-refresh
+        const tbody = document.getElementById('reviewHistoryBody');
+        const updatedRows = tbody.querySelectorAll('tr[data-review-id]');
+        let foundActive = false;
+        updatedRows.forEach(row => {
+          const statusTag = row.querySelector('.govuk-tag');
+          if (statusTag && (
+            statusTag.classList.contains('govuk-tag--blue') ||
+            statusTag.classList.contains('govuk-tag--yellow') ||
+            statusTag.classList.contains('govuk-tag--grey')
+          )) {
+            foundActive = true;
+          }
+        });
+        if (foundActive && !autoRefreshInterval) {
+          console.log('[HOME] Active reviews found after sync - starting auto-refresh');
+          startAutoRefresh();
+        }
+      });
     }
     
     // Clean up interval when page is unloaded
