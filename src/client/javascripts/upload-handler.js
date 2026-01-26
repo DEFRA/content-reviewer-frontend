@@ -304,84 +304,20 @@ document.addEventListener('DOMContentLoaded', function () {
         if (fileInput) fileInput.value = ''
         updateMutualExclusion()
 
-        // Poll backend to confirm review is available before reloading
+        // Simple reload after delay - backend writes are synchronous
         const reviewId = result.reviewId || result.jobId || result.id
-        if (reviewId) {
-          console.log(
-            '[UPLOAD-HANDLER] Polling for file review availability:',
-            reviewId
-          )
-          showProgress('Confirming upload...', 100)
+        console.log('[UPLOAD-HANDLER] File uploaded with ID:', reviewId)
 
-          let attempts = 0
-          const maxAttempts = 15 // Increased from 10 to 15 (7.5 seconds total)
-          const pollInterval = 500 // 500ms between attempts
-
-          const pollForReview = async () => {
-            try {
-              attempts++
-              console.log(
-                `[UPLOAD-HANDLER] Poll attempt ${attempts}/${maxAttempts} for file review ${reviewId}`
-              )
-
-              const backendUrl =
-                window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001'
-
-              // Check for specific review by ID instead of listing all reviews
-              const checkResponse = await fetch(
-                `${backendUrl}/api/review/${reviewId}`,
-                {
-                  credentials: 'include'
-                }
-              )
-
-              if (checkResponse.ok) {
-                const data = await checkResponse.json()
-                if (data.success && data.data) {
-                  console.log(
-                    '[UPLOAD-HANDLER] File review confirmed in backend:',
-                    data.data.status
-                  )
-                  window.location.reload()
-                  return
-                }
-              } else if (checkResponse.status === 404) {
-                console.log(
-                  '[UPLOAD-HANDLER] File review not found yet, will retry...'
-                )
-              }
-
-              if (attempts < maxAttempts) {
-                setTimeout(pollForReview, pollInterval)
-              } else {
-                console.warn(
-                  '[UPLOAD-HANDLER] Max poll attempts reached for file upload after',
-                  (maxAttempts * pollInterval) / 1000,
-                  'seconds - review may not be visible immediately after reload'
-                )
-                window.location.reload()
-              }
-            } catch (error) {
-              console.error(
-                '[UPLOAD-HANDLER] Error polling for file review:',
-                error
-              )
-              if (attempts >= maxAttempts) {
-                window.location.reload()
-              } else {
-                setTimeout(pollForReview, pollInterval)
-              }
-            }
-          }
-
-          // Start polling after a short delay
-          setTimeout(pollForReview, 500)
-        } else {
-          // Fallback to timed reload if no reviewId
-          setTimeout(() => {
-            window.location.reload()
-          }, 2000)
+        if (!reviewId) {
+          console.warn('[UPLOAD-HANDLER] No reviewId in upload response')
         }
+
+        // Wait 2.5 seconds for backend to write to storage, then reload
+        console.log('[UPLOAD-HANDLER] Page will reload in 2.5 seconds...')
+        setTimeout(() => {
+          console.log('[UPLOAD-HANDLER] Reloading page to show new review')
+          window.location.reload()
+        }, 2500)
       } catch (error) {
         console.error('[UPLOAD-HANDLER] Upload error', error)
         showError(error.message || 'Upload failed. Please try again.')
@@ -484,95 +420,20 @@ document.addEventListener('DOMContentLoaded', function () {
       textContentInput.value = ''
       updateMutualExclusion()
 
-      // Poll backend to confirm review is available before reloading
+      // Simple reload after delay - backend writes are synchronous
       const reviewId = result.reviewId
-      console.log('[UPLOAD-HANDLER] Extracted reviewId from result:', reviewId)
+      console.log('[UPLOAD-HANDLER] Review submitted with ID:', reviewId)
 
       if (!reviewId) {
-        console.error(
-          '[UPLOAD-HANDLER] No reviewId in response, result:',
-          result
-        )
-        // Fallback to timed reload
-        setTimeout(() => {
-          window.location.reload()
-        }, 3000)
-        return
+        console.warn('[UPLOAD-HANDLER] No reviewId in response')
       }
 
-      if (reviewId) {
-        console.log(
-          '[UPLOAD-HANDLER] Polling for review availability:',
-          reviewId
-        )
-        showProgress('Confirming submission...', 100)
-
-        let attempts = 0
-        const maxAttempts = 15 // Increased from 10 to 15 (7.5 seconds total)
-        const pollInterval = 500 // 500ms between attempts
-
-        const pollForReview = async () => {
-          try {
-            attempts++
-            console.log(
-              `[UPLOAD-HANDLER] Poll attempt ${attempts}/${maxAttempts} for review ${reviewId}`
-            )
-
-            const backendUrl =
-              window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001'
-
-            // Check for specific review by ID instead of listing all reviews
-            const checkResponse = await fetch(
-              `${backendUrl}/api/review/${reviewId}`,
-              {
-                credentials: 'include'
-              }
-            )
-
-            if (checkResponse.ok) {
-              const data = await checkResponse.json()
-              if (data.success && data.data) {
-                console.log(
-                  '[UPLOAD-HANDLER] Review confirmed in backend:',
-                  data.data.status
-                )
-                window.location.reload()
-                return
-              }
-            } else if (checkResponse.status === 404) {
-              console.log(
-                '[UPLOAD-HANDLER] Review not found yet, will retry...'
-              )
-            }
-
-            if (attempts < maxAttempts) {
-              setTimeout(pollForReview, pollInterval)
-            } else {
-              console.warn(
-                '[UPLOAD-HANDLER] Max poll attempts reached after',
-                (maxAttempts * pollInterval) / 1000,
-                'seconds - review may not be visible immediately after reload'
-              )
-              window.location.reload()
-            }
-          } catch (error) {
-            console.error('[UPLOAD-HANDLER] Error polling for review:', error)
-            if (attempts >= maxAttempts) {
-              window.location.reload()
-            } else {
-              setTimeout(pollForReview, pollInterval)
-            }
-          }
-        }
-
-        // Start polling after a short delay
-        setTimeout(pollForReview, 500)
-      } else {
-        // Fallback to timed reload if no reviewId
-        setTimeout(() => {
-          window.location.reload()
-        }, 2000)
-      }
+      // Wait 2.5 seconds for backend to write to storage, then reload
+      console.log('[UPLOAD-HANDLER] Page will reload in 2.5 seconds...')
+      setTimeout(() => {
+        console.log('[UPLOAD-HANDLER] Reloading page to show new review')
+        window.location.reload()
+      }, 2500)
     } catch (error) {
       console.error('[UPLOAD-HANDLER] Text review error', error)
       showError(error.message || 'Text review failed. Please try again.')
