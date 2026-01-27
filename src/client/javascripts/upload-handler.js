@@ -1,14 +1,6 @@
 // Upload form handler
 document.addEventListener('DOMContentLoaded', function () {
-  const timestamp = new Date().toISOString()
-  console.log(
-    `[${timestamp}] [UPLOAD-HANDLER] Initializing upload form handler`
-  )
-  console.log('[UPLOAD-HANDLER] Environment:', {
-    url: window.location.href,
-    userAgent: navigator.userAgent,
-    backendUrl: window.APP_CONFIG?.backendApiUrl || 'not configured'
-  })
+  console.log('[UPLOAD-HANDLER] Initializing upload form handler')
 
   const textContentInput = document.getElementById('text-content')
   const uploadButton = document.getElementById('uploadButton')
@@ -24,19 +16,8 @@ document.addEventListener('DOMContentLoaded', function () {
   // Use function to get current file input (since it may be recreated)
   const getFileInput = () => document.getElementById('file-upload')
 
-  console.log('[UPLOAD-HANDLER] DOM elements found:', {
-    form: !!form,
-    fileInput: !!getFileInput(),
-    textContentInput: !!textContentInput,
-    uploadButton: !!uploadButton,
-    uploadProgress: !!uploadProgress
-  })
-
   // Only run if upload form exists
   if (!form) {
-    console.log(
-      '[UPLOAD-HANDLER] Upload form not found, handler not initialized'
-    )
     return
   }
 
@@ -44,10 +25,8 @@ document.addEventListener('DOMContentLoaded', function () {
   hideError()
   hideProgress()
   hideSuccess()
-  console.log('[UPLOAD-HANDLER] Initial UI state reset completed')
 
   // ============ MUTUAL EXCLUSION LOGIC ============
-  console.log('[UPLOAD-HANDLER] Setting up mutual exclusion logic')
   // Styles for mutual exclusion are now in utilities.scss - no need to inject dynamically
 
   // Add clear buttons for both inputs for better UX
@@ -81,14 +60,11 @@ document.addEventListener('DOMContentLoaded', function () {
         fileInput.disabled = false
       }
       updateMutualExclusion()
-      console.log('[UPLOAD-HANDLER] File input cleared via button')
     })
 
     // Add event listeners
     fileInput.addEventListener('change', onFileInputChange)
     fileInput.addEventListener('input', onFileInputChange)
-
-    console.log('[UPLOAD-HANDLER] File input initialized with event listeners')
   }
 
   // Initialize file input
@@ -99,7 +75,6 @@ document.addEventListener('DOMContentLoaded', function () {
       textContentInput.value = ''
       textContentInput.disabled = false
       updateMutualExclusion()
-      console.log('[UPLOAD-HANDLER] Text input cleared via button')
     })
   }
 
@@ -109,14 +84,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const hasText = textContentInput && textContentInput.value.trim().length > 0
     const fileFormGroup = document.getElementById('fileFormGroup')
     const textFormGroup = document.getElementById('textFormGroup')
-
-    console.log('[UPLOAD-HANDLER] updateMutualExclusion', {
-      hasFile,
-      hasText,
-      fileCount: fileInput?.files?.length || 0,
-      fileName: fileInput?.files?.[0]?.name || 'none',
-      textLength: textContentInput?.value?.length || 0
-    })
 
     if (hasFile) {
       // File selected: clear and disable textarea
@@ -182,10 +149,6 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function onFileInputChange(e) {
-    console.log('[UPLOAD-HANDLER] File input changed', {
-      filesLength: e.target.files?.length || 0,
-      fileName: e.target.files?.[0]?.name || 'none'
-    })
     // Use setTimeout to ensure browser has updated the file input state
     setTimeout(() => {
       updateMutualExclusion()
@@ -193,9 +156,6 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function onTextInputChange() {
-    console.log('[UPLOAD-HANDLER] Text input changed', {
-      textLength: textContentInput?.value?.length || 0
-    })
     updateMutualExclusion()
   }
 
@@ -230,14 +190,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const file = fileInput?.files?.[0]
     const textContent = textContentInput?.value.trim()
 
-    console.log('[UPLOAD-HANDLER] Form submit state', {
-      hasFile: !!file,
-      fileName: file?.name || 'none',
-      fileSize: file?.size || 0,
-      hasText: !!textContent,
-      textLength: textContent?.length || 0
-    })
-
     // Enforce: only one input can be set
     if ((file && textContent) || (!file && !textContent)) {
       showError('Please either upload a file or enter text content, not both.')
@@ -269,10 +221,7 @@ document.addEventListener('DOMContentLoaded', function () {
         uploadButton.disabled = true
         showProgress('Preparing upload...', 0)
 
-        console.log('[UPLOAD-HANDLER] Starting file upload', {
-          fileName: file.name,
-          fileSize: file.size
-        })
+        console.log('[UPLOAD-HANDLER] Starting file upload:', file.name)
 
         const formData = new FormData()
         formData.append('file', file)
@@ -284,11 +233,6 @@ document.addEventListener('DOMContentLoaded', function () {
           credentials: 'include'
         })
 
-        console.log('[UPLOAD-HANDLER] Upload response received', {
-          status: response.status,
-          ok: response.ok
-        })
-
         showProgress('Processing upload...', 70)
         if (!response.ok) {
           const error = await response
@@ -296,9 +240,9 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(() => ({ error: `Server error: ${response.status}` }))
           throw new Error(error.error || 'Upload failed')
         }
-        const result = await response.json()
+        await response.json()
 
-        console.log('[UPLOAD-HANDLER] Upload successful', result)
+        console.log('[UPLOAD-HANDLER] Upload successful')
 
         showProgress('Upload complete!', 100)
         if (fileInput) fileInput.value = ''
@@ -353,9 +297,7 @@ document.addEventListener('DOMContentLoaded', function () {
       uploadButton.disabled = true
       showProgress('Preparing review...', 0)
 
-      console.log('[UPLOAD-HANDLER] Starting text review', {
-        textLength: textContent.length
-      })
+      console.log('[UPLOAD-HANDLER] Starting text review')
 
       const maxLength = 50000
       if (textContent.length > maxLength) {
@@ -385,11 +327,6 @@ document.addEventListener('DOMContentLoaded', function () {
         credentials: 'include'
       })
 
-      console.log('[UPLOAD-HANDLER] Text review response received', {
-        status: response.status,
-        ok: response.ok
-      })
-
       showProgress('Processing review...', 70)
       if (!response.ok) {
         const error = await response
@@ -402,7 +339,7 @@ document.addEventListener('DOMContentLoaded', function () {
         throw new Error(result.error || 'Text review failed')
       }
 
-      console.log('[UPLOAD-HANDLER] Text review successful', result)
+      console.log('[UPLOAD-HANDLER] Text review successful')
 
       showProgress('Review submitted!', 100)
       textContentInput.value = ''

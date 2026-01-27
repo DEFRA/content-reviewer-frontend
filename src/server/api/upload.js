@@ -14,7 +14,10 @@ export const uploadApiController = {
    */
   async uploadFile(request, h) {
     const startTime = Date.now()
-    logger.info('Upload API request started')
+    logger.info('Upload API request started', {
+      userAgent: request.headers['user-agent'],
+      clientIP: request.info.remoteAddress
+    })
 
     try {
       const { file } = request.payload
@@ -42,7 +45,12 @@ export const uploadApiController = {
         contentType: file.hapi.headers['content-type']
       }
 
-      logger.info('File received for processing', fileInfo)
+      logger.info('File received for processing', {
+        filename: fileInfo.filename,
+        size: fileInfo.size,
+        sizeMB: fileInfo.sizeMB,
+        contentType: fileInfo.contentType
+      })
 
       // Validate file size (10MB max)
       const maxSize = 10 * 1024 * 1024
@@ -90,11 +98,18 @@ export const uploadApiController = {
           .code(400)
       }
 
-      logger.info('File validation passed successfully', fileInfo)
+      logger.info('File validation passed successfully', {
+        filename: fileInfo.filename,
+        sizeMB: fileInfo.sizeMB,
+        contentType: fileInfo.contentType
+      })
 
       // Forward file to backend
       const backendUrl = config.get('backendUrl')
-      logger.info('Preparing to forward file to backend', { backendUrl })
+      logger.info('Preparing to forward file to backend', {
+        backendUrl,
+        filename: fileInfo.filename
+      })
 
       const formData = new FormData()
       formData.append('file', file, {

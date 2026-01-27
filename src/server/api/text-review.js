@@ -13,7 +13,10 @@ export const textReviewApiController = {
    */
   async reviewText(request, h) {
     const startTime = Date.now()
-    logger.info('Text review API request started')
+    logger.info('Text review API request started', {
+      userAgent: request.headers['user-agent'],
+      clientIP: request.info.remoteAddress
+    })
 
     try {
       const { textContent, title } = request.payload
@@ -22,6 +25,7 @@ export const textReviewApiController = {
         hasTextContent: !!textContent,
         hasTitle: !!title,
         title,
+        contentLength: textContent?.length || 0,
         contentType: typeof textContent,
         userAgent: request.headers['user-agent'],
         clientIP: request.info.remoteAddress
@@ -48,7 +52,12 @@ export const textReviewApiController = {
           .length
       }
 
-      logger.info('Text content received for processing', textInfo)
+      logger.info('Text content received for processing', {
+        length: textInfo.length,
+        lengthKB: textInfo.lengthKB,
+        wordCount: textInfo.wordCount,
+        preview: textInfo.preview
+      })
 
       // Validate text content length (max 50,000 characters)
       const maxLength = 50000
@@ -81,12 +90,17 @@ export const textReviewApiController = {
           .code(400)
       }
 
-      logger.info('Text content validation passed successfully', textInfo)
+      logger.info('Text content validation passed successfully', {
+        length: textInfo.length,
+        lengthKB: textInfo.lengthKB,
+        wordCount: textInfo.wordCount
+      })
 
       // Forward to backend
       const backendUrl = config.get('backendUrl')
       logger.info('Preparing to forward text content to backend', {
-        backendUrl
+        backendUrl,
+        contentLength: textInfo.length
       })
 
       const backendRequestStart = Date.now()
