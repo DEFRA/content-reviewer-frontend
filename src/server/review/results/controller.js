@@ -30,15 +30,15 @@ export const resultsController = {
       // Fetch review status and results from backend
       const response = await fetch(`${backendUrl}/api/results/${reviewId}`)
       request.logger.info(
-        {
-          reviewId,
-          fetchUrl: `${backendUrl}/api/results/${reviewId}`,
-          status: response.status
-        },
-        'Backend results fetch completed'
+        `Backend results fetch completed - ReviewId: ${reviewId}, Status: ${response.status}`
       )
       const apiResponse = await response.json()
-      console.log('API Response: Results controller', apiResponse)
+
+      // Log the response as a single formatted JSON string
+      console.log(
+        `API Response from backend (ReviewId: ${reviewId}):`,
+        JSON.stringify(apiResponse, null, 2)
+      )
 
       request.logger.info(
         {
@@ -150,8 +150,3 @@ function transformReviewData(statusData, reviewId) {
     rawData: statusData
   }
 }
-
-/**
- * Calculate overall score from status
- */
-// Note: helpers removed as transform no longer derives summary/timing

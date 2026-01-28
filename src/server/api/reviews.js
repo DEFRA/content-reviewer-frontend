@@ -36,7 +36,6 @@ export async function getReviewsController(request, h) {
   })
 
   try {
-    logger.info('Fetching review history from backend', { limit })
     requestLogger.info('Fetching review history from backend', { limit })
 
     const backendRequestStart = Date.now()
