@@ -249,9 +249,7 @@
   {{ super() }}
   <script nonce="{{ cspNonce }}" src="{{ getAssetPath('upload-handler.js') }}"></script>
   <script nonce="{{ cspNonce }}">
-    console.log('[HOME] Page loaded at', new Date().toISOString());
-    console.log('[HOME] Backend URL:', window.APP_CONFIG?.backendApiUrl);
-    console.log('[HOME] Cache buster:', '{{ cacheBuster }}');
+    console.log('[HOME] Page loaded');
     // ============ AUTO-REFRESH LOGIC ============
     // Note: Upload form handling is now in upload-handler.js
     // Auto-refresh state
@@ -268,7 +266,6 @@
     const limitSelect = document.getElementById('reviewLimit');
     if (limitSelect) {
       limitSelect.addEventListener('change', function() {
-        console.log('Review limit changed to:', this.value);
         this.form.submit();
       });
     }
@@ -289,35 +286,16 @@
         })
         
         if (!response.ok) {
-          console.error('Failed to fetch review history: HTTP', response.status);
+          console.error('[HOME] Failed to fetch review history:', response.status);
           // Stop auto-refresh on error to prevent spam
           if (autoRefreshInterval) {
             clearInterval(autoRefreshInterval);
             autoRefreshInterval = null;
-            console.log('Auto-refresh stopped due to fetch error');
           }
           return;
         }
         
         const data = await response.json();
-        console.log('[HOME] Review history updated:', { 
-          count: data.reviews ? data.reviews.length : 0,
-          reviews: data.reviews 
-        });
-        
-        // Log raw backend data to debug fileName issues
-        console.log('[HOME] Raw review data from backend:', data.reviews.map(r => ({
-          id: r.id,
-          fileName: r.fileName,
-          filename: r.filename,
-          status: r.status,
-          createdAt: r.createdAt,
-          uploadedAt: r.uploadedAt,
-          updatedAt: r.updatedAt,
-          hasCreatedAt: !!r.createdAt,
-          hasUploadedAt: !!r.uploadedAt,
-          hasUpdatedAt: !!r.updatedAt
-        })));
         
         // Normalize review data for client-side rendering
         const normalized = (data.reviews || []).map(r => {
@@ -336,15 +314,6 @@
             uploadedAt: r.uploadedAt || r.createdAt || r.updatedAt || null
           };
         });
-        
-        console.log('[HOME] Normalized reviews:', normalized.map(r => ({ 
-          id: r.id || r.reviewId, 
-          filename: r.filename, 
-          status: r.status,
-          uploadedAt: r.uploadedAt,
-          createdAt: r.createdAt,
-          updatedAt: r.updatedAt
-        })));
 
         // Update the table
         updateReviewTable(normalized);
@@ -355,12 +324,6 @@
           return ['processing', 'analyzing', 'queued', 'reviewing', 'downloading', 'finalizing', 'uploaded', 'uploading'].includes(status);
         });
         
-        console.log('[HOME] Active reviews check after update:', { 
-          hasActiveReviews, 
-          totalReviews: normalized.length,
-          statuses: normalized.map(r => r.status)
-        });
-        
         // Hide success message if no active reviews (all completed)
         if (!hasActiveReviews && uploadSuccess) {
           uploadSuccess.hidden = true;
@@ -368,22 +331,20 @@
         
         // Stop auto-refresh if no active reviews
         if (!hasActiveReviews && autoRefreshInterval) {
-          console.log('[HOME] No more active reviews - stopping auto-refresh');
+          console.log('[HOME] Auto-refresh stopped - all reviews completed');
           clearInterval(autoRefreshInterval);
           autoRefreshInterval = null;
-          console.log('[HOME] Auto-refresh stopped. All reviews completed or failed.');
         }
         
         // Store last review data for reference
         window.lastReviewData = normalized;
         
       } catch (error) {
-        console.error('Error updating review history:', error);
+        console.error('[HOME] Error updating review history:', error);
         // Stop auto-refresh on network error to prevent continuous failed requests
         if (autoRefreshInterval) {
           clearInterval(autoRefreshInterval);
           autoRefreshInterval = null;
-          console.log('Auto-refresh stopped due to network error');
         }
       } finally {
         isRefreshing = false;
@@ -456,8 +417,6 @@
         existingRows.set(reviewId, row);
       });
       
-      console.log('[HOME] Updating table - existing rows:', existingRows.size, 'new reviews:', reviews.length);
-      
       // Clear tbody only if there are no existing rows
       if (existingRows.size === 0) {
         tbody.innerHTML = '';
@@ -469,7 +428,6 @@
         
         if (existingRow) {
           // Update only Status and Result columns (keep Document Name and Timestamp unchanged)
-          console.log('[HOME] Updating existing row for review:', reviewId);
           
           const cells = existingRow.querySelectorAll('td');
           // cells[0] = Document Name (keep unchanged)
@@ -489,7 +447,6 @@
           existingRows.delete(reviewId);
         } else {
           // Create new row for new reviews
-          console.log('[HOME] Creating new row for review:', reviewId);
           const row = createReviewRow(review);
           tbody.appendChild(row);
         }
@@ -497,7 +454,6 @@
       
       // Remove any rows that are no longer in the response (optional - could keep them)
       // existingRows.forEach((row, reviewId) => {
-      //   console.log('[HOME] Removing obsolete row:', reviewId);
       //   row.remove();
       // });
     }
@@ -629,11 +585,10 @@
     // Start auto-refresh
     function startAutoRefresh() {
       if (autoRefreshInterval) {
-        console.log('[HOME] Auto-refresh already running');
         return; // Already running
       }
       
-      console.log('[HOME] Starting auto-refresh with 5 second interval...');
+      console.log('[HOME] Starting auto-refresh');
       autoRefreshInterval = setInterval(updateReviewHistory, 5000);
     }
     
@@ -655,19 +610,13 @@
       }
     });
     
-    console.log('[HOME] Active reviews check:', { hasActiveReviews, count: activeStatuses.length, statuses: activeStatuses });
-    
     // Start auto-refresh if there are active reviews
     if (hasActiveReviews) {
       console.log('[HOME] Active reviews detected, starting auto-refresh');
       // Do an immediate update first to get latest status
-      updateReviewHistory().then(() => {
-        console.log('[HOME] Initial update complete');
-      });
+      updateReviewHistory();
       // Then start the interval
       startAutoRefresh();
-    } else {
-      console.log('[HOME] No active reviews detected, auto-refresh not started');
     }
     
     // Clean up interval when page is unloaded
