@@ -1,7 +1,5 @@
 // Upload form handler
 document.addEventListener('DOMContentLoaded', function () {
-  console.log('[UPLOAD-HANDLER] Initializing upload form handler')
-
   const textContentInput = document.getElementById('text-content')
   const uploadButton = document.getElementById('uploadButton')
   const uploadProgress = document.getElementById('uploadProgress')
@@ -177,8 +175,6 @@ document.addEventListener('DOMContentLoaded', function () {
   form.addEventListener('submit', async (e) => {
     e.preventDefault()
 
-    console.log('[UPLOAD-HANDLER] Form submitted')
-
     hideError()
     hideSuccess()
     hideProgress()
@@ -221,8 +217,6 @@ document.addEventListener('DOMContentLoaded', function () {
         uploadButton.disabled = true
         showProgress('Preparing upload...', 0)
 
-        console.log('[UPLOAD-HANDLER] Starting file upload:', file.name)
-
         const formData = new FormData()
         formData.append('file', file)
         showProgress('Uploading to server...', 30)
@@ -242,8 +236,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         await response.json()
 
-        console.log('[UPLOAD-HANDLER] Upload successful')
-
         showProgress('Upload complete!', 100)
         if (fileInput) fileInput.value = ''
         updateMutualExclusion()
@@ -251,7 +243,6 @@ document.addEventListener('DOMContentLoaded', function () {
           window.location.reload()
         }, 1500)
       } catch (error) {
-        console.error('[UPLOAD-HANDLER] Upload error', error)
         showError(error.message || 'Upload failed. Please try again.')
         uploadButton.disabled = false
         if (textContentInput) textContentInput.disabled = false
@@ -297,8 +288,6 @@ document.addEventListener('DOMContentLoaded', function () {
       uploadButton.disabled = true
       showProgress('Preparing review...', 0)
 
-      console.log('[UPLOAD-HANDLER] Starting text review')
-
       const maxLength = 50000
       if (textContent.length > maxLength) {
         throw new Error(
@@ -339,8 +328,6 @@ document.addEventListener('DOMContentLoaded', function () {
         throw new Error(result.error || 'Text review failed')
       }
 
-      console.log('[UPLOAD-HANDLER] Text review successful')
-
       showProgress('Review submitted!', 100)
       textContentInput.value = ''
       updateMutualExclusion()
@@ -348,7 +335,6 @@ document.addEventListener('DOMContentLoaded', function () {
         window.location.reload()
       }, 1500)
     } catch (error) {
-      console.error('[UPLOAD-HANDLER] Text review error', error)
       showError(error.message || 'Text review failed. Please try again.')
       uploadButton.disabled = false
       const fileInput = getFileInput()

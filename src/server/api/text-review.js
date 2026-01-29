@@ -13,23 +13,9 @@ export const textReviewApiController = {
    */
   async reviewText(request, h) {
     const startTime = Date.now()
-    logger.info('Text review API request started', {
-      userAgent: request.headers['user-agent'],
-      clientIP: request.info.remoteAddress
-    })
 
     try {
       const { textContent, title } = request.payload
-
-      logger.info('Processing text review request', {
-        hasTextContent: !!textContent,
-        hasTitle: !!title,
-        title,
-        contentLength: textContent?.length || 0,
-        contentType: typeof textContent,
-        userAgent: request.headers['user-agent'],
-        clientIP: request.info.remoteAddress
-      })
 
       if (!textContent || typeof textContent !== 'string') {
         logger.warn(
@@ -51,13 +37,6 @@ export const textReviewApiController = {
         wordCount: textContent.split(/\s+/).filter((word) => word.length > 0)
           .length
       }
-
-      logger.info('Text content received for processing', {
-        length: textInfo.length,
-        lengthKB: textInfo.lengthKB,
-        wordCount: textInfo.wordCount,
-        preview: textInfo.preview
-      })
 
       // Validate text content length (max 50,000 characters)
       const maxLength = 50000
@@ -90,29 +69,10 @@ export const textReviewApiController = {
           .code(400)
       }
 
-      logger.info('Text content validation passed successfully', {
-        length: textInfo.length,
-        lengthKB: textInfo.lengthKB,
-        wordCount: textInfo.wordCount
-      })
-
       // Forward to backend
       const backendUrl = config.get('backendUrl')
-      logger.info('Preparing to forward text content to backend', {
-        backendUrl,
-        contentLength: textInfo.length
-      })
 
       const backendRequestStart = Date.now()
-      logger.info('Initiating backend text review request', {
-        contentLength: textInfo.length,
-        wordCount: textInfo.wordCount,
-        backendEndpoint: `${backendUrl}/api/review/text`
-      })
-
-      request.logger.info(
-        `Submitting text content to backend: ${textContent.length} characters`
-      )
 
       // Generate title from first 3 words if not provided
       let finalTitle = title
@@ -144,23 +104,11 @@ export const textReviewApiController = {
       const backendRequestTime =
         (backendRequestEnd - backendRequestStart) / 1000
 
-      logger.info('Backend text review request completed', {
-        contentLength: textInfo.length,
-        responseStatus: response.status,
-        responseStatusText: response.statusText,
-        requestTime: `${backendRequestTime}s`,
-        success: response.ok
-      })
-
       if (!response.ok) {
         const error = await response.text()
-        logger.error('Backend text review request failed', {
-          contentLength: textInfo.length,
-          status: response.status,
-          statusText: response.statusText,
-          errorResponse: error,
-          requestTime: `${backendRequestTime}s`
-        })
+        logger.error(
+          `Backend text review request failed - contentLength: ${textInfo.length}, status: ${response.status}, statusText: ${response.statusText}, errorResponse: ${error}, requestTime: ${backendRequestTime}s`
+        )
         request.logger.error(`Backend text review failed: ${error}`)
         return h
           .response({
@@ -173,16 +121,8 @@ export const textReviewApiController = {
       const result = await response.json()
       const totalProcessingTime = (Date.now() - startTime) / 1000
 
-      logger.info('Text review completed successfully', {
-        contentLength: textInfo.length,
-        wordCount: textInfo.wordCount,
-        reviewId: result.reviewId,
-        totalProcessingTime: `${totalProcessingTime}s`,
-        backendRequestTime: `${backendRequestTime}s`
-      })
-
-      request.logger.info(
-        `Text content submitted successfully: ${result.reviewId || 'unknown'}`
+      logger.info(
+        `Text review completed successfully - contentLength: ${textInfo.length}, wordCount: ${textInfo.wordCount}, reviewId: ${result.reviewId}, totalProcessingTime: ${totalProcessingTime}s, backendRequestTime: ${backendRequestTime}s`
       )
 
       return h
@@ -195,11 +135,12 @@ export const textReviewApiController = {
     } catch (error) {
       const totalProcessingTime = (Date.now() - startTime) / 1000
 
-      logger.error('Text review API request failed with error', {
-        error: error.message,
-        stack: error.stack,
-        totalProcessingTime: `${totalProcessingTime}s`
-      })
+      logger.error(
+        `Text review API request failed with error - error: ${error.message}, totalProcessingTime: ${totalProcessingTime}s`,
+        {
+          stack: error.stack
+        }
+      )
 
       request.logger.error(error, 'Error handling text content submission')
       return h
