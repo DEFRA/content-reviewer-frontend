@@ -28,25 +28,10 @@ export async function getReviewsController(request, h) {
   // Get limit from query parameter, default to 10
   const limit = request.query.limit || 10
 
-  logger.info('Review history API request started', {
-    userAgent: request.headers['user-agent'],
-    clientIP: request.info.remoteAddress,
-    backendUrl,
-    limit
-  })
-
   try {
-    logger.info('Fetching review history from backend')
-    requestLogger.info('Fetching review history from backend')
-
     const backendRequestStart = Date.now()
     const endpoint = `${backendUrl}/api/reviews?limit=${limit}`
-
-    logger.info('Initiating backend request for review history', {
-      endpoint,
-      method: 'GET',
-      limit
-    })
+    logger.info(`Requesting review history from backend: ${endpoint}`)
 
     // Fetch review history from backend
     const response = await fetch(endpoint, {
@@ -59,21 +44,10 @@ export async function getReviewsController(request, h) {
     const backendRequestEnd = Date.now()
     const backendRequestTime = (backendRequestEnd - backendRequestStart) / 1000
 
-    logger.info('Backend review history request completed', {
-      endpoint,
-      responseStatus: response.status,
-      responseStatusText: response.statusText,
-      requestTime: `${backendRequestTime}s`,
-      success: response.ok
-    })
-
     if (!response.ok) {
-      logger.error('Backend review history request failed', {
-        endpoint,
-        status: response.status,
-        statusText: response.statusText,
-        requestTime: `${backendRequestTime}s`
-      })
+      logger.error(
+        `Backend review history request failed - endpoint: ${endpoint}, status: ${response.status}, statusText: ${response.statusText}, requestTime: ${backendRequestTime}s`
+      )
 
       requestLogger.error(
         { status: response.status },
@@ -89,19 +63,6 @@ export async function getReviewsController(request, h) {
     }
 
     const data = await response.json()
-    const totalProcessingTime = (Date.now() - startTime) / 1000
-
-    logger.info('Review history fetched and parsed successfully', {
-      reviewsCount: data.reviews ? data.reviews.length : 0,
-      totalCount: data.total || data.count || 0,
-      totalProcessingTime: `${totalProcessingTime}s`,
-      backendRequestTime: `${backendRequestTime}s`
-    })
-
-    requestLogger.info(
-      { count: data.reviews ? data.reviews.length : 0 },
-      'Review history fetched successfully'
-    )
 
     // Normalize review items to always include an `id` field
     const normalizedReviews = (data.reviews || []).map((r) => ({

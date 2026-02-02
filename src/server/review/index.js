@@ -11,12 +11,6 @@ export default {
         },
         {
           plugin: (await import('./history/index.js')).default
-        },
-        {
-          plugin: (await import('./export/index.js')).default
-        },
-        {
-          plugin: (await import('./debug/index.js')).default
         }
       ])
     }

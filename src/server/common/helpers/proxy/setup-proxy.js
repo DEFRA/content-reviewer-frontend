@@ -15,7 +15,7 @@ export function setupProxy() {
   const proxyUrl = config.get('httpProxy')
 
   if (proxyUrl) {
-    logger.info('setting up global proxies')
+    logger.info('setting up global proxies', { proxyUrl })
 
     // Undici proxy
     setGlobalDispatcher(new ProxyAgent(proxyUrl))

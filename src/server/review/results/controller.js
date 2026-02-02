@@ -18,35 +18,12 @@ export const resultsController = {
       const config = request.server.app.config
       const backendUrl = config.get('backendUrl')
 
-      request.logger.info(
-        {
-          reviewId,
-          backendUrl,
-          fullUrl: `${backendUrl}/api/results/${reviewId}`
-        },
-        'Fetching review results from backend'
-      )
-
       // Fetch review status and results from backend
+      request.logger.info(
+        `Requesting review results from backend: ${backendUrl}/api/results/${reviewId}`
+      )
       const response = await fetch(`${backendUrl}/api/results/${reviewId}`)
-      request.logger.info(
-        {
-          reviewId,
-          fetchUrl: `${backendUrl}/api/results/${reviewId}`,
-          status: response.status
-        },
-        'Backend results fetch completed'
-      )
       const apiResponse = await response.json()
-      console.log('API Response: Results controller', apiResponse)
-
-      request.logger.info(
-        {
-          reviewId,
-          hasReviewContent: !!apiResponse?.result?.reviewContent
-        },
-        'Review response retrieved from backend'
-      )
 
       if (!response.ok) {
         request.logger.error(
@@ -70,10 +47,6 @@ export const resultsController = {
 
       // Check if review is completed
       if (statusData.status !== 'completed') {
-        request.logger.info(
-          { reviewId, status: statusData.status },
-          'Review not completed yet'
-        )
         return h.view('review/results/pending', {
           pageTitle: 'Review In Progress',
           heading: 'Review In Progress',
@@ -83,20 +56,8 @@ export const resultsController = {
         })
       }
 
-      request.logger.info({ reviewId }, 'Transforming review data')
       // Transform backend data to frontend format (only fields used by the template)
       const reviewResults = transformReviewData(statusData, reviewId)
-
-      request.logger.info(
-        {
-          reviewId,
-          status: reviewResults.status,
-          hasReviewContent: !!reviewResults?.result?.reviewContent,
-          filename: reviewResults?.rawData?.filename,
-          s3ResultLocation: reviewResults?.rawData?.s3ResultLocation
-        },
-        'Rendering results view (simplified fields)'
-      )
 
       return h.view('review/results/index', {
         pageTitle: 'Review Results',
@@ -144,14 +105,6 @@ function transformReviewData(statusData, reviewId) {
       guardrailAssessment: safeResult.guardrailAssessment,
       stopReason: safeResult.stopReason
     },
-    completedAt: statusData.completedAt,
-
-    // Keep raw data for export buttons
-    rawData: statusData
+    completedAt: statusData.completedAt
   }
 }
-
-/**
- * Calculate overall score from status
- */
-// Note: helpers removed as transform no longer derives summary/timing
