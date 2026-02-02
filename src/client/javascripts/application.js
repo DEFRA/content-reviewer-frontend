@@ -589,7 +589,7 @@ class ConversationManager {
     if (conversationsToShow.length === 0) {
       // No conversations - show placeholder
       listContainer.innerHTML =
-        '<p style="padding: 10px; color: #888;">No conversations yet</p>'
+        '<p class="conversation-list-empty">No conversations yet</p>'
     }
 
     conversationsToShow.forEach((conv) => {

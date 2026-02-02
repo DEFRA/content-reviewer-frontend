@@ -5,9 +5,13 @@ async function startServer() {
   const server = await createServer()
   await server.start()
 
-  server.logger.info('Server started successfully')
+  server.logger.info('Server started successfully', {
+    port: config.get('port'),
+    environment: process.env.ENVIRONMENT || 'local'
+  })
   server.logger.info(
-    `Access your frontend on http://localhost:${config.get('port')}`
+    `Access your frontend on http://localhost:${config.get('port')}`,
+    { port: config.get('port') }
   )
 
   // Log critical configuration for debugging CDP deployment
@@ -48,24 +52,14 @@ async function startServer() {
   console.log('=========================================')
   console.log('NODE_ENV:', process.env.NODE_ENV || 'NOT SET')
   console.log('ENVIRONMENT:', process.env.ENVIRONMENT || 'NOT SET')
-  console.log('PORT:', process.env.PORT || 'NOT SET')
-  console.log('BACKEND_URL:', process.env.BACKEND_URL || 'NOT SET')
-  console.log('CDP_UPLOADER_URL:', process.env.CDP_UPLOADER_URL || 'NOT SET')
-  console.log(
-    'AWS_S3_BUCKET_NAME:',
-    process.env.AWS_S3_BUCKET_NAME || 'NOT SET'
-  )
-  console.log(
-    'CDP_UPLOADER_S3_PATH:',
-    process.env.CDP_UPLOADER_S3_PATH || 'NOT SET'
-  )
-  console.log(
-    'SESSION_CACHE_ENGINE:',
-    process.env.SESSION_CACHE_ENGINE || 'NOT SET'
-  )
-  console.log('REDIS_HOST:', process.env.REDIS_HOST || 'NOT SET')
-  console.log('REDIS_TLS:', process.env.REDIS_TLS || 'NOT SET')
-  console.log('AWS_REGION:', process.env.AWS_REGION || 'NOT SET')
+  console.log('PORT:', config.get('port'))
+  console.log('BACKEND_URL:', config.get('backendUrl'))
+  console.log('CDP_UPLOADER_URL:', config.get('cdpUploader.url'))
+  console.log('CDP_UPLOADER_S3_BUCKET:', config.get('cdpUploader.s3Bucket'))
+  console.log('CDP_UPLOADER_S3_PATH:', config.get('cdpUploader.s3Path'))
+  console.log('SESSION_CACHE_ENGINE:', config.get('session.cache.engine'))
+  console.log('REDIS_HOST:', config.get('redis.host'))
+  console.log('REDIS_TLS:', config.get('redis.useTLS'))
   console.log('=========================================\n')
 
   return server

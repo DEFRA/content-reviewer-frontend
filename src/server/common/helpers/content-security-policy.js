@@ -1,4 +1,10 @@
 import Blankie from 'blankie'
+import { config } from '../../../config/config.js'
+
+const backendUrl = config.get('backendUrl')
+const wsUrl = backendUrl
+  .replace('http://', 'ws://')
+  .replace('https://', 'wss://')
 
 /**
  * Manage content security policies.
@@ -11,17 +17,7 @@ const contentSecurityPolicy = {
     // https://frontend.design-system.service.gov.uk/import-javascript/#if-our-inline-javascript-snippet-is-blocked-by-a-content-security-policy
     defaultSrc: ['self'],
     fontSrc: ['self', 'data:'],
-    // Allow connections to backend services in all environments
-    connectSrc: [
-      'self',
-      'wss',
-      'data:',
-      'http://localhost:3001',
-      'https://content-reviewer-backend.dev.cdp-int.defra.cloud',
-      'https://content-reviewer-backend.test.cdp-int.defra.cloud',
-      'https://content-reviewer-backend.perf-test.cdp-int.defra.cloud',
-      'https://content-reviewer-backend.prod.cdp-int.defra.cloud'
-    ],
+    connectSrc: ['self', 'data:', backendUrl, wsUrl],
     mediaSrc: ['self'],
     styleSrc: ['self', "'unsafe-inline'", "'unsafe-hashes'"],
     scriptSrc: [

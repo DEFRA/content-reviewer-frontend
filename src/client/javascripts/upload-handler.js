@@ -1,15 +1,5 @@
 // Upload form handler
 document.addEventListener('DOMContentLoaded', function () {
-  const timestamp = new Date().toISOString()
-  console.log(
-    `[${timestamp}] [UPLOAD-HANDLER] Initializing upload form handler`
-  )
-  console.log('[UPLOAD-HANDLER] Environment:', {
-    url: window.location.href,
-    userAgent: navigator.userAgent,
-    backendUrl: window.APP_CONFIG?.backendApiUrl || 'not configured'
-  })
-
   const textContentInput = document.getElementById('text-content')
   const uploadButton = document.getElementById('uploadButton')
   const uploadProgress = document.getElementById('uploadProgress')
@@ -24,19 +14,8 @@ document.addEventListener('DOMContentLoaded', function () {
   // Use function to get current file input (since it may be recreated)
   const getFileInput = () => document.getElementById('file-upload')
 
-  console.log('[UPLOAD-HANDLER] DOM elements found:', {
-    form: !!form,
-    fileInput: !!getFileInput(),
-    textContentInput: !!textContentInput,
-    uploadButton: !!uploadButton,
-    uploadProgress: !!uploadProgress
-  })
-
   // Only run if upload form exists
   if (!form) {
-    console.log(
-      '[UPLOAD-HANDLER] Upload form not found, handler not initialized'
-    )
     return
   }
 
@@ -44,10 +23,8 @@ document.addEventListener('DOMContentLoaded', function () {
   hideError()
   hideProgress()
   hideSuccess()
-  console.log('[UPLOAD-HANDLER] Initial UI state reset completed')
 
   // ============ MUTUAL EXCLUSION LOGIC ============
-  console.log('[UPLOAD-HANDLER] Setting up mutual exclusion logic')
   // Styles for mutual exclusion are now in utilities.scss - no need to inject dynamically
 
   // Add clear buttons for both inputs for better UX
@@ -81,14 +58,11 @@ document.addEventListener('DOMContentLoaded', function () {
         fileInput.disabled = false
       }
       updateMutualExclusion()
-      console.log('[UPLOAD-HANDLER] File input cleared via button')
     })
 
     // Add event listeners
     fileInput.addEventListener('change', onFileInputChange)
     fileInput.addEventListener('input', onFileInputChange)
-
-    console.log('[UPLOAD-HANDLER] File input initialized with event listeners')
   }
 
   // Initialize file input
@@ -99,7 +73,6 @@ document.addEventListener('DOMContentLoaded', function () {
       textContentInput.value = ''
       textContentInput.disabled = false
       updateMutualExclusion()
-      console.log('[UPLOAD-HANDLER] Text input cleared via button')
     })
   }
 
@@ -109,14 +82,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const hasText = textContentInput && textContentInput.value.trim().length > 0
     const fileFormGroup = document.getElementById('fileFormGroup')
     const textFormGroup = document.getElementById('textFormGroup')
-
-    console.log('[UPLOAD-HANDLER] updateMutualExclusion', {
-      hasFile,
-      hasText,
-      fileCount: fileInput?.files?.length || 0,
-      fileName: fileInput?.files?.[0]?.name || 'none',
-      textLength: textContentInput?.value?.length || 0
-    })
 
     if (hasFile) {
       // File selected: clear and disable textarea
@@ -182,10 +147,6 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function onFileInputChange(e) {
-    console.log('[UPLOAD-HANDLER] File input changed', {
-      filesLength: e.target.files?.length || 0,
-      fileName: e.target.files?.[0]?.name || 'none'
-    })
     // Use setTimeout to ensure browser has updated the file input state
     setTimeout(() => {
       updateMutualExclusion()
@@ -193,9 +154,6 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function onTextInputChange() {
-    console.log('[UPLOAD-HANDLER] Text input changed', {
-      textLength: textContentInput?.value?.length || 0
-    })
     updateMutualExclusion()
   }
 
@@ -217,8 +175,6 @@ document.addEventListener('DOMContentLoaded', function () {
   form.addEventListener('submit', async (e) => {
     e.preventDefault()
 
-    console.log('[UPLOAD-HANDLER] Form submitted')
-
     hideError()
     hideSuccess()
     hideProgress()
@@ -229,14 +185,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const fileInput = getFileInput()
     const file = fileInput?.files?.[0]
     const textContent = textContentInput?.value.trim()
-
-    console.log('[UPLOAD-HANDLER] Form submit state', {
-      hasFile: !!file,
-      fileName: file?.name || 'none',
-      fileSize: file?.size || 0,
-      hasText: !!textContent,
-      textLength: textContent?.length || 0
-    })
 
     // Enforce: only one input can be set
     if ((file && textContent) || (!file && !textContent)) {
@@ -269,11 +217,6 @@ document.addEventListener('DOMContentLoaded', function () {
         uploadButton.disabled = true
         showProgress('Preparing upload...', 0)
 
-        console.log('[UPLOAD-HANDLER] Starting file upload', {
-          fileName: file.name,
-          fileSize: file.size
-        })
-
         const formData = new FormData()
         formData.append('file', file)
         showProgress('Uploading to server...', 30)
@@ -284,11 +227,6 @@ document.addEventListener('DOMContentLoaded', function () {
           credentials: 'include'
         })
 
-        console.log('[UPLOAD-HANDLER] Upload response received', {
-          status: response.status,
-          ok: response.ok
-        })
-
         showProgress('Processing upload...', 70)
         if (!response.ok) {
           const error = await response
@@ -296,9 +234,7 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(() => ({ error: `Server error: ${response.status}` }))
           throw new Error(error.error || 'Upload failed')
         }
-        const result = await response.json()
-
-        console.log('[UPLOAD-HANDLER] Upload successful', result)
+        await response.json()
 
         showProgress('Upload complete!', 100)
         if (fileInput) fileInput.value = ''
@@ -307,7 +243,6 @@ document.addEventListener('DOMContentLoaded', function () {
           window.location.reload()
         }, 1500)
       } catch (error) {
-        console.error('[UPLOAD-HANDLER] Upload error', error)
         showError(error.message || 'Upload failed. Please try again.')
         uploadButton.disabled = false
         if (textContentInput) textContentInput.disabled = false
@@ -348,74 +283,135 @@ document.addEventListener('DOMContentLoaded', function () {
     if (progressBar) progressBar.setAttribute('data-progress', '0')
   }
 
+  // Function to add a new review to the top of the table
+  function addReviewToTable(review) {
+    const tbody = document.getElementById('reviewHistoryBody')
+    if (!tbody) return
+
+    // Create new row
+    const row = document.createElement('tr')
+    row.className = 'govuk-table__row'
+    row.setAttribute('data-review-id', review.id || review.reviewId)
+
+    // Format date in UK format (consistent with template)
+    const now = new Date()
+    const formattedDate = now.toLocaleString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+
+    row.innerHTML = `
+      <td class="govuk-table__cell">${review.filename || 'Text Content'}</td>
+      <td class="govuk-table__cell">
+        <strong class="govuk-tag govuk-tag--yellow">Pending...</strong>
+      </td>
+      <td class="govuk-table__cell">${formattedDate}</td>
+      <td class="govuk-table__cell">
+        <span class="govuk-body">Pending...</span>
+      </td>
+    `
+
+    // Remove the "No reviews" message if it exists
+    const noReviewsMsg = tbody.querySelector('td[colspan]')
+    if (noReviewsMsg) {
+      const emptyRow = noReviewsMsg.closest('tr')
+      if (emptyRow) {
+        emptyRow.remove()
+      }
+    }
+
+    // Insert at the top of the table
+    tbody.insertBefore(row, tbody.firstChild)
+
+    // Enforce the current limit - remove excess rows from the bottom
+    const limitSelect = document.getElementById('reviewLimit')
+    const currentLimit = parseInt(limitSelect?.value || '5', 10)
+    const allRows = tbody.querySelectorAll('tr[data-review-id]')
+
+    // If we exceed the limit, remove the oldest (last) row
+    if (allRows.length > currentLimit) {
+      const rowsToRemove = Array.from(allRows).slice(currentLimit)
+      rowsToRemove.forEach((row) => row.remove())
+    }
+  }
+
+  // Function to handle text content review
   async function handleTextReview(textContent) {
     try {
       uploadButton.disabled = true
-      showProgress('Preparing review...', 0)
+      if (textContentInput) textContentInput.disabled = true
+      showProgress('Submitting content for review...', 30)
 
-      console.log('[UPLOAD-HANDLER] Starting text review', {
-        textLength: textContent.length
-      })
-
-      const maxLength = 50000
-      if (textContent.length > maxLength) {
-        throw new Error(
-          `Text content too long. Maximum ${maxLength} characters. Your content has ${textContent.length} characters.`
-        )
-      }
-      if (textContent.length < 10) {
-        throw new Error(
-          'Text content too short. Please provide at least 10 characters.'
-        )
-      }
-      showProgress('Submitting for review...', 30)
-      // Extract first 3 words for title, with fallback
+      // Generate title from first 3 words (same logic as backend)
       const words = textContent
         .trim()
         .split(/\s+/)
         .filter((w) => w.length > 0)
-      const title =
+      const generatedTitle =
         words.length > 0
           ? words.slice(0, 3).join(' ').substring(0, 50) + '...'
           : 'Text Content'
+
       const response = await fetch('/api/review/text', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ textContent, title }),
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          textContent,
+          title: generatedTitle
+        }),
         credentials: 'include'
       })
 
-      console.log('[UPLOAD-HANDLER] Text review response received', {
-        status: response.status,
-        ok: response.ok
-      })
-
       showProgress('Processing review...', 70)
+
       if (!response.ok) {
         const error = await response
           .json()
-          .catch(() => ({ error: `Server error: ${response.status}` }))
-        throw new Error(error.error || 'Text review failed')
+          .catch(() => ({ message: `Server error: ${response.status}` }))
+        throw new Error(error.message || 'Review submission failed')
       }
+
       const result = await response.json()
-      if (!result.success) {
-        throw new Error(result.error || 'Text review failed')
+      showProgress('Review submitted!', 100)
+
+      // Add the new review to the top of the table
+      if (result.reviewId) {
+        addReviewToTable({
+          id: result.reviewId,
+          reviewId: result.reviewId,
+          filename: generatedTitle,
+          status: 'pending'
+        })
+
+        // Trigger auto-refresh to poll for status updates
+        // The startAutoRefresh function is defined in home/index.njk as window.startAutoRefresh
+        if (typeof startAutoRefresh === 'function') {
+          // eslint-disable-next-line no-undef
+          startAutoRefresh()
+        }
       }
 
-      console.log('[UPLOAD-HANDLER] Text review successful', result)
-
-      showProgress('Review submitted!', 100)
-      textContentInput.value = ''
+      // Clear form
+      if (textContentInput) {
+        textContentInput.value = ''
+        textContentInput.disabled = false
+      }
       updateMutualExclusion()
-      setTimeout(() => {
-        window.location.reload()
-      }, 1500)
-    } catch (error) {
-      console.error('[UPLOAD-HANDLER] Text review error', error)
-      showError(error.message || 'Text review failed. Please try again.')
       uploadButton.disabled = false
-      const fileInput = getFileInput()
-      if (fileInput) fileInput.disabled = false
+
+      // Hide progress and show success
+      setTimeout(() => {
+        hideProgress()
+      }, 1000)
+    } catch (error) {
+      showError(error.message || 'Review submission failed. Please try again.')
+      uploadButton.disabled = false
+      if (textContentInput) textContentInput.disabled = false
       updateMutualExclusion()
       hideProgress()
     }
