@@ -283,62 +283,135 @@ document.addEventListener('DOMContentLoaded', function () {
     if (progressBar) progressBar.setAttribute('data-progress', '0')
   }
 
+  // Function to add a new review to the top of the table
+  function addReviewToTable(review) {
+    const tbody = document.getElementById('reviewHistoryBody')
+    if (!tbody) return
+
+    // Create new row
+    const row = document.createElement('tr')
+    row.className = 'govuk-table__row'
+    row.setAttribute('data-review-id', review.id || review.reviewId)
+
+    // Format date in UK format (consistent with template)
+    const now = new Date()
+    const formattedDate = now.toLocaleString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+
+    row.innerHTML = `
+      <td class="govuk-table__cell">${review.filename || 'Text Content'}</td>
+      <td class="govuk-table__cell">
+        <strong class="govuk-tag govuk-tag--yellow">Pending...</strong>
+      </td>
+      <td class="govuk-table__cell">${formattedDate}</td>
+      <td class="govuk-table__cell">
+        <span class="govuk-body">Pending...</span>
+      </td>
+    `
+
+    // Remove the "No reviews" message if it exists
+    const noReviewsMsg = tbody.querySelector('td[colspan]')
+    if (noReviewsMsg) {
+      const emptyRow = noReviewsMsg.closest('tr')
+      if (emptyRow) {
+        emptyRow.remove()
+      }
+    }
+
+    // Insert at the top of the table
+    tbody.insertBefore(row, tbody.firstChild)
+
+    // Enforce the current limit - remove excess rows from the bottom
+    const limitSelect = document.getElementById('reviewLimit')
+    const currentLimit = parseInt(limitSelect?.value || '5', 10)
+    const allRows = tbody.querySelectorAll('tr[data-review-id]')
+
+    // If we exceed the limit, remove the oldest (last) row
+    if (allRows.length > currentLimit) {
+      const rowsToRemove = Array.from(allRows).slice(currentLimit)
+      rowsToRemove.forEach((row) => row.remove())
+    }
+  }
+
+  // Function to handle text content review
   async function handleTextReview(textContent) {
     try {
       uploadButton.disabled = true
-      showProgress('Preparing review...', 0)
+      if (textContentInput) textContentInput.disabled = true
+      showProgress('Submitting content for review...', 30)
 
-      const maxLength = 50000
-      if (textContent.length > maxLength) {
-        throw new Error(
-          `Text content too long. Maximum ${maxLength} characters. Your content has ${textContent.length} characters.`
-        )
-      }
-      if (textContent.length < 10) {
-        throw new Error(
-          'Text content too short. Please provide at least 10 characters.'
-        )
-      }
-      showProgress('Submitting for review...', 30)
-      // Extract first 3 words for title, with fallback
+      // Generate title from first 3 words (same logic as backend)
       const words = textContent
         .trim()
         .split(/\s+/)
         .filter((w) => w.length > 0)
-      const title =
+      const generatedTitle =
         words.length > 0
           ? words.slice(0, 3).join(' ').substring(0, 50) + '...'
           : 'Text Content'
+
       const response = await fetch('/api/review/text', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ textContent, title }),
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          textContent,
+          title: generatedTitle
+        }),
         credentials: 'include'
       })
 
       showProgress('Processing review...', 70)
+
       if (!response.ok) {
         const error = await response
           .json()
-          .catch(() => ({ error: `Server error: ${response.status}` }))
-        throw new Error(error.error || 'Text review failed')
-      }
-      const result = await response.json()
-      if (!result.success) {
-        throw new Error(result.error || 'Text review failed')
+          .catch(() => ({ message: `Server error: ${response.status}` }))
+        throw new Error(error.message || 'Review submission failed')
       }
 
+      const result = await response.json()
       showProgress('Review submitted!', 100)
-      textContentInput.value = ''
+
+      // Add the new review to the top of the table
+      if (result.reviewId) {
+        addReviewToTable({
+          id: result.reviewId,
+          reviewId: result.reviewId,
+          filename: generatedTitle,
+          status: 'pending'
+        })
+
+        // Trigger auto-refresh to poll for status updates
+        // The startAutoRefresh function is defined in home/index.njk as window.startAutoRefresh
+        if (typeof startAutoRefresh === 'function') {
+          // eslint-disable-next-line no-undef
+          startAutoRefresh()
+        }
+      }
+
+      // Clear form
+      if (textContentInput) {
+        textContentInput.value = ''
+        textContentInput.disabled = false
+      }
       updateMutualExclusion()
-      setTimeout(() => {
-        window.location.reload()
-      }, 1500)
-    } catch (error) {
-      showError(error.message || 'Text review failed. Please try again.')
       uploadButton.disabled = false
-      const fileInput = getFileInput()
-      if (fileInput) fileInput.disabled = false
+
+      // Hide progress and show success
+      setTimeout(() => {
+        hideProgress()
+      }, 1000)
+    } catch (error) {
+      showError(error.message || 'Review submission failed. Please try again.')
+      uploadButton.disabled = false
+      if (textContentInput) textContentInput.disabled = false
       updateMutualExclusion()
       hideProgress()
     }

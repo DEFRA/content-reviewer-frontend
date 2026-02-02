@@ -19,6 +19,9 @@ export const resultsController = {
       const backendUrl = config.get('backendUrl')
 
       // Fetch review status and results from backend
+      request.logger.info(
+        `Requesting review results from backend: ${backendUrl}/api/results/${reviewId}`
+      )
       const response = await fetch(`${backendUrl}/api/results/${reviewId}`)
       const apiResponse = await response.json()
 
