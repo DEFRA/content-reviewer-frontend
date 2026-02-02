@@ -121,6 +121,10 @@ export const homeController = {
 
         reviewHistory = normalized
 
+        // Calculate total pages
+        totalReviews = data.total || data.count || 0
+        totalPages = Math.ceil(totalReviews / pageSize)
+
         logger.info('Review history retrieved successfully', {
           count: reviewHistory.length,
           totalFromResponse: data.total || data.count || 0,
@@ -132,10 +136,6 @@ export const homeController = {
           missingIdCount: missingId.length,
           reviewid: data.reviews.id
         })
-
-        // Calculate total pages
-        totalReviews = data.total || data.count || 0
-        totalPages = Math.ceil(totalReviews / pageSize)
         if (missingId.length > 0) {
           logger.warn(
             {
