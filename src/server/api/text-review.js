@@ -71,6 +71,9 @@ export const textReviewApiController = {
 
       // Forward to backend
       const backendUrl = config.get('backendUrl')
+      logger.info(
+        `Requesting text review from backend: ${backendUrl}/api/review/text`
+      )
 
       const backendRequestStart = Date.now()
 

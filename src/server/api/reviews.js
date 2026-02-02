@@ -31,6 +31,7 @@ export async function getReviewsController(request, h) {
   try {
     const backendRequestStart = Date.now()
     const endpoint = `${backendUrl}/api/reviews?limit=${limit}`
+    logger.info(`Requesting review history from backend: ${endpoint}`)
 
     // Fetch review history from backend
     const response = await fetch(endpoint, {

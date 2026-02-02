@@ -21,6 +21,9 @@ export const homeController = {
     const limit = parseInt(request.query.limit) || 5
     let reviewHistory = []
     try {
+      logger.info(
+        `Requesting review history from backend: ${backendUrl}/api/reviews?limit=${limit}`
+      )
       const response = await fetch(`${backendUrl}/api/reviews?limit=${limit}`)
 
       if (response.ok) {

@@ -168,6 +168,7 @@
               <option value="5" {% if (currentLimit == 5) %}selected{% endif %}>5 reviews</option>
               <option value="10" {% if (currentLimit == 10) %}selected{% endif %}>10 reviews</option>
               <option value="50" {% if (currentLimit == 50) %}selected{% endif %}>50 reviews</option>
+              <option value="100" {% if (currentLimit == 100) %}selected{% endif %}>100 reviews</option>
             </select>
           </form>
         </div>
@@ -452,10 +453,10 @@
         }
       });
       
-      // Remove any rows that are no longer in the response (optional - could keep them)
-      // existingRows.forEach((row, reviewId) => {
-      //   row.remove();
-      // });
+      // Remove any rows that are no longer in the response to maintain the limit
+      existingRows.forEach((row, reviewId) => {
+        row.remove();
+      });
     }
     
     // Helper function to create a complete review row (for new reviews)
@@ -591,6 +592,9 @@
       console.log('[HOME] Starting auto-refresh');
       autoRefreshInterval = setInterval(updateReviewHistory, 5000);
     }
+    
+    // Make startAutoRefresh globally accessible for upload-handler.js
+    window.startAutoRefresh = startAutoRefresh;
     
     // Check if there are any active reviews on page load
     const tableRows = document.querySelectorAll('#reviewHistoryBody tr');
