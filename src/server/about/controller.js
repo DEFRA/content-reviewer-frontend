@@ -1,6 +1,6 @@
 /**
- * A GDS styled example about page controller.
- * Provided as an example, remove or modify as required.
+ * About page controller
+ * Displays information about the Content Review Tool
  */
 export const aboutController = {
   handler(_request, h) {

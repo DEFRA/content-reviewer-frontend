@@ -1,6 +1,6 @@
 /**
- * A GDS styled example home page controller.
- * Provided as an example, remove or modify as required.
+ * Home page controller
+ * Handles displaying the main page with review submission and history
  */
 import { createLogger } from '../common/helpers/logging/logger.js'
 
@@ -8,9 +8,6 @@ const logger = createLogger()
 
 export const homeController = {
   async handler(request, h) {
-    // logger.info(`Home page request started - timestamp: ${timestamp}`)
-    // Removed excessive log: console.log('[HOME-CONTROLLER] Processing home page request')
-
     // Get flash messages from session
     const uploadSuccess = request.yar.flash('uploadSuccess')
     const uploadError = request.yar.flash('uploadError')
@@ -42,7 +39,6 @@ export const homeController = {
 
         reviewHistory = normalized
 
-        // logger.info(`Review history retrieved successfully - count: ${reviewHistory.length}, totalFromResponse: ${data.total || data.count || 0}, requestTime: ${backendRequestTime}s, missingIdCount: ${missingId.length}`)
         if (missingId.length > 0) {
           logger.warn(
             {
@@ -52,8 +48,6 @@ export const homeController = {
             'Review history entries missing reviewId'
           )
         }
-      } else {
-        // logger.warn(`Review history fetch failed with non-ok status - status: ${response.status}, requestTime: ${backendRequestTime}s`)
       }
     } catch (error) {
       logger.error(
@@ -74,8 +68,6 @@ export const homeController = {
       cacheBuster: Date.now(), // Add cacheBuster for template
       currentLimit: limit // Pass the current limit to template
     }
-
-    // logger.info(`Home page rendering completed - hasUploadSuccess: ${!!viewData.uploadSuccess}, hasUploadError: ${!!viewData.uploadError}, reviewHistoryCount: ${reviewHistory.length}, backendUrl: ${backendUrl}, totalProcessingTime: ${totalProcessingTime}s`)
 
     return h.view('home/index', viewData)
   }
