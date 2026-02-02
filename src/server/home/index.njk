@@ -35,6 +35,61 @@
     .margin-right-10 { margin-right: 10px; }
     .width-auto { width: auto; }
     .display-inline { display: inline; }
+    
+    /* Pagination styles */
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin: 20px 0;
+      padding: 20px 0;
+      border-top: 1px solid #b1b4b6;
+      border-bottom: 1px solid #b1b4b6;
+    }
+    .pagination-item {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 40px;
+      height: 40px;
+      padding: 0 8px;
+      text-decoration: none;
+      border: 1px solid #b1b4b6;
+      background-color: #fff;
+      color: #1d70b8;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .pagination-item:hover:not(:disabled):not(.pagination-current) {
+      background-color: #f3f2f1;
+    }
+    .pagination-item:focus {
+      outline: 3px solid #ffbf47;
+      outline-offset: 0;
+    }
+    .pagination-item:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .pagination-current {
+      background-color: #1d70b8;
+      color: #fff;
+      border-color: #1d70b8;
+      text-decoration: underline;
+      font-weight: bold;
+    }
+    .pagination-arrow {
+      font-size: 20px;
+      line-height: 1;
+    }
+    .pagination-info {
+      margin-top: 10px;
+      text-align: center;
+      color: #505a5f;
+      font-size: 14px;
+    }
   </style>
 {% endblock %}
 
@@ -162,12 +217,13 @@
         <div class="govuk-grid-column-one-half text-align-right">
           <form id="reviewLimitForm" method="get" class="display-inline">
             <label class="govuk-label inline-block margin-right-10" for="reviewLimit">
-              Show:
+              Show latest:
             </label>
             <select class="govuk-select width-auto inline-block" id="reviewLimit" name="limit">
               <option value="5" {% if (currentLimit == 5) %}selected{% endif %}>5 reviews</option>
               <option value="10" {% if (currentLimit == 10) %}selected{% endif %}>10 reviews</option>
               <option value="50" {% if (currentLimit == 50) %}selected{% endif %}>50 reviews</option>
+              <option value="100" {% if (currentLimit == 100) %}selected{% endif %}>100 reviews</option>
             </select>
           </form>
         </div>
@@ -239,6 +295,52 @@
           {% endif %}
         </tbody>
       </table>
+
+      <!-- Pagination Controls -->
+      {% if pagination and pagination.totalPages > 1 %}
+      <div class="pagination">
+        <!-- Previous Arrow -->
+        <a 
+          href="?limit={{ currentLimit }}&page={{ pagination.currentPage - 1 }}" 
+          class="pagination-item pagination-arrow"
+          {% if not pagination.hasPreviousPage %}disabled style="pointer-events: none;"{% endif %}
+          aria-label="Previous page"
+        >
+          &#60;
+        </a>
+        
+        <!-- Page Numbers -->
+        {% for page in range(1, pagination.totalPages + 1) %}
+          {% if page == pagination.currentPage %}
+            <span class="pagination-item pagination-current" aria-current="page">{{ page }}</span>
+          {% else %}
+            <a 
+              href="?limit={{ currentLimit }}&page={{ page }}" 
+              class="pagination-item"
+              aria-label="Go to page {{ page }}"
+            >
+              {{ page }}
+            </a>
+          {% endif %}
+        {% endfor %}
+        
+        <!-- Next Arrow -->
+        <a 
+          href="?limit={{ currentLimit }}&page={{ pagination.currentPage + 1 }}" 
+          class="pagination-item pagination-arrow"
+          {% if not pagination.hasNextPage %}disabled style="pointer-events: none;"{% endif %}
+          aria-label="Next page"
+        >
+          &#62;
+        </a>
+      </div>
+      
+      <div class="pagination-info">
+        Showing {{ (pagination.currentPage - 1) * pagination.pageSize + 1 }} to 
+        {{ [pagination.currentPage * pagination.pageSize, pagination.totalReviews] | min }} 
+        of {{ pagination.totalReviews }} reviews
+      </div>
+      {% endif %}
 
     </div>
   </div>
