@@ -368,8 +368,62 @@
     const limitSelect = document.getElementById('reviewLimit');
     if (limitSelect) {
       limitSelect.addEventListener('change', function() {
-        this.form.submit();
+        const selectedLimit = this.value;
+        const currentPage = new URLSearchParams(window.location.search).get('page') || '1';
+        
+        // Update URL without full page reload
+        const newUrl = `?limit=${selectedLimit}&page=1`;
+        window.history.pushState({ limit: selectedLimit, page: 1 }, '', newUrl);
+        
+        // Fetch and update the page content
+        updateReviewHistoryWithLimit(selectedLimit);
       });
+    }
+    
+    // Function to update review history with a new limit value
+    async function updateReviewHistoryWithLimit(limit) {
+      if (isRefreshing) return;
+      
+      isRefreshing = true;
+      try {
+        const response = await fetch(`/api/reviews?limit=${limit}`, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+        
+        if (!response.ok) {
+          console.error('[HOME] Failed to fetch review history:', response.status);
+          isRefreshing = false;
+          return;
+        }
+        
+        const data = await response.json();
+        
+        // Normalize review data
+        const normalized = (data.reviews || []).map(r => {
+          let displayFilename = r.fileName || r.filename;
+          if (!displayFilename || displayFilename === 'Text Content') {
+            displayFilename = r.fileName || r.filename || 'Text Content';
+          }
+          
+          return {
+            ...r,
+            filename: displayFilename,
+            uploadedAt: r.uploadedAt || r.createdAt || r.updatedAt || null
+          };
+        });
+        
+        console.log('[HOME] Normalized reviews with new limit:', normalized.length);
+        
+        // Update the table with new data
+        updateReviewTable(normalized);
+      } catch (error) {
+        console.error('[HOME] Error updating review history with new limit:', error);
+      } finally {
+        isRefreshing = false;
+      }
     }
     
     // Function to update review history without page reload
