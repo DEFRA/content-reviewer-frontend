@@ -35,61 +35,6 @@
     .margin-right-10 { margin-right: 10px; }
     .width-auto { width: auto; }
     .display-inline { display: inline; }
-    
-    /* Pagination styles */
-    .pagination {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      margin: 20px 0;
-      padding: 20px 0;
-      border-top: 1px solid #b1b4b6;
-      border-bottom: 1px solid #b1b4b6;
-    }
-    .pagination-item {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 40px;
-      height: 40px;
-      padding: 0 8px;
-      text-decoration: none;
-      border: 1px solid #b1b4b6;
-      background-color: #fff;
-      color: #1d70b8;
-      font-size: 16px;
-      cursor: pointer;
-      transition: background-color 0.2s;
-    }
-    .pagination-item:hover:not(:disabled):not(.pagination-current) {
-      background-color: #f3f2f1;
-    }
-    .pagination-item:focus {
-      outline: 3px solid #ffbf47;
-      outline-offset: 0;
-    }
-    .pagination-item:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-    .pagination-current {
-      background-color: #1d70b8;
-      color: #fff;
-      border-color: #1d70b8;
-      text-decoration: underline;
-      font-weight: bold;
-    }
-    .pagination-arrow {
-      font-size: 20px;
-      line-height: 1;
-    }
-    .pagination-info {
-      margin-top: 10px;
-      text-align: center;
-      color: #505a5f;
-      font-size: 14px;
-    }
   </style>
 {% endblock %}
 
@@ -217,13 +162,12 @@
         <div class="govuk-grid-column-one-half text-align-right">
           <form id="reviewLimitForm" method="get" class="display-inline">
             <label class="govuk-label inline-block margin-right-10" for="reviewLimit">
-              Show latest:
+              Show:
             </label>
             <select class="govuk-select width-auto inline-block" id="reviewLimit" name="limit">
               <option value="5" {% if (currentLimit == 5) %}selected{% endif %}>5 reviews</option>
               <option value="10" {% if (currentLimit == 10) %}selected{% endif %}>10 reviews</option>
               <option value="50" {% if (currentLimit == 50) %}selected{% endif %}>50 reviews</option>
-              <option value="100" {% if (currentLimit == 100) %}selected{% endif %}>100 reviews</option>
             </select>
           </form>
         </div>
@@ -232,7 +176,7 @@
       <table class="govuk-table" id="reviewHistoryTable">
         <thead class="govuk-table__head">
           <tr class="govuk-table__row">
-            <th scope="col" class="govuk-table__header">Uploaded Content</th>
+            <th scope="col" class="govuk-table__header">Uploaded Document</th>
             <th scope="col" class="govuk-table__header">Status</th>
             <th scope="col" class="govuk-table__header">Timestamp</th>
             <th scope="col" class="govuk-table__header">Result</th>
@@ -241,7 +185,7 @@
         <tbody class="govuk-table__body" id="reviewHistoryBody">
           {% if reviewHistory and reviewHistory.length > 0 %}
             {% for review in reviewHistory %}
-            <tr class="govuk-table__row" data-review-id="{{ review.reviewId or review.id }}">
+            <tr class="govuk-table__row">
               <td class="govuk-table__cell">{{ review.filename }}</td>
               <td class="govuk-table__cell">
                 {% if review.status === 'completed' %}
@@ -271,11 +215,7 @@
                     <span class="govuk-hint">Missing review ID</span>
                   {% endif %}
                 {% elif review.status === 'failed' %}
-                  {% if review.errorMessage %}
-                    <span class="govuk-error-message">Failed ({{ review.errorMessage }})</span>
-                  {% else %}
-                    <span class="govuk-error-message">Review failed</span>
-                  {% endif %}
+                  <span class="govuk-error-message">Review failed</span>
                 {% elif review.status === 'processing' %}
                   <span class="govuk-body">Processing...</span>
                 {% elif review.status === 'pending' %}
@@ -288,59 +228,13 @@
             {% endfor %}
           {% else %}
             <tr class="govuk-table__row">
-              <td class="govuk-table__cell" colspan="4">
+              <td class="govuk-table__cell" colspan="5">
                 <p class="govuk-body">No review history available.</p>
               </td>
             </tr>
           {% endif %}
         </tbody>
       </table>
-
-      <!-- Pagination Controls -->
-      {% if pagination and pagination.totalPages > 1 %}
-      <div class="pagination">
-        <!-- Previous Arrow -->
-        <a 
-          href="?limit={{ currentLimit }}&page={{ pagination.currentPage - 1 }}" 
-          class="pagination-item pagination-arrow"
-          {% if not pagination.hasPreviousPage %}disabled style="pointer-events: none;"{% endif %}
-          aria-label="Previous page"
-        >
-          &#60;
-        </a>
-        
-        <!-- Page Numbers -->
-        {% for page in range(1, pagination.totalPages + 1) %}
-          {% if page == pagination.currentPage %}
-            <span class="pagination-item pagination-current" aria-current="page">{{ page }}</span>
-          {% else %}
-            <a 
-              href="?limit={{ currentLimit }}&page={{ page }}" 
-              class="pagination-item"
-              aria-label="Go to page {{ page }}"
-            >
-              {{ page }}
-            </a>
-          {% endif %}
-        {% endfor %}
-        
-        <!-- Next Arrow -->
-        <a 
-          href="?limit={{ currentLimit }}&page={{ pagination.currentPage + 1 }}" 
-          class="pagination-item pagination-arrow"
-          {% if not pagination.hasNextPage %}disabled style="pointer-events: none;"{% endif %}
-          aria-label="Next page"
-        >
-          &#62;
-        </a>
-      </div>
-      
-      <div class="pagination-info">
-        Showing {{ (pagination.currentPage - 1) * pagination.pageSize + 1 }} to 
-        {{ [pagination.currentPage * pagination.pageSize, pagination.totalReviews] | min }} 
-        of {{ pagination.totalReviews }} reviews
-      </div>
-      {% endif %}
 
     </div>
   </div>
@@ -351,7 +245,9 @@
   {{ super() }}
   <script nonce="{{ cspNonce }}" src="{{ getAssetPath('upload-handler.js') }}"></script>
   <script nonce="{{ cspNonce }}">
-    console.log('[HOME] Page loaded');
+    console.log('[HOME] Page loaded at', new Date().toISOString());
+    console.log('[HOME] Backend URL:', window.APP_CONFIG?.backendApiUrl);
+    console.log('[HOME] Cache buster:', '{{ cacheBuster }}');
     // ============ AUTO-REFRESH LOGIC ============
     // Note: Upload form handling is now in upload-handler.js
     // Auto-refresh state
@@ -368,6 +264,7 @@
     const limitSelect = document.getElementById('reviewLimit');
     if (limitSelect) {
       limitSelect.addEventListener('change', function() {
+        console.log('Review limit changed to:', this.value);
         this.form.submit();
       });
     }
@@ -388,16 +285,35 @@
         })
         
         if (!response.ok) {
-          console.error('[HOME] Failed to fetch review history:', response.status);
+          console.error('Failed to fetch review history: HTTP', response.status);
           // Stop auto-refresh on error to prevent spam
           if (autoRefreshInterval) {
             clearInterval(autoRefreshInterval);
             autoRefreshInterval = null;
+            console.log('Auto-refresh stopped due to fetch error');
           }
           return;
         }
         
         const data = await response.json();
+        console.log('[HOME] Review history updated:', { 
+          count: data.reviews ? data.reviews.length : 0,
+          reviews: data.reviews 
+        });
+        
+        // Log raw backend data to debug fileName issues
+        console.log('[HOME] Raw review data from backend:', data.reviews.map(r => ({
+          id: r.id,
+          fileName: r.fileName,
+          filename: r.filename,
+          status: r.status,
+          createdAt: r.createdAt,
+          uploadedAt: r.uploadedAt,
+          updatedAt: r.updatedAt,
+          hasCreatedAt: !!r.createdAt,
+          hasUploadedAt: !!r.uploadedAt,
+          hasUpdatedAt: !!r.updatedAt
+        })));
         
         // Normalize review data for client-side rendering
         const normalized = (data.reviews || []).map(r => {
@@ -413,10 +329,18 @@
           return {
             ...r,
             filename: displayFilename,
-            // Use lastModified (S3 LastModified) for most accurate timestamp
-            uploadedAt: r.lastModified || r.updatedAt || r.createdAt || null
+            uploadedAt: r.uploadedAt || r.createdAt || r.updatedAt || null
           };
         });
+        
+        console.log('[HOME] Normalized reviews:', normalized.map(r => ({ 
+          id: r.id || r.reviewId, 
+          filename: r.filename, 
+          status: r.status,
+          uploadedAt: r.uploadedAt,
+          createdAt: r.createdAt,
+          updatedAt: r.updatedAt
+        })));
 
         // Update the table
         updateReviewTable(normalized);
@@ -427,6 +351,12 @@
           return ['processing', 'analyzing', 'queued', 'reviewing', 'downloading', 'finalizing', 'uploaded', 'uploading'].includes(status);
         });
         
+        console.log('[HOME] Active reviews check after update:', { 
+          hasActiveReviews, 
+          totalReviews: normalized.length,
+          statuses: normalized.map(r => r.status)
+        });
+        
         // Hide success message if no active reviews (all completed)
         if (!hasActiveReviews && uploadSuccess) {
           uploadSuccess.hidden = true;
@@ -434,20 +364,22 @@
         
         // Stop auto-refresh if no active reviews
         if (!hasActiveReviews && autoRefreshInterval) {
-          console.log('[HOME] Auto-refresh stopped - all reviews completed');
+          console.log('[HOME] No more active reviews - stopping auto-refresh');
           clearInterval(autoRefreshInterval);
           autoRefreshInterval = null;
+          console.log('[HOME] Auto-refresh stopped. All reviews completed or failed.');
         }
         
         // Store last review data for reference
         window.lastReviewData = normalized;
         
       } catch (error) {
-        console.error('[HOME] Error updating review history:', error);
+        console.error('Error updating review history:', error);
         // Stop auto-refresh on network error to prevent continuous failed requests
         if (autoRefreshInterval) {
           clearInterval(autoRefreshInterval);
           autoRefreshInterval = null;
+          console.log('Auto-refresh stopped due to network error');
         }
       } finally {
         isRefreshing = false;
@@ -508,250 +440,130 @@
       const tbody = document.getElementById('reviewHistoryBody');
       
       if (!reviews || reviews.length === 0) {
-        tbody.innerHTML = '<tr class="govuk-table__row"><td class="govuk-table__cell" colspan="4"><p class="govuk-body">No review history available.</p></td></tr>';
+        tbody.innerHTML = '<tr class="govuk-table__row"><td class="govuk-table__cell" colspan="5"><p class="govuk-body">No review history available.</p></td></tr>';
         return;
       }
       
-      // Get existing rows mapped by review ID
-      const existingRows = new Map();
-      const existingRowElements = tbody.querySelectorAll('tr[data-review-id]');
-      existingRowElements.forEach(row => {
-        const reviewId = row.getAttribute('data-review-id');
-        existingRows.set(reviewId, row);
-      });
+      tbody.innerHTML = '';
       
-      // Clear tbody only if there are no existing rows
-      if (existingRows.size === 0) {
-        tbody.innerHTML = '';
-      }
-      
-      reviews.forEach((review, index) => {
-        const reviewId = review.reviewId || review.id;
-        const existingRow = existingRows.get(reviewId);
+      reviews.forEach(review => {
+        const row = document.createElement('tr');
+        row.className = 'govuk-table__row';
         
-        if (existingRow) {
-          // Update Status, Result, and Timestamp columns
-          // Timestamp is updated to show S3 LastModified (most accurate time)
-          
-          const cells = existingRow.querySelectorAll('td');
-          // cells[0] = Document Name (keep unchanged)
-          // cells[1] = Status (update)
-          // cells[2] = Timestamp (update to S3 LastModified)
-          // cells[3] = Result (update)
-          
-          if (cells[1]) {
-            updateStatusCell(cells[1], review);
-          }
-          
-          // Update timestamp to S3 LastModified for accuracy
-          if (cells[2] && review.uploadedAt) {
-            const date = new Date(review.uploadedAt);
-            cells[2].textContent = date.toLocaleString('en-GB', {
-              day: '2-digit',
-              month: '2-digit',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit'
-            });
-          }
-          
-          if (cells[3]) {
-            updateResultCell(cells[3], review);
-          }
-          
-          // Remove from map to track processed rows
-          existingRows.delete(reviewId);
+        // Filename
+        const filenameCell = document.createElement('td');
+        filenameCell.className = 'govuk-table__cell';
+        filenameCell.textContent = review.filename || 'N/A';
+        row.appendChild(filenameCell);
+        
+      
+        // Status
+        const statusCell = document.createElement('td');
+        statusCell.className = 'govuk-table__cell';
+        const statusTag = document.createElement('strong');
+        statusTag.className = 'govuk-tag';
+        
+        const status = (review.status || '').toLowerCase();
+        if (status === 'completed') {
+          statusTag.classList.add('govuk-tag--green');
+          statusTag.textContent = 'Completed';
+        } else if (status === 'processing') {
+          statusTag.classList.add('govuk-tag--blue');
+          createStatusContent(statusTag, 'Processing');
+        } else if (status === 'pending') {
+          statusTag.classList.add('govuk-tag--yellow');
+          createStatusContent(statusTag, 'Pending');
+        } else if (status === 'failed') {
+          statusTag.classList.add('govuk-tag--red');
+          statusTag.textContent = 'Failed';
         } else {
-          // Create new row for new reviews
-          const row = createReviewRow(review);
-          tbody.appendChild(row);
+          statusTag.classList.add('govuk-tag--grey');
+          statusTag.textContent = review.status ? review.status.charAt(0).toUpperCase() + review.status.slice(1) : 'Unknown';
         }
-      });
-      
-      // Remove rows that are no longer in the response, BUT keep active reviews
-      // that were just added client-side (they may not be in backend yet due to S3 delay)
-      existingRows.forEach((row, reviewId) => {
-        const statusCell = row.querySelector('.govuk-tag');
-        const isPending = statusCell && statusCell.classList.contains('govuk-tag--yellow');
-        const isProcessing = statusCell && statusCell.classList.contains('govuk-tag--blue');
         
-        // Keep pending/processing reviews that might not be in backend yet
-        // Remove only completed/failed reviews that disappeared from the limit
-        if (!isPending && !isProcessing) {
-          row.remove();
+        statusCell.appendChild(statusTag);
+        row.appendChild(statusCell);
+        
+        // Timestamp
+        const timestampCell = document.createElement('td');
+        timestampCell.className = 'govuk-table__cell';
+        const timestamp = review.uploadedAt || review.createdAt || review.updatedAt;
+        
+        // Debug logging for timestamp issues
+        if (!timestamp) {
+          console.warn('[HOME] Review missing all timestamp fields:', {
+            id: review.id,
+            uploadedAt: review.uploadedAt,
+            createdAt: review.createdAt,
+            updatedAt: review.updatedAt,
+            status: review.status
+          });
         }
-      });
-      
-      // Enforce strict limit: Sort all rows by timestamp and keep only the most recent {limit}
-      const currentLimit = parseInt(document.getElementById('reviewLimit')?.value || '5', 10);
-      const allRows = Array.from(tbody.querySelectorAll('tr[data-review-id]'));
-      
-      // Sort rows by timestamp (extract from 3rd cell)
-      allRows.sort((a, b) => {
-        const aTimestamp = a.cells[2]?.textContent.trim();
-        const bTimestamp = b.cells[2]?.textContent.trim();
         
-        // Parse UK format: "DD/MM/YYYY, HH:MM"
-        const parseUKDate = (str) => {
-          if (!str || str === 'N/A') return new Date(0);
-          const [datePart, timePart] = str.split(', ');
-          const [day, month, year] = datePart.split('/');
-          return new Date(`${year}-${month}-${day}T${timePart}:00`);
-        };
-        
-        const aDate = parseUKDate(aTimestamp);
-        const bDate = parseUKDate(bTimestamp);
-        
-        return bDate - aDate; // Most recent first
-      });
-      
-      // Reorder rows in the DOM (most recent first)
-      allRows.forEach((row, index) => {
-        tbody.appendChild(row); // This moves the row to the end, maintaining sorted order
-      });
-      
-      // Keep only the top {limit} rows, remove the rest (oldest ones)
-      if (allRows.length > currentLimit) {
-        allRows.slice(currentLimit).forEach(row => row.remove());
-      }
-    }
-    
-    // Helper function to create a complete review row (for new reviews)
-    function createReviewRow(review) {
-      const row = document.createElement('tr');
-      row.className = 'govuk-table__row';
-      const reviewId = review.reviewId || review.id;
-      row.setAttribute('data-review-id', reviewId);
-      
-      // Document Name (cell 0)
-      const filenameCell = document.createElement('td');
-      filenameCell.className = 'govuk-table__cell';
-      filenameCell.textContent = review.filename || 'N/A';
-      row.appendChild(filenameCell);
-      
-      // Status (cell 1)
-      const statusCell = document.createElement('td');
-      statusCell.className = 'govuk-table__cell';
-      updateStatusCell(statusCell, review);
-      row.appendChild(statusCell);
-      
-      // Timestamp (cell 2)
-      const timestampCell = document.createElement('td');
-      timestampCell.className = 'govuk-table__cell';
-      const timestamp = review.uploadedAt || review.createdAt || review.updatedAt;
-      
-      if (timestamp) {
-        const date = new Date(timestamp);
-        timestampCell.textContent = date.toLocaleString('en-GB', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        });
-      } else {
-        timestampCell.textContent = 'N/A';
-      }
-      row.appendChild(timestampCell);
-      
-      // Result (cell 3)
-      const resultCell = document.createElement('td');
-      resultCell.className = 'govuk-table__cell';
-      updateResultCell(resultCell, review);
-      row.appendChild(resultCell);
-      
-      return row;
-    }
-    
-    // Helper function to update the Status cell
-    function updateStatusCell(cell, review) {
-      // Clear existing content
-      cell.innerHTML = '';
-      
-      const statusTag = document.createElement('strong');
-      statusTag.className = 'govuk-tag';
-      
-      const status = (review.status || '').toLowerCase();
-      if (status === 'completed') {
-        statusTag.classList.add('govuk-tag--green');
-        statusTag.textContent = 'Completed';
-      } else if (status === 'processing') {
-        statusTag.classList.add('govuk-tag--blue');
-        createStatusContent(statusTag, 'Processing');
-      } else if (status === 'pending') {
-        statusTag.classList.add('govuk-tag--yellow');
-        createStatusContent(statusTag, 'Pending');
-      } else if (status === 'failed') {
-        statusTag.classList.add('govuk-tag--red');
-        statusTag.textContent = 'Failed';
-      } else {
-        statusTag.classList.add('govuk-tag--grey');
-        statusTag.textContent = review.status ? review.status.charAt(0).toUpperCase() + review.status.slice(1) : 'Unknown';
-      }
-      
-      cell.appendChild(statusTag);
-    }
-    
-    // Helper function to update the Result cell
-    function updateResultCell(cell, review) {
-      // Clear existing content
-      cell.innerHTML = '';
-      
-      const status = (review.status || '').toLowerCase();
-      
-      if (status === 'completed') {
-        const link = document.createElement('a');
-        const reviewIdentifier = review.reviewId || review.id;
-        if (!reviewIdentifier) {
-          const span = document.createElement('span');
-          span.className = 'govuk-hint';
-          span.textContent = 'Missing review ID';
-          cell.appendChild(span);
+        if (timestamp) {
+          const date = new Date(timestamp);
+          timestampCell.textContent = date.toLocaleString('en-GB', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
         } else {
-          link.href = `/review/results/${reviewIdentifier}`;
+          timestampCell.textContent = 'N/A';
+        }
+        row.appendChild(timestampCell);
+        
+        // Result
+        const resultCell = document.createElement('td');
+        resultCell.className = 'govuk-table__cell';
+        
+        if (status === 'completed') {
+          const link = document.createElement('a');
+          const reviewIdentifier = review.reviewId || review.id;
+          if (!reviewIdentifier) {
+            link.textContent = 'Missing ID';
+            link.removeAttribute('href');
+          } else {
+            link.href = `/review/results/${reviewIdentifier}`;
+          }
           link.className = 'govuk-link';
           link.textContent = 'View results';
-          cell.appendChild(link);
-        }
-      } else if (status === 'failed') {
-        const errorSpan = document.createElement('span');
-        errorSpan.className = 'govuk-error-message';
-        if (review.errorMessage) {
-          errorSpan.textContent = `Failed (${review.errorMessage})`;
-        } else {
+          resultCell.appendChild(link);
+        } else if (status === 'failed') {
+          const errorSpan = document.createElement('span');
+          errorSpan.className = 'govuk-error-message';
           errorSpan.textContent = 'Review failed';
+          resultCell.appendChild(errorSpan);
+        } else if (status === 'processing') {
+          const span = document.createElement('span');
+          span.className = 'govuk-body';
+          createStatusContent(span, 'Processing');
+          resultCell.appendChild(span);
+        } else if (status === 'pending') {
+          const span = document.createElement('span');
+          span.className = 'govuk-body';
+          createStatusContent(span, 'Pending');
+          resultCell.appendChild(span);
+        } else {
+          resultCell.textContent = review.status || 'Unknown';
         }
-        cell.appendChild(errorSpan);
-      } else if (status === 'processing') {
-        const span = document.createElement('span');
-        span.className = 'govuk-body';
-        createStatusContent(span, 'Processing');
-        cell.appendChild(span);
-      } else if (status === 'pending') {
-        const span = document.createElement('span');
-        span.className = 'govuk-body';
-        createStatusContent(span, 'Pending');
-        cell.appendChild(span);
-      } else {
-        const span = document.createElement('span');
-        span.className = 'govuk-body';
-        span.textContent = review.status || 'Unknown';
-        cell.appendChild(span);
-      }
+        
+        row.appendChild(resultCell);
+        tbody.appendChild(row);
+      });
     }
     
     // Start auto-refresh
     function startAutoRefresh() {
       if (autoRefreshInterval) {
+        console.log('[HOME] Auto-refresh already running');
         return; // Already running
       }
       
-      console.log('[HOME] Starting auto-refresh');
+      console.log('[HOME] Starting auto-refresh with 5 second interval...');
       autoRefreshInterval = setInterval(updateReviewHistory, 5000);
     }
-    
-    // Make startAutoRefresh globally accessible for upload-handler.js
-    window.startAutoRefresh = startAutoRefresh;
     
     // Check if there are any active reviews on page load
     const tableRows = document.querySelectorAll('#reviewHistoryBody tr');
@@ -771,13 +583,19 @@
       }
     });
     
+    console.log('[HOME] Active reviews check:', { hasActiveReviews, count: activeStatuses.length, statuses: activeStatuses });
+    
     // Start auto-refresh if there are active reviews
     if (hasActiveReviews) {
       console.log('[HOME] Active reviews detected, starting auto-refresh');
       // Do an immediate update first to get latest status
-      updateReviewHistory();
+      updateReviewHistory().then(() => {
+        console.log('[HOME] Initial update complete');
+      });
       // Then start the interval
       startAutoRefresh();
+    } else {
+      console.log('[HOME] No active reviews detected, auto-refresh not started');
     }
     
     // Clean up interval when page is unloaded
