@@ -294,6 +294,8 @@ document.addEventListener('DOMContentLoaded', function () {
     row.setAttribute('data-review-id', review.id || review.reviewId)
 
     // Format date in UK format (consistent with template)
+    // Note: This timestamp shows submission time. Once the review is created in S3,
+    // auto-refresh will update it to show the S3 LastModified timestamp
     const now = new Date()
     const formattedDate = now.toLocaleString('en-GB', {
       day: '2-digit',

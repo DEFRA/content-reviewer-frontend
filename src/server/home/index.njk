@@ -312,7 +312,8 @@
           return {
             ...r,
             filename: displayFilename,
-            uploadedAt: r.uploadedAt || r.createdAt || r.updatedAt || null
+            // Use lastModified (S3 LastModified) for most accurate timestamp
+            uploadedAt: r.lastModified || r.updatedAt || r.createdAt || null
           };
         });
 
@@ -428,16 +429,29 @@
         const existingRow = existingRows.get(reviewId);
         
         if (existingRow) {
-          // Update only Status and Result columns (keep Document Name and Timestamp unchanged)
+          // Update Status, Result, and Timestamp columns
+          // Timestamp is updated to show S3 LastModified (most accurate time)
           
           const cells = existingRow.querySelectorAll('td');
           // cells[0] = Document Name (keep unchanged)
           // cells[1] = Status (update)
-          // cells[2] = Timestamp (keep unchanged)
+          // cells[2] = Timestamp (update to S3 LastModified)
           // cells[3] = Result (update)
           
           if (cells[1]) {
             updateStatusCell(cells[1], review);
+          }
+          
+          // Update timestamp to S3 LastModified for accuracy
+          if (cells[2] && review.uploadedAt) {
+            const date = new Date(review.uploadedAt);
+            cells[2].textContent = date.toLocaleString('en-GB', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            });
           }
           
           if (cells[3]) {
@@ -453,10 +467,52 @@
         }
       });
       
-      // Remove any rows that are no longer in the response to maintain the limit
+      // Remove rows that are no longer in the response, BUT keep active reviews
+      // that were just added client-side (they may not be in backend yet due to S3 delay)
       existingRows.forEach((row, reviewId) => {
-        row.remove();
+        const statusCell = row.querySelector('.govuk-tag');
+        const isPending = statusCell && statusCell.classList.contains('govuk-tag--yellow');
+        const isProcessing = statusCell && statusCell.classList.contains('govuk-tag--blue');
+        
+        // Keep pending/processing reviews that might not be in backend yet
+        // Remove only completed/failed reviews that disappeared from the limit
+        if (!isPending && !isProcessing) {
+          row.remove();
+        }
       });
+      
+      // Enforce strict limit: Sort all rows by timestamp and keep only the most recent {limit}
+      const currentLimit = parseInt(document.getElementById('reviewLimit')?.value || '5', 10);
+      const allRows = Array.from(tbody.querySelectorAll('tr[data-review-id]'));
+      
+      // Sort rows by timestamp (extract from 3rd cell)
+      allRows.sort((a, b) => {
+        const aTimestamp = a.cells[2]?.textContent.trim();
+        const bTimestamp = b.cells[2]?.textContent.trim();
+        
+        // Parse UK format: "DD/MM/YYYY, HH:MM"
+        const parseUKDate = (str) => {
+          if (!str || str === 'N/A') return new Date(0);
+          const [datePart, timePart] = str.split(', ');
+          const [day, month, year] = datePart.split('/');
+          return new Date(`${year}-${month}-${day}T${timePart}:00`);
+        };
+        
+        const aDate = parseUKDate(aTimestamp);
+        const bDate = parseUKDate(bTimestamp);
+        
+        return bDate - aDate; // Most recent first
+      });
+      
+      // Reorder rows in the DOM (most recent first)
+      allRows.forEach((row, index) => {
+        tbody.appendChild(row); // This moves the row to the end, maintaining sorted order
+      });
+      
+      // Keep only the top {limit} rows, remove the rest (oldest ones)
+      if (allRows.length > currentLimit) {
+        allRows.slice(currentLimit).forEach(row => row.remove());
+      }
     }
     
     // Helper function to create a complete review row (for new reviews)
