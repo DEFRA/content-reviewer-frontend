@@ -272,9 +272,9 @@
                   {% endif %}
                 {% elif review.status === 'failed' %}
                   {% if review.errorMessage %}
-                    <span class="govuk-error-message">Failed ({{ review.errorMessage }})</span>
+                    <span class="govuk-error-message">Review Failed ({{ review.errorMessage }})</span>
                   {% else %}
-                    <span class="govuk-error-message">Review failed</span>
+                    <span class="govuk-error-message">Review Failed</span>
                   {% endif %}
                 {% elif review.status === 'processing' %}
                   <span class="govuk-body">Processing...</span>
@@ -717,9 +717,9 @@
         const errorSpan = document.createElement('span');
         errorSpan.className = 'govuk-error-message';
         if (review.errorMessage) {
-          errorSpan.textContent = `Failed (${review.errorMessage})`;
+          errorSpan.textContent = `Review Failed (${review.errorMessage})`;
         } else {
-          errorSpan.textContent = 'Review failed';
+          errorSpan.textContent = 'Review Failed';
         }
         cell.appendChild(errorSpan);
       } else if (status === 'processing') {
