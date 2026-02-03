@@ -41,6 +41,10 @@ export const homeController = {
         `${backendUrl}/api/reviews?limit=${limit}&skip=${skip}`
       )
 
+      const backendRequestEnd = Date.now()
+      const backendRequestTime =
+        (backendRequestEnd - backendRequestStart) / 1000
+
       if (response.ok) {
         const data = await response.json()
 
