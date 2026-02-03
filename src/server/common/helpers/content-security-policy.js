@@ -19,7 +19,7 @@ const contentSecurityPolicy = {
     fontSrc: ['self', 'data:'],
     connectSrc: ['self', 'data:', backendUrl, wsUrl],
     mediaSrc: ['self'],
-    styleSrc: ['self', "'unsafe-hashes'"],
+    styleSrc: ['self'],
     scriptSrc: [
       'self',
       "'sha256-GUQ5ad8JK5KmEWmROf3LZd9ge94daqNvd8xy9YS1iDw='"
