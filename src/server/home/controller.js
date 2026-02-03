@@ -19,12 +19,31 @@ export const homeController = {
     // Fetch review history from backend
     // Default to 5, but support limit query param for future use
     const limit = parseInt(request.query.limit) || 5
+    const pageSize = 25 // Number of items per page
+    const currentPage = parseInt(request.query.page) || 1
+    const skip = (currentPage - 1) * pageSize
+
     let reviewHistory = []
+    let totalReviews = 0
+    let totalPages = 0
+
     try {
-      logger.info(
-        `Requesting review history from backend: ${backendUrl}/api/reviews?limit=${limit}`
+      const backendRequestStart = Date.now()
+      console.log('[HOME-CONTROLLER] Fetching review history from backend')
+      logger.info('Initiating review history fetch for home page', {
+        endpoint: `${backendUrl}/api/reviews?limit=${limit}&skip=${skip}&pageSize=${pageSize}`,
+        currentPage,
+        pageSize,
+        skip
+      })
+
+      const response = await fetch(
+        `${backendUrl}/api/reviews?limit=${limit}&skip=${skip}`
       )
-      const response = await fetch(`${backendUrl}/api/reviews?limit=${limit}`)
+
+      const backendRequestEnd = Date.now()
+      const backendRequestTime =
+        (backendRequestEnd - backendRequestStart) / 1000
 
       if (response.ok) {
         const data = await response.json()
@@ -42,6 +61,21 @@ export const homeController = {
 
         reviewHistory = normalized
 
+        // Calculate total pages
+        totalReviews = data.total || data.count || 0
+        totalPages = Math.ceil(totalReviews / pageSize)
+
+        logger.info('Review history retrieved successfully', {
+          count: reviewHistory.length,
+          totalFromResponse: data.total || data.count || 0,
+          totalReviews,
+          totalPages,
+          currentPage,
+          pageSize,
+          requestTime: `${backendRequestTime}s`,
+          missingIdCount: missingId.length,
+          reviewid: data.reviews.id
+        })
         if (missingId.length > 0) {
           logger.warn(
             {
@@ -69,7 +103,15 @@ export const homeController = {
       reviewHistory,
       backendUrl, // Pass to template for client-side use
       cacheBuster: Date.now(), // Add cacheBuster for template
-      currentLimit: limit // Pass the current limit to template
+      currentLimit: limit, // Pass the current limit to template
+      pagination: {
+        currentPage,
+        pageSize,
+        totalReviews,
+        totalPages,
+        hasNextPage: currentPage < totalPages,
+        hasPreviousPage: currentPage > 1
+      }
     }
 
     return h.view('home/index', viewData)
