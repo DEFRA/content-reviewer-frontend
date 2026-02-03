@@ -69,9 +69,11 @@
       outline: 3px solid #ffbf47;
       outline-offset: 0;
     }
-    .pagination-item:disabled {
+    .pagination-item:disabled,
+    .pagination-item[disabled] {
       opacity: 0.5;
       cursor: not-allowed;
+      pointer-events: none;
     }
     .pagination-current {
       background-color: #1d70b8;
@@ -303,7 +305,7 @@
         <a 
           href="?limit={{ currentLimit }}&page={{ pagination.currentPage - 1 }}" 
           class="pagination-item pagination-arrow"
-          {% if not pagination.hasPreviousPage %}disabled style="pointer-events: none;"{% endif %}
+          {% if not pagination.hasPreviousPage %}disabled{% endif %}
           aria-label="Previous page"
         >
           &#60;
@@ -328,7 +330,7 @@
         <a 
           href="?limit={{ currentLimit }}&page={{ pagination.currentPage + 1 }}" 
           class="pagination-item pagination-arrow"
-          {% if not pagination.hasNextPage %}disabled style="pointer-events: none;"{% endif %}
+          {% if not pagination.hasNextPage %}disabled{% endif %}
           aria-label="Next page"
         >
           &#62;
