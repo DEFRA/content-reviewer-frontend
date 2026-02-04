@@ -25,12 +25,13 @@ export async function getReviewsController(request, h) {
   const startTime = Date.now()
   const requestLogger = request.logger
 
-  // Get limit from query parameter, default to 10
+  // Get limit and skip from query parameters
   const limit = request.query.limit || 10
+  const skip = request.query.skip || 0
 
   try {
     const backendRequestStart = Date.now()
-    const endpoint = `${backendUrl}/api/reviews?limit=${limit}`
+    const endpoint = `${backendUrl}/api/reviews?limit=${limit}&skip=${skip}`
     logger.info(`Requesting review history from backend: ${endpoint}`)
 
     // Fetch review history from backend
@@ -57,7 +58,13 @@ export async function getReviewsController(request, h) {
         .response({
           success: false,
           message: 'Failed to fetch review history',
-          reviews: []
+          reviews: [],
+          pagination: {
+            total: 0,
+            limit,
+            skip,
+            returned: 0
+          }
         })
         .code(500)
     }
@@ -74,7 +81,14 @@ export async function getReviewsController(request, h) {
       .response({
         success: true,
         reviews: normalizedReviews,
-        count: normalizedReviews.length
+        count: normalizedReviews.length,
+        total: data.pagination?.total || normalizedReviews.length,
+        pagination: data.pagination || {
+          total: normalizedReviews.length,
+          limit,
+          skip,
+          returned: normalizedReviews.length
+        }
       })
       .code(200)
   } catch (error) {
@@ -84,7 +98,7 @@ export async function getReviewsController(request, h) {
       error: error.message,
       stack: error.stack,
       totalProcessingTime: `${totalProcessingTime}s`,
-      endpoint: `${backendUrl}/api/reviews?limit=${limit}`
+      endpoint: `${backendUrl}/api/reviews?limit=${limit}&skip=${skip}`
     })
 
     requestLogger.error(
@@ -95,7 +109,13 @@ export async function getReviewsController(request, h) {
       .response({
         success: false,
         message: error.message,
-        reviews: []
+        reviews: [],
+        pagination: {
+          total: 0,
+          limit,
+          skip,
+          returned: 0
+        }
       })
       .code(500)
   }

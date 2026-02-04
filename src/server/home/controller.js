@@ -37,9 +37,7 @@ export const homeController = {
         skip
       })
 
-      const response = await fetch(
-        `${backendUrl}/api/reviews?limit=${limit}&skip=${skip}`
-      )
+      const response = await fetch(`${backendUrl}/api/reviews?limit=${limit}`)
 
       const backendRequestEnd = Date.now()
       const backendRequestTime =
@@ -61,9 +59,19 @@ export const homeController = {
 
         reviewHistory = normalized
 
-        // Calculate total pages
-        totalReviews = data.total || data.count || 0
+        // Calculate total pages - use pagination.total from backend if available
+        totalReviews =
+          data.pagination?.total ||
+          data.total ||
+          data.count ||
+          normalized.length ||
+          0
         totalPages = Math.ceil(totalReviews / pageSize)
+
+        // Slice reviews to show only the current page
+        const pageStartIndex = (currentPage - 1) * pageSize
+        const pageEndIndex = pageStartIndex + pageSize
+        reviewHistory = normalized.slice(pageStartIndex, pageEndIndex)
 
         logger.info('Review history retrieved successfully', {
           count: reviewHistory.length,
