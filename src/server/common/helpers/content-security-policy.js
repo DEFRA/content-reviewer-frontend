@@ -30,7 +30,7 @@ const contentSecurityPolicy = {
     frameAncestors: ['none'],
     formAction: ['self'],
     manifestSrc: ['self'],
-    generateNonces: true
+    generateNonces: 'script' // Only generate nonces for scripts, not styles, to allow 'unsafe-inline' for CSS
   }
 }
 
