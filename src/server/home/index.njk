@@ -297,7 +297,7 @@
       </table>
 
       <!-- Pagination Controls -->
-      {% if pagination and pagination.totalPages > 1 %}
+      {% if pagination and pagination.totalReviews > 25 %}
       <div class="pagination">
         <!-- Previous Arrow -->
         <a 
@@ -336,9 +336,19 @@
       </div>
       
       <div class="pagination-info">
-        Showing {{ (pagination.currentPage - 1) * pagination.pageSize + 1 }} to 
-        {{ [pagination.currentPage * pagination.pageSize, pagination.totalReviews] | min }} 
-        of {{ pagination.totalReviews }} reviews
+        {% if pagination.totalReviews > 25 %}
+          Showing {{ (pagination.currentPage - 1) * pagination.pageSize + 1 }} to 
+          {{ [pagination.currentPage * pagination.pageSize, pagination.totalReviews] | min }} 
+          of {{ pagination.totalReviews }} reviews
+        {% else %}
+          Showing {{ pagination.totalReviews }} of {{ pagination.totalReviews }} reviews
+        {% endif %}
+      </div>
+      {% else %}
+      <div class="pagination-info">
+        {% if pagination and pagination.totalReviews > 0 %}
+          Showing {{ pagination.totalReviews }} of {{ pagination.totalReviews }} reviews
+        {% endif %}
       </div>
       {% endif %}
 
@@ -379,6 +389,10 @@
       isRefreshing = true;
       try {
         const limit = document.getElementById('reviewLimit')?.value || 5;
+        // Get current page from URL or default to 1
+        const urlParams = new URLSearchParams(window.location.search);
+        const currentPage = parseInt(urlParams.get('page')) || 1;
+        
         // Call frontend proxy route instead of backend directly to avoid CORS issues
         const response = await fetch(`/api/reviews?limit=${limit}`, {
           method: 'GET',
@@ -417,8 +431,14 @@
           };
         });
 
-        // Update the table
-        updateReviewTable(normalized);
+        // Slice to show only records for current page (25 per page)
+        const pageSize = 25;
+        const pageStartIndex = (currentPage - 1) * pageSize;
+        const pageEndIndex = pageStartIndex + pageSize;
+        const pagedReviews = normalized.slice(pageStartIndex, pageEndIndex);
+
+        // Update the table with only the current page records
+        updateReviewTable(pagedReviews);
         
         // Check if there are still active reviews (not completed or failed)
         const hasActiveReviews = normalized.some(r => {
@@ -511,52 +531,13 @@
         return;
       }
       
-      // Get existing rows mapped by review ID
-      const existingRows = new Map();
-      const existingRowElements = tbody.querySelectorAll('tr[data-review-id]');
-      existingRowElements.forEach(row => {
-        const reviewId = row.getAttribute('data-review-id');
-        existingRows.set(reviewId, row);
-      });
+      // Clear tbody completely - start fresh
+      tbody.innerHTML = '';
       
-      // Clear tbody only if there are no existing rows
-      if (existingRows.size === 0) {
-        tbody.innerHTML = '';
-      }
-      
+      // Add all reviews to the table (server has already sliced to correct page)
       reviews.forEach((review, index) => {
-        const reviewId = review.reviewId || review.id;
-        const existingRow = existingRows.get(reviewId);
-        
-        if (existingRow) {
-          // Update only Status and Result columns (keep Document Name and Timestamp unchanged)
-          
-          const cells = existingRow.querySelectorAll('td');
-          // cells[0] = Document Name (keep unchanged)
-          // cells[1] = Status (update)
-          // cells[2] = Timestamp (keep unchanged)
-          // cells[3] = Result (update)
-          
-          if (cells[1]) {
-            updateStatusCell(cells[1], review);
-          }
-          
-          if (cells[3]) {
-            updateResultCell(cells[3], review);
-          }
-          
-          // Remove from map to track processed rows
-          existingRows.delete(reviewId);
-        } else {
-          // Create new row for new reviews
-          const row = createReviewRow(review);
-          tbody.appendChild(row);
-        }
-      });
-      
-      // Remove any rows that are no longer in the response to maintain the limit
-      existingRows.forEach((row, reviewId) => {
-        row.remove();
+        const row = createReviewRow(review);
+        tbody.appendChild(row);
       });
     }
     
