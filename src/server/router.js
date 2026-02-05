@@ -8,6 +8,7 @@ import review from './review/index.js'
 import { uploadApiController } from './api/upload.js'
 import { textReviewApiController } from './api/text-review.js'
 import { getReviewsController } from './api/reviews.js'
+import { deleteReviewRoute } from './api/delete-review.js'
 import { serveStaticFiles } from './common/helpers/serve-static-files.js'
 
 export const router = {
@@ -42,6 +43,8 @@ export const router = {
         path: '/api/reviews',
         handler: getReviewsController
       })
+
+      server.route(deleteReviewRoute)
 
       server.route({
         method: 'POST',

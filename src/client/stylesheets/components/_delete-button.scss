@@ -1,0 +1,52 @@
+// Delete button styling
+.delete-review-btn {
+  margin: 0;
+  padding: 5px 10px;
+  font-size: 14px;
+  line-height: 1.2;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+}
+
+// Small button variant
+.govuk-button--small {
+  padding: 5px 10px !important;
+  font-size: 14px !important;
+  min-height: auto !important;
+  line-height: 1.2 !important;
+}
+
+// Warning button styling (for delete actions)
+.govuk-button--warning {
+  background-color: #d4351c !important;
+  box-shadow: 0 2px 0 #942514 !important;
+  color: #ffffff !important;
+
+  &:link,
+  &:visited {
+    color: #ffffff !important;
+  }
+
+  &:hover {
+    background-color: #aa2a16 !important;
+    color: #ffffff !important;
+  }
+
+  &:active {
+    top: 2px;
+    box-shadow: none !important;
+    background-color: #942514 !important;
+  }
+
+  &:focus {
+    background-color: #d4351c !important;
+    color: #000000 !important;
+    box-shadow: 0 2px 0 #942514 !important;
+    outline: 3px solid #ffdd00 !important;
+    outline-offset: 0 !important;
+  }
+}

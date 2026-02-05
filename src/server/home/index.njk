@@ -238,6 +238,7 @@
             <th scope="col" class="govuk-table__header">Status</th>
             <th scope="col" class="govuk-table__header">Timestamp</th>
             <th scope="col" class="govuk-table__header">Result</th>
+            <th scope="col" class="govuk-table__header">Actions</th>
           </tr>
         </thead>
         <tbody class="govuk-table__body" id="reviewHistoryBody">
@@ -285,6 +286,15 @@
                 {% else %}
                   <span class="govuk-body">{{ review.status }}</span>
                 {% endif %}
+              </td>
+              <td class="govuk-table__cell">
+                <button 
+                  class="govuk-button govuk-button--warning govuk-button--small delete-review-btn" 
+                  data-review-id="{{ review.reviewId or review.id }}"
+                  data-filename="{{ review.filename }}"
+                  type="button">
+                  Delete
+                </button>
               </td>
             </tr>
             {% endfor %}
@@ -424,9 +434,19 @@
         updateReviewTable(normalized);
         
         // Check if there are still active reviews (pending or processing, not completed or failed)
-        const hasActiveReviews = normalized.some(r => {
+        const activeReviews = normalized.filter(r => {
           const status = (r.status || '').toLowerCase();
           return status === 'pending' || status === 'processing';
+        });
+        
+        const hasActiveReviews = activeReviews.length > 0;
+        
+        // Log status check results for debugging
+        console.log('[HOME] Status check:', {
+          totalReviews: normalized.length,
+          activeCount: activeReviews.length,
+          statuses: normalized.map(r => ({ id: r.id || r.reviewId, status: r.status })),
+          hasActiveReviews
         });
         
         // Hide success message if no active reviews (all completed)
@@ -436,9 +456,13 @@
         
         // Stop auto-refresh if no active reviews
         if (!hasActiveReviews && autoRefreshInterval) {
-          console.log('[HOME] Auto-refresh stopped - all reviews completed');
+          console.log('[HOME] Auto-refresh stopped - all reviews completed or failed');
           clearInterval(autoRefreshInterval);
           autoRefreshInterval = null;
+        } else if (hasActiveReviews && !autoRefreshInterval) {
+          // Restart auto-refresh if new active reviews appeared
+          console.log('[HOME] Active reviews detected, restarting auto-refresh');
+          startAutoRefresh();
         }
         
         // Store last review data for reference
@@ -540,6 +564,7 @@
           // cells[1] = Status (update)
           // cells[2] = Timestamp (update to S3 LastModified)
           // cells[3] = Result (update)
+          // cells[4] = Actions (keep unchanged)
           
           if (cells[1]) {
             updateStatusCell(cells[1], review);
@@ -569,6 +594,9 @@
           tbody.appendChild(row);
         }
       });
+      
+      // Attach delete handlers after updating table
+      attachDeleteHandlers();
       
       // Remove rows that are no longer in the response, BUT keep active reviews
       // that were just added client-side (they may not be in backend yet due to S3 delay)
@@ -662,6 +690,19 @@
       updateResultCell(resultCell, review);
       row.appendChild(resultCell);
       
+      // Actions (cell 4) - Delete button
+      const actionsCell = document.createElement('td');
+      actionsCell.className = 'govuk-table__cell';
+      
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'govuk-button govuk-button--warning govuk-button--small delete-review-btn';
+      deleteBtn.setAttribute('data-review-id', reviewId);
+      deleteBtn.setAttribute('data-filename', review.filename || 'Unknown');
+      deleteBtn.setAttribute('type', 'button');
+      deleteBtn.textContent = 'Delete';
+      actionsCell.appendChild(deleteBtn);
+      row.appendChild(actionsCell);
+      
       return row;
     }
     
@@ -742,6 +783,87 @@
       }
     }
     
+    // Delete review functionality
+    async function deleteReview(reviewId, filename) {
+      if (!reviewId) {
+        console.error('[HOME] Cannot delete review - missing ID');
+        alert('Error: Missing review ID');
+        return;
+      }
+      
+      // Confirm deletion
+      const confirmMessage = `Are you sure you want to delete the review for "${filename}"?\n\nThis will permanently delete:\n- The review record\n- Any uploaded content\n- All associated data from S3\n\nThis action cannot be undone.`;
+      
+      if (!confirm(confirmMessage)) {
+        console.log('[HOME] Delete cancelled by user');
+        return;
+      }
+      
+      console.log('[HOME] Deleting review:', reviewId);
+      
+      try {
+        // Call delete API endpoint
+        const response = await fetch(`/api/reviews/${reviewId}`, {
+          method: 'DELETE',
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `Failed to delete review: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log('[HOME] Review deleted successfully:', result);
+        
+        // Show success message
+        alert(`Review "${filename}" has been deleted successfully.`);
+        
+        // Refresh the review history to update the table
+        await updateReviewHistory();
+        
+      } catch (error) {
+        console.error('[HOME] Error deleting review:', error);
+        alert(`Failed to delete review: ${error.message}`);
+      }
+    }
+    
+    // Attach delete button click handlers
+    function attachDeleteHandlers() {
+      const deleteButtons = document.querySelectorAll('.delete-review-btn');
+      deleteButtons.forEach(button => {
+        // Remove existing listeners to prevent duplicates
+        button.replaceWith(button.cloneNode(true));
+      });
+      
+      // Re-query and attach new listeners
+      const newDeleteButtons = document.querySelectorAll('.delete-review-btn');
+      newDeleteButtons.forEach(button => {
+        button.addEventListener('click', async function() {
+          const reviewId = this.getAttribute('data-review-id');
+          const filename = this.getAttribute('data-filename');
+          
+          // Disable button during deletion
+          this.disabled = true;
+          const originalText = this.textContent;
+          this.textContent = 'Deleting...';
+          
+          await deleteReview(reviewId, filename);
+          
+          // Re-enable button (if row still exists)
+          if (document.contains(this)) {
+            this.disabled = false;
+            this.textContent = originalText;
+          }
+        });
+      });
+    }
+    
+    // Attach handlers on page load
+    attachDeleteHandlers();
+    
     // Start auto-refresh
     function startAutoRefresh() {
       if (autoRefreshInterval) {
@@ -763,10 +885,10 @@
     tableRows.forEach(row => {
       const statusCell = row.querySelector('.govuk-tag');
       if (statusCell) {
-        const statusText = statusCell.textContent.trim();
+        const statusText = statusCell.textContent.trim().toLowerCase();
+        // Only check for pending or processing statuses (not grey/unknown)
         if (statusCell.classList.contains('govuk-tag--blue') ||
-            statusCell.classList.contains('govuk-tag--yellow') ||
-            statusCell.classList.contains('govuk-tag--grey')) {
+            statusCell.classList.contains('govuk-tag--yellow')) {
           hasActiveReviews = true;
           activeStatuses.push(statusText);
         }
@@ -775,11 +897,16 @@
     
     // Start auto-refresh if there are active reviews
     if (hasActiveReviews) {
-      console.log('[HOME] Active reviews detected, starting auto-refresh');
+      console.log('[HOME] Active reviews detected on page load:', {
+        count: activeStatuses.length,
+        statuses: activeStatuses
+      });
       // Do an immediate update first to get latest status
       updateReviewHistory();
       // Then start the interval
       startAutoRefresh();
+    } else {
+      console.log('[HOME] No active reviews on page load - auto-refresh not started');
     }
     
     // Clean up interval when page is unloaded
