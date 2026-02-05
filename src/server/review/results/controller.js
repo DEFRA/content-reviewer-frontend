@@ -1,8 +1,3 @@
-import {
-  validateContentSafe,
-  logPIIDetection
-} from '../../common/helpers/pii-sanitizer.js'
-
 export const resultsController = {
   handler: async (request, h) => {
     const { id: reviewId } = request.params
@@ -63,31 +58,6 @@ export const resultsController = {
 
       // Transform backend data to frontend format (only fields used by the template)
       const reviewResults = transformReviewData(statusData, reviewId)
-
-      // ============================================
-      // SECURITY: VALIDATE NO UNREDACTED PII IN RESPONSE
-      // ============================================
-      if (reviewResults.result?.reviewContent) {
-        const validation = validateContentSafe(
-          reviewResults.result.reviewContent,
-          'reviewContent'
-        )
-
-        if (!validation.safe) {
-          // Log security warning
-          logPIIDetection('reviewContent', validation.detectedPatterns)
-
-          // In production, you might want to block display or sanitize further
-          request.logger.error(
-            {
-              reviewId,
-              detectedPatterns: validation.detectedPatterns,
-              warning: validation.warning
-            },
-            '[PII SECURITY ALERT] Unredacted PII detected in review content'
-          )
-        }
-      }
 
       return h.view('review/results/index', {
         pageTitle: 'Review Results',
