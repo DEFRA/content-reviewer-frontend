@@ -156,8 +156,8 @@
       });
     });
 
-    // Auto-refresh every 10 seconds if there are processing reviews
-    const hasProcessing = {{ (reviews | selectattr('status', 'in', ['processing', 'analyzing', 'queued']) | list | length > 0) | dump }};
+    // Auto-refresh every 10 seconds if there are pending or processing reviews
+    const hasProcessing = {{ (reviews | selectattr('status', 'in', ['pending', 'processing']) | list | length > 0) | dump }};
     
     if (hasProcessing) {
       setTimeout(() => {

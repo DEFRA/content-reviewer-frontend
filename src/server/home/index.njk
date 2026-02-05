@@ -423,10 +423,10 @@
         // Update the table
         updateReviewTable(normalized);
         
-        // Check if there are still active reviews (not completed or failed)
+        // Check if there are still active reviews (pending or processing, not completed or failed)
         const hasActiveReviews = normalized.some(r => {
           const status = (r.status || '').toLowerCase();
-          return ['processing', 'analyzing', 'queued', 'reviewing', 'downloading', 'finalizing', 'uploaded', 'uploading'].includes(status);
+          return status === 'pending' || status === 'processing';
         });
         
         // Hide success message if no active reviews (all completed)
