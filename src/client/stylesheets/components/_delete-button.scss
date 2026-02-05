@@ -1,14 +1,44 @@
-// Delete button styling
+// Delete button styling - GOV.UK compliant secondary button
 .delete-review-btn {
   margin: 0;
   padding: 5px 10px;
   font-size: 14px;
   line-height: 1.2;
+  background-color: #f3f2f1 !important; // GOV.UK secondary button color
+  box-shadow: 0 2px 0 #929191 !important;
+  color: #0b0c0c !important; // GOV.UK text color
+  border: none;
+  cursor: pointer;
+  position: relative;
 
   &:disabled {
-    opacity: 0.6;
+    opacity: 0.5;
     cursor: not-allowed;
     pointer-events: none;
+  }
+
+  &:link,
+  &:visited {
+    color: #0b0c0c !important;
+  }
+
+  &:hover {
+    background-color: #dbdad9 !important; // GOV.UK secondary button hover
+    color: #0b0c0c !important;
+  }
+
+  &:active {
+    top: 2px;
+    box-shadow: none !important;
+    background-color: #dbdad9 !important;
+  }
+
+  &:focus {
+    background-color: #f3f2f1 !important;
+    color: #0b0c0c !important;
+    box-shadow: 0 2px 0 #929191 !important;
+    outline: 3px solid #ffdd00 !important; // GOV.UK focus color
+    outline-offset: 0 !important;
   }
 }
 
@@ -18,35 +48,4 @@
   font-size: 14px !important;
   min-height: auto !important;
   line-height: 1.2 !important;
-}
-
-// Warning button styling (for delete actions)
-.govuk-button--warning {
-  background-color: #d4351c !important;
-  box-shadow: 0 2px 0 #942514 !important;
-  color: #ffffff !important;
-
-  &:link,
-  &:visited {
-    color: #ffffff !important;
-  }
-
-  &:hover {
-    background-color: #aa2a16 !important;
-    color: #ffffff !important;
-  }
-
-  &:active {
-    top: 2px;
-    box-shadow: none !important;
-    background-color: #942514 !important;
-  }
-
-  &:focus {
-    background-color: #d4351c !important;
-    color: #000000 !important;
-    box-shadow: 0 2px 0 #942514 !important;
-    outline: 3px solid #ffdd00 !important;
-    outline-offset: 0 !important;
-  }
 }

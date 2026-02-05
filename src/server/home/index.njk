@@ -289,7 +289,7 @@
               </td>
               <td class="govuk-table__cell">
                 <button 
-                  class="govuk-button govuk-button--warning govuk-button--small delete-review-btn" 
+                  class="govuk-button govuk-button--secondary govuk-button--small delete-review-btn" 
                   data-review-id="{{ review.reviewId or review.id }}"
                   data-filename="{{ review.filename }}"
                   type="button">
@@ -369,6 +369,8 @@
     // Auto-refresh state
     let autoRefreshInterval = null;
     let isRefreshing = false;
+    let currentAbortController = null;
+    let isPageUnloading = false;
     
     // Get the current limit from dropdown
     function getCurrentLimit() {
@@ -386,9 +388,21 @@
     
     // Function to update review history without page reload
     async function updateReviewHistory() {
-      if (isRefreshing) return; // Prevent concurrent requests
+      // Prevent fetches during page unload/navigation or when page is hidden
+      if (isRefreshing || isPageUnloading || document.visibilityState === 'hidden') {
+        return;
+      }
       
       isRefreshing = true;
+      
+      // Cancel any existing request
+      if (currentAbortController) {
+        currentAbortController.abort();
+      }
+      
+      // Create new abort controller for this request
+      currentAbortController = new AbortController();
+      
       try {
         const limit = document.getElementById('reviewLimit')?.value || 5;
         // Call frontend proxy route instead of backend directly to avoid CORS issues
@@ -396,7 +410,8 @@
           method: 'GET',
           headers: {
             'Accept': 'application/json'
-          }
+          },
+          signal: currentAbortController.signal
         })
         
         if (!response.ok) {
@@ -469,14 +484,19 @@
         window.lastReviewData = normalized;
         
       } catch (error) {
-        console.error('[HOME] Error updating review history:', error);
-        // Stop auto-refresh on network error to prevent continuous failed requests
-        if (autoRefreshInterval) {
-          clearInterval(autoRefreshInterval);
-          autoRefreshInterval = null;
+        // Only log error if it's not an abort (which happens during navigation)
+        if (error.name !== 'AbortError') {
+          console.error('[HOME] Error updating review history:', error);
+          // Stop auto-refresh on network error to prevent continuous failed requests
+          if (autoRefreshInterval) {
+            clearInterval(autoRefreshInterval);
+            autoRefreshInterval = null;
+          }
         }
+        // Silently ignore AbortError - it's expected during page navigation
       } finally {
         isRefreshing = false;
+        currentAbortController = null;
       }
     }
     
@@ -695,7 +715,7 @@
       actionsCell.className = 'govuk-table__cell';
       
       const deleteBtn = document.createElement('button');
-      deleteBtn.className = 'govuk-button govuk-button--warning govuk-button--small delete-review-btn';
+      deleteBtn.className = 'govuk-button govuk-button--secondary govuk-button--small delete-review-btn';
       deleteBtn.setAttribute('data-review-id', reviewId);
       deleteBtn.setAttribute('data-filename', review.filename || 'Unknown');
       deleteBtn.setAttribute('type', 'button');
@@ -792,7 +812,7 @@
       }
       
       // Confirm deletion
-      const confirmMessage = `Are you sure you want to delete the review for "${filename}"?\n\nThis will permanently delete:\n- The review record\n- Any uploaded content\n- All associated data from S3\n\nThis action cannot be undone.`;
+      const confirmMessage = `Are you sure you want to delete the review for "${filename}"?\n\nThis action cannot be undone.`;
       
       if (!confirm(confirmMessage)) {
         console.log('[HOME] Delete cancelled by user');
@@ -818,10 +838,17 @@
         const result = await response.json();
         console.log('[HOME] Review deleted successfully:', result);
         
+        // Immediately remove the row from the table for instant feedback
+        const rowToDelete = document.querySelector(`tr[data-review-id="${reviewId}"]`);
+        if (rowToDelete) {
+          rowToDelete.remove();
+          console.log('[HOME] Review row removed from table:', reviewId);
+        }
+        
         // Show success message
         alert(`Review "${filename}" has been deleted successfully.`);
         
-        // Refresh the review history to update the table
+        // Refresh the review history to update the table with fresh data from server
         await updateReviewHistory();
         
       } catch (error) {
@@ -911,8 +938,31 @@
     
     // Clean up interval when page is unloaded
     window.addEventListener('beforeunload', () => {
+      isPageUnloading = true;
+      
       if (autoRefreshInterval) {
         clearInterval(autoRefreshInterval);
+        autoRefreshInterval = null;
+      }
+      
+      // Abort any pending fetch requests
+      if (currentAbortController) {
+        currentAbortController.abort();
+        currentAbortController = null;
+      }
+    });
+    
+    // Pause auto-refresh when page is hidden, resume when visible
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        console.log('[HOME] Page hidden - pausing auto-refresh');
+        // Don't clear the interval, just let the guard condition prevent fetches
+      } else if (document.visibilityState === 'visible' && !isPageUnloading) {
+        console.log('[HOME] Page visible - resuming auto-refresh');
+        // Trigger an immediate update when page becomes visible again
+        if (autoRefreshInterval) {
+          updateReviewHistory();
+        }
       }
     });
   </script>
