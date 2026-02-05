@@ -370,6 +370,22 @@
   {{ super() }}
   <script nonce="{{ cspNonce }}" src="{{ getAssetPath('upload-handler.js') }}"></script>
   <script nonce="{{ cspNonce }}">
+    console.log('[HOME] Page loaded with data:', {
+      currentLimit: {{ currentLimit }},
+      currentPage: {{ pagination.currentPage }},
+      pageSize: {{ pagination.pageSize }},
+      totalReviews: {{ pagination.totalReviews }},
+      totalPages: {{ pagination.totalPages }},
+      reviewHistoryLength: {{ reviewHistory | length }},
+      hasPreviousPage: {{ pagination.hasPreviousPage | dump }},
+      hasNextPage: {{ pagination.hasNextPage | dump }}
+    });
+    
+    console.log('[HOME] Review history items on initial load:');
+    {% for review in reviewHistory %}
+    console.log('  - {{ review.filename | safe }} ({{ review.status }})');
+    {% endfor %}
+    
     console.log('[HOME] Page loaded');
     // ============ AUTO-REFRESH LOGIC ============
     // Note: Upload form handling is now in upload-handler.js
@@ -416,8 +432,18 @@
         const urlParams = new URLSearchParams(window.location.search);
         const currentPage = parseInt(urlParams.get('page')) || 1;
         
+        // Build API URL with page parameter for proper pagination
+        let apiUrl = `/api/reviews?limit=${limit}`;
+        
+        // Include page parameter for paginated views (limit > 25)
+        if (limit > 25 && currentPage > 1) {
+          apiUrl += `&page=${currentPage}`;
+        }
+        
+        console.log('[HOME] Auto-refresh fetching:', { limit, currentPage, apiUrl });
+        
         // Call frontend proxy route instead of backend directly to avoid CORS issues
-        const response = await fetch(`/api/reviews?limit=${limit}`, {
+        const response = await fetch(apiUrl, {
           method: 'GET',
           headers: {
             'Accept': 'application/json'
@@ -456,13 +482,24 @@
           };
         });
 
-        // Slice to show only records for current page (25 per page)
-        const pageSize = 25;
-        const pageStartIndex = (currentPage - 1) * pageSize;
-        const pageEndIndex = pageStartIndex + pageSize;
-        const pagedReviews = normalized.slice(pageStartIndex, pageEndIndex);
+        // For paginated views (limit > 25), backend already returns the correct page
+        // For non-paginated views (limit <= 25), show all items
+        let pagedReviews;
+        
+        if (limit > 25) {
+          // Backend pagination: API already returned the correct page's data
+          pagedReviews = normalized;
+          console.log('[HOME] Using backend-paginated data:', {
+            currentPage,
+            receivedItems: normalized.length,
+            expectedPageSize: 25
+          });
+        } else {
+          // No pagination needed: show all returned items
+          pagedReviews = normalized;
+        }
 
-        // Update the table with only the current page records
+        // Update the table with the review data
         updateReviewTable(pagedReviews);
         
         // Check if there are still active reviews (pending or processing, not completed or failed)
@@ -575,18 +612,22 @@
         return;
       }
       
-      // Clear tbody completely - start fresh
-      tbody.innerHTML = '';
+      // Build a Map of existing rows for quick lookup, keyed by reviewId
+      const existingRows = new Map();
+      Array.from(tbody.querySelectorAll('tr[data-review-id]')).forEach(row => {
+        const reviewId = row.getAttribute('data-review-id');
+        if (reviewId) {
+          existingRows.set(reviewId, row);
+        }
+      });
       
-      // Add all reviews to the table (server has already sliced to correct page)
+      // Process all reviews from the server response
       reviews.forEach((review, index) => {
         const reviewId = review.reviewId || review.id;
         const existingRow = existingRows.get(reviewId);
         
         if (existingRow) {
-          // Update Status, Result, and Timestamp columns
-          // Timestamp is updated to show S3 LastModified (most accurate time)
-          
+          // Row already exists - just update the dynamic cells (Status, Timestamp, Result)
           const cells = existingRow.querySelectorAll('td');
           // cells[0] = Document Name (keep unchanged)
           // cells[1] = Status (update)
@@ -614,10 +655,10 @@
             updateResultCell(cells[3], review);
           }
           
-          // Remove from map to track processed rows
+          // Mark this row as processed
           existingRows.delete(reviewId);
         } else {
-          // Create new row for new reviews
+          // New review - create a complete new row and add it to the table
           const row = createReviewRow(review);
           tbody.appendChild(row);
         }

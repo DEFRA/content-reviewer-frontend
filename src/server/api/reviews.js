@@ -25,14 +25,28 @@ export async function getReviewsController(request, h) {
   const startTime = Date.now()
   const requestLogger = request.logger
 
-  // Get limit and skip from query parameters
-  const limit = request.query.limit || 10
-  const skip = request.query.skip || 0
+  // Get limit, skip, and page from query parameters
+  const limit = parseInt(request.query.limit) || 10
+  const page = parseInt(request.query.page) || 1
+  const pageSize = 25
+
+  // Calculate skip based on page if provided, otherwise use skip directly
+  let skip = parseInt(request.query.skip) || 0
+
+  // If page parameter is provided and limit > pageSize, calculate skip from page
+  if (request.query.page && limit > pageSize) {
+    skip = (page - 1) * pageSize
+  }
 
   try {
     const backendRequestStart = Date.now()
-    const endpoint = `${backendUrl}/api/reviews?limit=${limit}&skip=${skip}`
-    logger.info(`Requesting review history from backend: ${endpoint}`)
+    const endpoint = `${backendUrl}/api/reviews?limit=${limit > pageSize ? pageSize : limit}&skip=${skip}`
+    logger.info(`Requesting review history from backend: ${endpoint}`, {
+      requestedLimit: limit,
+      requestedPage: page,
+      calculatedSkip: skip,
+      pageSize
+    })
 
     // Fetch review history from backend
     const response = await fetch(endpoint, {
