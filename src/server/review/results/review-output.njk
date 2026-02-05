@@ -1,0 +1,109 @@
+{# 
+  Review Output Component
+  Renders structured review data from Bedrock into HTML
+  
+  Data structure (passed as 'reviewData'):
+  {
+    scores: {
+      "Plain English": { score: 4, note: "Good use of simple language" },
+      ...
+    },
+    reviewedContent: {
+      plainText: "User's original text",
+      issues: [
+        { category: "plain-english", text: "utilize", position: 123 },
+        ...
+      ]
+    },
+    improvements: [
+      {
+        severity: "high",
+        category: "Plain English",
+        issue: "Use of complex jargon",
+        why: "Creates barriers for users",
+        current: "utilize",
+        suggested: "use"
+      },
+      ...
+    ]
+  }
+#}
+
+<div class="review-output">
+  
+  {# Scores Section #}
+  {% if reviewData.scores and (reviewData.scores | length) > 0 %}
+    <section class="scores-summary">
+      <h2>Content Scores</h2>
+      <dl class="govuk-summary-list">
+        {% for category, scoreData in reviewData.scores %}
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">{{ category }}</dt>
+            <dd class="govuk-summary-list__value">
+              <span class="score-value">{{ scoreData.score }}/5</span>
+              <span class="score-note">{{ scoreData.note }}</span>
+            </dd>
+          </div>
+        {% endfor %}
+      </dl>
+    </section>
+  {% endif %}
+  
+  {# Reviewed Content Section with Highlights #}
+  <section class="reviewed-content">
+    <h2>Your Content (with issues highlighted)</h2>
+    <div class="content-body">
+      {% if reviewData.reviewedContent and reviewData.reviewedContent.plainText %}
+        {# Render text with issue highlights #}
+        {% set content = reviewData.reviewedContent.plainText %}
+        {% set issues = reviewData.reviewedContent.issues %}
+        
+        {% if issues and issues.length > 0 %}
+          {# Build highlighted content by replacing issue text with marks #}
+          {% set highlightedContent = content %}
+          {% for issue in issues %}
+            {% set issueText = issue.text %}
+            {% set categoryClass = 'highlight-' + issue.category %}
+            {% set markedText = '<mark class="' + categoryClass + '">' + issueText + '</mark>' %}
+            {% set highlightedContent = highlightedContent | replace(issueText, markedText) %}
+          {% endfor %}
+          {{ highlightedContent | safe }}
+        {% else %}
+          {# No issues found, show plain text #}
+          {{ content }}
+        {% endif %}
+      {% else %}
+        <p>No content available</p>
+      {% endif %}
+    </div>
+  </section>
+
+  {# Priority Improvements Section #}
+  <section class="example-improvements">
+    <h2>Priority Improvements</h2>
+    {% if reviewData.improvements and reviewData.improvements.length > 0 %}
+      <ol class="improvement-list">
+        {% for improvement in reviewData.improvements %}
+          <li class="improvement-item severity-{{ improvement.severity }}">
+            <span class="category-badge">{{ improvement.category }}</span>
+            <strong class="issue-title">{{ improvement.issue }}</strong>
+            <p class="issue-description">{{ improvement.why }}</p>
+            {% if improvement.current or improvement.suggested %}
+              <div class="issue-example">
+                {% if improvement.current %}
+                  <p class="before-text"><strong>Current:</strong> {{ improvement.current }}</p>
+                {% endif %}
+                {% if improvement.suggested %}
+                  <p class="after-text"><strong>Suggested:</strong> {{ improvement.suggested }}</p>
+                {% endif %}
+              </div>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ol>
+    {% else %}
+      <p>No improvements suggested</p>
+    {% endif %}
+  </section>
+
+</div>
