@@ -69,9 +69,11 @@
       outline: 3px solid #ffbf47;
       outline-offset: 0;
     }
-    .pagination-item:disabled {
+    .pagination-item:disabled,
+    .pagination-item[disabled] {
       opacity: 0.5;
       cursor: not-allowed;
+      pointer-events: none;
     }
     .pagination-current {
       background-color: #1d70b8;
@@ -236,6 +238,7 @@
             <th scope="col" class="govuk-table__header">Status</th>
             <th scope="col" class="govuk-table__header">Timestamp</th>
             <th scope="col" class="govuk-table__header">Result</th>
+            <th scope="col" class="govuk-table__header">Actions</th>
           </tr>
         </thead>
         <tbody class="govuk-table__body" id="reviewHistoryBody">
@@ -272,9 +275,9 @@
                   {% endif %}
                 {% elif review.status === 'failed' %}
                   {% if review.errorMessage %}
-                    <span class="govuk-error-message">Failed ({{ review.errorMessage }})</span>
+                    <span class="govuk-error-message">Review Failed ({{ review.errorMessage }})</span>
                   {% else %}
-                    <span class="govuk-error-message">Review failed</span>
+                    <span class="govuk-error-message">Review Failed</span>
                   {% endif %}
                 {% elif review.status === 'processing' %}
                   <span class="govuk-body">Processing...</span>
@@ -283,6 +286,15 @@
                 {% else %}
                   <span class="govuk-body">{{ review.status }}</span>
                 {% endif %}
+              </td>
+              <td class="govuk-table__cell">
+                <button 
+                  class="govuk-button govuk-button--warning govuk-button--small delete-review-btn" 
+                  data-review-id="{{ review.reviewId or review.id }}"
+                  data-filename="{{ review.filename }}"
+                  type="button">
+                  Delete
+                </button>
               </td>
             </tr>
             {% endfor %}
@@ -303,7 +315,7 @@
         <a 
           href="?limit={{ currentLimit }}&page={{ pagination.currentPage - 1 }}" 
           class="pagination-item pagination-arrow"
-          {% if not pagination.hasPreviousPage %}disabled style="pointer-events: none;"{% endif %}
+          {% if not pagination.hasPreviousPage %}disabled{% endif %}
           aria-label="Previous page"
         >
           &#60;
@@ -328,7 +340,7 @@
         <a 
           href="?limit={{ currentLimit }}&page={{ pagination.currentPage + 1 }}" 
           class="pagination-item pagination-arrow"
-          {% if not pagination.hasNextPage %}disabled style="pointer-events: none;"{% endif %}
+          {% if not pagination.hasNextPage %}disabled{% endif %}
           aria-label="Next page"
         >
           &#62;
@@ -427,7 +439,8 @@
           return {
             ...r,
             filename: displayFilename,
-            uploadedAt: r.uploadedAt || r.createdAt || r.updatedAt || null
+            // Use lastModified (S3 LastModified) for most accurate timestamp
+            uploadedAt: r.lastModified || r.updatedAt || r.createdAt || null
           };
         });
 
@@ -440,10 +453,20 @@
         // Update the table with only the current page records
         updateReviewTable(pagedReviews);
         
-        // Check if there are still active reviews (not completed or failed)
-        const hasActiveReviews = normalized.some(r => {
+        // Check if there are still active reviews (pending or processing, not completed or failed)
+        const activeReviews = normalized.filter(r => {
           const status = (r.status || '').toLowerCase();
-          return ['processing', 'analyzing', 'queued', 'reviewing', 'downloading', 'finalizing', 'uploaded', 'uploading'].includes(status);
+          return status === 'pending' || status === 'processing';
+        });
+        
+        const hasActiveReviews = activeReviews.length > 0;
+        
+        // Log status check results for debugging
+        console.log('[HOME] Status check:', {
+          totalReviews: normalized.length,
+          activeCount: activeReviews.length,
+          statuses: normalized.map(r => ({ id: r.id || r.reviewId, status: r.status })),
+          hasActiveReviews
         });
         
         // Hide success message if no active reviews (all completed)
@@ -453,9 +476,13 @@
         
         // Stop auto-refresh if no active reviews
         if (!hasActiveReviews && autoRefreshInterval) {
-          console.log('[HOME] Auto-refresh stopped - all reviews completed');
+          console.log('[HOME] Auto-refresh stopped - all reviews completed or failed');
           clearInterval(autoRefreshInterval);
           autoRefreshInterval = null;
+        } else if (hasActiveReviews && !autoRefreshInterval) {
+          // Restart auto-refresh if new active reviews appeared
+          console.log('[HOME] Active reviews detected, restarting auto-refresh');
+          startAutoRefresh();
         }
         
         // Store last review data for reference
@@ -536,9 +563,98 @@
       
       // Add all reviews to the table (server has already sliced to correct page)
       reviews.forEach((review, index) => {
-        const row = createReviewRow(review);
-        tbody.appendChild(row);
+        const reviewId = review.reviewId || review.id;
+        const existingRow = existingRows.get(reviewId);
+        
+        if (existingRow) {
+          // Update Status, Result, and Timestamp columns
+          // Timestamp is updated to show S3 LastModified (most accurate time)
+          
+          const cells = existingRow.querySelectorAll('td');
+          // cells[0] = Document Name (keep unchanged)
+          // cells[1] = Status (update)
+          // cells[2] = Timestamp (update to S3 LastModified)
+          // cells[3] = Result (update)
+          // cells[4] = Actions (keep unchanged)
+          
+          if (cells[1]) {
+            updateStatusCell(cells[1], review);
+          }
+          
+          // Update timestamp to S3 LastModified for accuracy
+          if (cells[2] && review.uploadedAt) {
+            const date = new Date(review.uploadedAt);
+            cells[2].textContent = date.toLocaleString('en-GB', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            });
+          }
+          
+          if (cells[3]) {
+            updateResultCell(cells[3], review);
+          }
+          
+          // Remove from map to track processed rows
+          existingRows.delete(reviewId);
+        } else {
+          // Create new row for new reviews
+          const row = createReviewRow(review);
+          tbody.appendChild(row);
+        }
       });
+      
+      // Attach delete handlers after updating table
+      attachDeleteHandlers();
+      
+      // Remove rows that are no longer in the response, BUT keep active reviews
+      // that were just added client-side (they may not be in backend yet due to S3 delay)
+      existingRows.forEach((row, reviewId) => {
+        const statusCell = row.querySelector('.govuk-tag');
+        const isPending = statusCell && statusCell.classList.contains('govuk-tag--yellow');
+        const isProcessing = statusCell && statusCell.classList.contains('govuk-tag--blue');
+        
+        // Keep pending/processing reviews that might not be in backend yet
+        // Remove only completed/failed reviews that disappeared from the limit
+        if (!isPending && !isProcessing) {
+          row.remove();
+        }
+      });
+      
+      // Enforce strict limit: Sort all rows by timestamp and keep only the most recent {limit}
+      const currentLimit = parseInt(document.getElementById('reviewLimit')?.value || '5', 10);
+      const allRows = Array.from(tbody.querySelectorAll('tr[data-review-id]'));
+      
+      // Sort rows by timestamp (extract from 3rd cell)
+      allRows.sort((a, b) => {
+        const aTimestamp = a.cells[2]?.textContent.trim();
+        const bTimestamp = b.cells[2]?.textContent.trim();
+        
+        // Parse UK format: "DD/MM/YYYY, HH:MM"
+        const parseUKDate = (str) => {
+          if (!str || str === 'N/A') return new Date(0);
+          const [datePart, timePart] = str.split(', ');
+          const [day, month, year] = datePart.split('/');
+          return new Date(`${year}-${month}-${day}T${timePart}:00`);
+        };
+        
+        const aDate = parseUKDate(aTimestamp);
+        const bDate = parseUKDate(bTimestamp);
+        
+        return bDate - aDate; // Most recent first
+      });
+      
+      // Reorder rows in the DOM (most recent first)
+      allRows.forEach((row, index) => {
+        tbody.appendChild(row); // This moves the row to the end, maintaining sorted order
+      });
+      
+      // Keep only the top {limit} rows, remove the rest (oldest ones)
+      if (allRows.length > currentLimit) {
+        allRows.slice(currentLimit).forEach(row => row.remove());
+      }
     }
     
     // Helper function to create a complete review row (for new reviews)
@@ -584,6 +700,19 @@
       resultCell.className = 'govuk-table__cell';
       updateResultCell(resultCell, review);
       row.appendChild(resultCell);
+      
+      // Actions (cell 4) - Delete button
+      const actionsCell = document.createElement('td');
+      actionsCell.className = 'govuk-table__cell';
+      
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'govuk-button govuk-button--warning govuk-button--small delete-review-btn';
+      deleteBtn.setAttribute('data-review-id', reviewId);
+      deleteBtn.setAttribute('data-filename', review.filename || 'Unknown');
+      deleteBtn.setAttribute('type', 'button');
+      deleteBtn.textContent = 'Delete';
+      actionsCell.appendChild(deleteBtn);
+      row.appendChild(actionsCell);
       
       return row;
     }
@@ -642,9 +771,9 @@
         const errorSpan = document.createElement('span');
         errorSpan.className = 'govuk-error-message';
         if (review.errorMessage) {
-          errorSpan.textContent = `Failed (${review.errorMessage})`;
+          errorSpan.textContent = `Review Failed (${review.errorMessage})`;
         } else {
-          errorSpan.textContent = 'Review failed';
+          errorSpan.textContent = 'Review Failed';
         }
         cell.appendChild(errorSpan);
       } else if (status === 'processing') {
@@ -664,6 +793,87 @@
         cell.appendChild(span);
       }
     }
+    
+    // Delete review functionality
+    async function deleteReview(reviewId, filename) {
+      if (!reviewId) {
+        console.error('[HOME] Cannot delete review - missing ID');
+        alert('Error: Missing review ID');
+        return;
+      }
+      
+      // Confirm deletion
+      const confirmMessage = `Are you sure you want to delete the review for "${filename}"?\n\nThis will permanently delete:\n- The review record\n- Any uploaded content\n- All associated data from S3\n\nThis action cannot be undone.`;
+      
+      if (!confirm(confirmMessage)) {
+        console.log('[HOME] Delete cancelled by user');
+        return;
+      }
+      
+      console.log('[HOME] Deleting review:', reviewId);
+      
+      try {
+        // Call delete API endpoint
+        const response = await fetch(`/api/reviews/${reviewId}`, {
+          method: 'DELETE',
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `Failed to delete review: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log('[HOME] Review deleted successfully:', result);
+        
+        // Show success message
+        alert(`Review "${filename}" has been deleted successfully.`);
+        
+        // Refresh the review history to update the table
+        await updateReviewHistory();
+        
+      } catch (error) {
+        console.error('[HOME] Error deleting review:', error);
+        alert(`Failed to delete review: ${error.message}`);
+      }
+    }
+    
+    // Attach delete button click handlers
+    function attachDeleteHandlers() {
+      const deleteButtons = document.querySelectorAll('.delete-review-btn');
+      deleteButtons.forEach(button => {
+        // Remove existing listeners to prevent duplicates
+        button.replaceWith(button.cloneNode(true));
+      });
+      
+      // Re-query and attach new listeners
+      const newDeleteButtons = document.querySelectorAll('.delete-review-btn');
+      newDeleteButtons.forEach(button => {
+        button.addEventListener('click', async function() {
+          const reviewId = this.getAttribute('data-review-id');
+          const filename = this.getAttribute('data-filename');
+          
+          // Disable button during deletion
+          this.disabled = true;
+          const originalText = this.textContent;
+          this.textContent = 'Deleting...';
+          
+          await deleteReview(reviewId, filename);
+          
+          // Re-enable button (if row still exists)
+          if (document.contains(this)) {
+            this.disabled = false;
+            this.textContent = originalText;
+          }
+        });
+      });
+    }
+    
+    // Attach handlers on page load
+    attachDeleteHandlers();
     
     // Start auto-refresh
     function startAutoRefresh() {
@@ -686,10 +896,10 @@
     tableRows.forEach(row => {
       const statusCell = row.querySelector('.govuk-tag');
       if (statusCell) {
-        const statusText = statusCell.textContent.trim();
+        const statusText = statusCell.textContent.trim().toLowerCase();
+        // Only check for pending or processing statuses (not grey/unknown)
         if (statusCell.classList.contains('govuk-tag--blue') ||
-            statusCell.classList.contains('govuk-tag--yellow') ||
-            statusCell.classList.contains('govuk-tag--grey')) {
+            statusCell.classList.contains('govuk-tag--yellow')) {
           hasActiveReviews = true;
           activeStatuses.push(statusText);
         }
@@ -698,11 +908,16 @@
     
     // Start auto-refresh if there are active reviews
     if (hasActiveReviews) {
-      console.log('[HOME] Active reviews detected, starting auto-refresh');
+      console.log('[HOME] Active reviews detected on page load:', {
+        count: activeStatuses.length,
+        statuses: activeStatuses
+      });
       // Do an immediate update first to get latest status
       updateReviewHistory();
       // Then start the interval
       startAutoRefresh();
+    } else {
+      console.log('[HOME] No active reviews on page load - auto-refresh not started');
     }
     
     // Clean up interval when page is unloaded

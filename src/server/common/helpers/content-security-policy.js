@@ -19,7 +19,7 @@ const contentSecurityPolicy = {
     fontSrc: ['self', 'data:'],
     connectSrc: ['self', 'data:', backendUrl, wsUrl],
     mediaSrc: ['self'],
-    styleSrc: ['self', "'unsafe-inline'", "'unsafe-hashes'"],
+    styleSrc: ['self', "'unsafe-inline'"],
     scriptSrc: [
       'self',
       "'sha256-GUQ5ad8JK5KmEWmROf3LZd9ge94daqNvd8xy9YS1iDw='"
@@ -30,7 +30,7 @@ const contentSecurityPolicy = {
     frameAncestors: ['none'],
     formAction: ['self'],
     manifestSrc: ['self'],
-    generateNonces: true
+    generateNonces: 'script' // Only generate nonces for scripts, not styles, to allow 'unsafe-inline' for CSS
   }
 }
 
