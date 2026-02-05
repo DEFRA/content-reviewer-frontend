@@ -30,14 +30,41 @@ export const homeController = {
     try {
       const backendRequestStart = Date.now()
       console.log('[HOME-CONTROLLER] Fetching review history from backend')
+
+      // For pagination: if limit > pageSize, use skip/pageSize for efficient backend pagination
+      // Otherwise, just fetch the limit amount
+      //
+      // PAGINATION FLOW (e.g., user selects 50 reviews):
+      // - Page 1: limit=25, skip=0  → Backend returns 25 MOST RECENT reviews (1-25)
+      // - Page 2: limit=25, skip=25 → Backend returns 25 OLDER reviews (26-50)
+      //
+      // Backend sorts by most recent first, then applies skip/limit
+      // This ensures page 1 always shows the newest content
+      let backendEndpoint
+      let fetchLimit
+
+      if (limit > pageSize) {
+        // Paginated request: fetch only the current page's data (25 items)
+        // Backend will sort by most recent, skip N items, return 25 items
+        fetchLimit = pageSize
+        backendEndpoint = `${backendUrl}/api/reviews?limit=${fetchLimit}&skip=${skip}`
+      } else {
+        // Non-paginated request: fetch all requested items (5, 10, etc.)
+        fetchLimit = limit
+        backendEndpoint = `${backendUrl}/api/reviews?limit=${fetchLimit}`
+      }
+
       logger.info('Initiating review history fetch for home page', {
-        endpoint: `${backendUrl}/api/reviews?limit=${limit}&skip=${skip}&pageSize=${pageSize}`,
+        endpoint: backendEndpoint,
         currentPage,
         pageSize,
-        skip
+        skip,
+        fetchLimit,
+        requestedLimit: limit,
+        isPaginated: limit > pageSize
       })
 
-      const response = await fetch(`${backendUrl}/api/reviews?limit=${limit}`)
+      const response = await fetch(backendEndpoint)
 
       const backendRequestEnd = Date.now()
       const backendRequestTime =
@@ -59,24 +86,81 @@ export const homeController = {
 
         reviewHistory = normalized
 
-        // Calculate total pages - use pagination.total from backend if available
-        totalReviews =
-          data.pagination?.total ||
-          data.total ||
-          data.count ||
-          normalized.length ||
-          0
-        totalPages = Math.ceil(totalReviews / pageSize)
-
-        // Only slice if we have more records than the page size (pagination needed)
-        // If limit (5, 10) is less than pageSize (25), show all returned records
+        // Calculate total reviews and pages based on user's selected limit
+        // For paginated views (limit > 25): totalReviews = user's limit (50, 100, etc.)
+        // For non-paginated views (limit <= 25): totalReviews = actual count from backend
         if (limit > pageSize) {
-          // Slice reviews to show only the current page (for when limit > 25)
-          const pageStartIndex = (currentPage - 1) * pageSize
-          const pageEndIndex = pageStartIndex + pageSize
-          reviewHistory = normalized.slice(pageStartIndex, pageEndIndex)
+          // User selected 50/100 reviews - use that as total, not system-wide count
+          totalReviews = Math.min(
+            limit,
+            data.pagination?.total || data.total || limit
+          )
+          totalPages = Math.ceil(totalReviews / pageSize)
+
+          console.log('[HOME-CONTROLLER] Paginated view calculation:', {
+            userSelectedLimit: limit,
+            backendTotal: data.pagination?.total || data.total,
+            calculatedTotalReviews: totalReviews,
+            calculatedTotalPages: totalPages,
+            pageSize,
+            example:
+              limit === 100
+                ? 'Page 1: 1-25, Page 2: 26-50, Page 3: 51-75, Page 4: 76-100'
+                : limit === 50
+                  ? 'Page 1: 1-25, Page 2: 26-50'
+                  : `${totalPages} page(s) with ${pageSize} reviews each`
+          })
         } else {
-          // Show all returned records if limit <= 25
+          // Non-paginated view - use actual count
+          totalReviews =
+            data.pagination?.total ||
+            data.total ||
+            data.count ||
+            normalized.length ||
+            0
+          totalPages = 1 // No pagination for limits <= 25
+        }
+
+        // Backend already returned the correct page's data when limit > pageSize
+        // No client-side slicing needed - just use what backend returned
+        if (limit > pageSize) {
+          const reviewRangeStart = skip + 1
+          const reviewRangeEnd = skip + normalized.length
+          const pageDescription =
+            limit === 100
+              ? `Page ${currentPage} of 4 (100 reviews total, 25 per page)`
+              : limit === 50
+                ? `Page ${currentPage} of 2 (50 reviews total, 25 per page)`
+                : `Page ${currentPage} of ${totalPages} (${totalReviews} reviews total, ${pageSize} per page)`
+
+          console.log(
+            '[HOME-CONTROLLER] Using backend-paginated data (no client-side slicing):',
+            {
+              userSelectedLimit: limit,
+              pageSize,
+              currentPage,
+              totalReviews,
+              totalPages,
+              returnedItems: normalized.length,
+              expectedItems: Math.min(pageSize, totalReviews - skip),
+              reviewRange: `${reviewRangeStart}-${reviewRangeEnd}`,
+              pageDescription
+            }
+          )
+
+          // Backend already sent skip+limit items, use them directly
+          // These are sorted by most recent first
+          reviewHistory = normalized
+
+          console.log('[HOME-CONTROLLER] Backend-paginated results:', {
+            resultLength: reviewHistory.length,
+            reviewRange: `Reviews ${skip + 1} to ${skip + reviewHistory.length}`,
+            firstReview: reviewHistory[0]?.filename,
+            lastReview: reviewHistory[reviewHistory.length - 1]?.filename,
+            sortOrder: 'Most recent first (page 1 = newest, page 2 = older)'
+          })
+        } else {
+          // Show all returned records if limit <= 25 (no pagination needed)
           reviewHistory = normalized
         }
 
