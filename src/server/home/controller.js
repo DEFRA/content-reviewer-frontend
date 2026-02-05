@@ -68,10 +68,17 @@ export const homeController = {
           0
         totalPages = Math.ceil(totalReviews / pageSize)
 
-        // Slice reviews to show only the current page
-        const pageStartIndex = (currentPage - 1) * pageSize
-        const pageEndIndex = pageStartIndex + pageSize
-        reviewHistory = normalized.slice(pageStartIndex, pageEndIndex)
+        // Only slice if we have more records than the page size (pagination needed)
+        // If limit (5, 10) is less than pageSize (25), show all returned records
+        if (limit > pageSize) {
+          // Slice reviews to show only the current page (for when limit > 25)
+          const pageStartIndex = (currentPage - 1) * pageSize
+          const pageEndIndex = pageStartIndex + pageSize
+          reviewHistory = normalized.slice(pageStartIndex, pageEndIndex)
+        } else {
+          // Show all returned records if limit <= 25
+          reviewHistory = normalized
+        }
 
         logger.info('Review history retrieved successfully', {
           count: reviewHistory.length,

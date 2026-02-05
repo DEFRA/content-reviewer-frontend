@@ -309,7 +309,7 @@
       </table>
 
       <!-- Pagination Controls -->
-      {% if pagination and pagination.totalReviews > 25 %}
+      {% if currentLimit > 25 and pagination and pagination.totalReviews > 25 %}
       <div class="pagination">
         <!-- Previous Arrow -->
         <a 
@@ -346,20 +346,17 @@
           &#62;
         </a>
       </div>
+      {% endif %}
       
+      <!-- Pagination Info Message -->
+      {% if pagination %}
       <div class="pagination-info">
-        {% if pagination.totalReviews > 25 %}
+        {% if currentLimit <= 25 %}
+          Showing {{ reviewHistory.length }} of {{ pagination.totalReviews }} reviews
+        {% else %}
           Showing {{ (pagination.currentPage - 1) * pagination.pageSize + 1 }} to 
           {{ [pagination.currentPage * pagination.pageSize, pagination.totalReviews] | min }} 
           of {{ pagination.totalReviews }} reviews
-        {% else %}
-          Showing {{ pagination.totalReviews }} of {{ pagination.totalReviews }} reviews
-        {% endif %}
-      </div>
-      {% else %}
-      <div class="pagination-info">
-        {% if pagination and pagination.totalReviews > 0 %}
-          Showing {{ pagination.totalReviews }} of {{ pagination.totalReviews }} reviews
         {% endif %}
       </div>
       {% endif %}
