@@ -24,9 +24,9 @@
       </div>
 
       <!-- AI Review Content -->
-      {% if results.result and results.result.reviewContent %}
+      {% if results.result and results.result.reviewData %}
         <div class="review-results-container">
-          {{ results.result.reviewContent | safe }}
+          {% include "review/results/review-output.njk" %}
         </div>
       {% else %}
         <div class="govuk-warning-text">
