@@ -91,19 +91,15 @@ export const resultsController = {
  * Transform backend status data to frontend display format
  */
 function transformReviewData(statusData, reviewId) {
-  // Only consume and expose the API response attributes provided
-  // { id, jobId, status, result: { reviewContent, guardrailAssessment, stopReason, completedAt }, completedAt }
-
-  const safeResult = statusData.result || {}
-
   return {
     id: statusData.id || reviewId,
     jobId: statusData.jobId,
     status: statusData.status,
     result: {
-      reviewContent: safeResult.reviewContent,
-      guardrailAssessment: safeResult.guardrailAssessment,
-      stopReason: safeResult.stopReason
+      reviewData: statusData.result,
+      reviewContent: statusData.result,
+      guardrailAssessment: statusData.guardrailAssessment,
+      stopReason: statusData.stopReason
     },
     completedAt: statusData.completedAt
   }
