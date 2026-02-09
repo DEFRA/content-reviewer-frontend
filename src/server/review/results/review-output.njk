@@ -31,8 +31,13 @@
 
 <div class="review-output">
   
-  {# Scores Section #}
-  {% if reviewData.scores and (reviewData.scores | length) > 0 %}
+  {# Scores Section - Check if scores object has any keys by attempting to loop #}
+  {% set hasScores = false %}
+  {% for category in reviewData.scores %}
+    {% set hasScores = true %}
+  {% endfor %}
+  
+  {% if reviewData.scores and hasScores %}
     <section class="scores-summary">
       <h2>Content Scores</h2>
       <dl class="govuk-summary-list">
