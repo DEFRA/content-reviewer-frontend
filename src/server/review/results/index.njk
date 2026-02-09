@@ -26,6 +26,7 @@
       <!-- AI Review Content -->
       {% if results.result and results.result.reviewData %}
         <div class="review-results-container">
+          {% set reviewData = results.result.reviewData %}
           {% include "review/results/review-output.njk" %}
         </div>
       {% else %}
