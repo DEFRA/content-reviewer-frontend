@@ -91,15 +91,18 @@ export const resultsController = {
  * Transform backend status data to frontend display format
  */
 function transformReviewData(statusData, reviewId) {
+  // Backend returns: { result: { reviewData, rawResponse, guardrailAssessment, stopReason, completedAt } }
+  const backendResult = statusData.result || {}
+
   return {
     id: statusData.id || reviewId,
     jobId: statusData.jobId,
     status: statusData.status,
     result: {
-      reviewData: statusData.result,
-      reviewContent: statusData.result,
-      guardrailAssessment: statusData.guardrailAssessment,
-      stopReason: statusData.stopReason
+      reviewData: backendResult.reviewData || null,
+      reviewContent: backendResult.rawResponse || null,
+      guardrailAssessment: backendResult.guardrailAssessment || null,
+      stopReason: backendResult.stopReason || null
     },
     completedAt: statusData.completedAt
   }
