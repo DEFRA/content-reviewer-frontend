@@ -15,15 +15,33 @@ export const resultsController = {
     }
 
     try {
+      const requestStartTime = performance.now()
       const config = request.server.app.config
       const backendUrl = config.get('backendUrl')
 
       // Fetch review status and results from backend
       request.logger.info(
-        `Requesting review results from backend: ${backendUrl}/api/results/${reviewId}`
+        { reviewId },
+        `⏱️ [FRONTEND] Requesting review results from backend - START`
       )
+
+      const fetchStart = performance.now()
       const response = await fetch(`${backendUrl}/api/results/${reviewId}`)
+      const fetchDuration = Math.round(performance.now() - fetchStart)
+
+      const parseStart = performance.now()
       const apiResponse = await response.json()
+      const parseDuration = Math.round(performance.now() - parseStart)
+
+      request.logger.info(
+        {
+          reviewId,
+          fetchDurationMs: fetchDuration,
+          parseDurationMs: parseDuration,
+          status: response.status
+        },
+        `⏱️ [FRONTEND] Backend response received in ${fetchDuration}ms (parse: ${parseDuration}ms)`
+      )
 
       if (!response.ok) {
         request.logger.error(
@@ -57,7 +75,22 @@ export const resultsController = {
       }
 
       // Transform backend data to frontend format (only fields used by the template)
+      const transformStart = performance.now()
       const reviewResults = transformReviewData(statusData, reviewId)
+      const transformDuration = Math.round(performance.now() - transformStart)
+
+      const totalDuration = Math.round(performance.now() - requestStartTime)
+
+      request.logger.info(
+        {
+          reviewId,
+          totalDurationMs: totalDuration,
+          fetchMs: fetchDuration,
+          parseMs: parseDuration,
+          transformMs: transformDuration
+        },
+        `⏱️ [FRONTEND] Results page rendered - TOTAL: ${totalDuration}ms (Fetch: ${fetchDuration}ms, Parse: ${parseDuration}ms, Transform: ${transformDuration}ms)`
+      )
 
       return h.view('review/results/index', {
         pageTitle: 'Review Results',
