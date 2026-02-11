@@ -6,6 +6,7 @@
 
 {# Import custom components globally #}
 {% from "heading/macro.njk" import appHeading %}
+{% from "partials/cookie-banner.njk" import cookieBanner %}
 
 {% set mainClasses = "app-main-wrapper" %}
 
@@ -32,6 +33,7 @@
 {% endblock %}
 
 {% block beforeContent %}
+  {{ cookieBanner() }}
   {% if breadcrumbs.length > 1 %}
     {{ govukBreadcrumbs({
       items: breadcrumbs
@@ -46,18 +48,28 @@
     meta: {
       items: [
         {
-          href: "https://www.gov.uk/help/privacy-notice",
+          href: "/privacy",
           text: "Privacy"
         },
         {
-          href: "https://www.gov.uk/help/cookies",
+          href: "/cookies",
           text: "Cookies"
         },
         {
-          href: "https://www.gov.uk/help/accessibility-statement",
+          href: "/accessibility",
           text: "Accessibility statement"
+        },
+        {
+          href: "/contact",
+          text: "Contact"
         }
       ]
+    },
+    contentLicence: {
+      html: 'All content is available under the <a class="govuk-footer__link" href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/" rel="license">Open Government Licence v3.0</a>, except where otherwise stated'
+    },
+    copyright: {
+      html: '© <a class="govuk-footer__link" href="https://www.nationalarchives.gov.uk/information-management/re-using-public-sector-information/uk-government-licensing-framework/crown-copyright/">Crown copyright</a>'
     }
   }) }}
 {% endblock %}

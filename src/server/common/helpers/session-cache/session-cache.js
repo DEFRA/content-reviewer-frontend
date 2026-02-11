@@ -10,7 +10,7 @@ const sessionConfig = config.get('session')
 export const sessionCache = {
   plugin: yar,
   options: {
-    name: sessionConfig.cache.name,
+    name: '__Host-' + sessionConfig.cache.name, // __Host- prefix for enhanced security
     cache: {
       cache: sessionConfig.cache.name,
       expiresIn: sessionConfig.cache.ttl
@@ -21,6 +21,7 @@ export const sessionCache = {
       password: sessionConfig.cookie.password,
       ttl: sessionConfig.cookie.ttl,
       isSecure: config.get('session.cookie.secure'),
+      isSameSite: 'Strict', // Defra security standard
       clearInvalid: true
     }
   }
