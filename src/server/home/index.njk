@@ -362,8 +362,9 @@
     
     // Function to update review history without page reload
     async function updateReviewHistory() {
-      // Prevent fetches during page unload/navigation or when page is hidden
-      if (isRefreshing || isPageUnloading || document.visibilityState === 'hidden') {
+      // Prevent fetches during page unload/navigation
+      // Auto-refresh continues even when page is hidden/navigated away
+      if (isRefreshing || isPageUnloading) {
         return;
       }
       
@@ -612,10 +613,32 @@
           // New review - create a complete new row and add it to the table
           const row = createReviewRow(review);
           tbody.appendChild(row);
+          
+          // Attach delete handler immediately for the new row
+          const deleteBtn = row.querySelector('.delete-review-btn');
+          if (deleteBtn) {
+            deleteBtn.addEventListener('click', async function() {
+              const reviewId = this.getAttribute('data-review-id');
+              const filename = this.getAttribute('data-filename');
+              
+              // Disable button during deletion
+              this.disabled = true;
+              const originalText = this.textContent;
+              this.textContent = 'Deleting...';
+              
+              await deleteReview(reviewId, filename);
+              
+              // Re-enable button (if row still exists)
+              if (document.contains(this)) {
+                this.disabled = false;
+                this.textContent = originalText;
+              }
+            });
+          }
         }
       });
       
-      // Attach delete handlers after updating table
+      // Attach delete handlers after updating table (for any existing buttons)
       attachDeleteHandlers();
       
       // Remove rows that are no longer in the response, BUT keep active reviews
@@ -1003,13 +1026,11 @@
       }
     });
     
-    // Pause auto-refresh when page is hidden, resume when visible
+    // Auto-refresh continues even when page is hidden or user navigates to another page
+    // This ensures review history stays up-to-date in the background
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') {
-        console.log('[HOME] Page hidden - pausing auto-refresh');
-        // Don't clear the interval, just let the guard condition prevent fetches
-      } else if (document.visibilityState === 'visible' && !isPageUnloading) {
-        console.log('[HOME] Page visible - resuming auto-refresh');
+      if (document.visibilityState === 'visible' && !isPageUnloading) {
+        console.log('[HOME] Page visible - triggering immediate update');
         // Trigger an immediate update when page becomes visible again
         if (autoRefreshInterval) {
           updateReviewHistory();
