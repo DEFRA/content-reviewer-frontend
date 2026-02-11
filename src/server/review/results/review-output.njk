@@ -58,28 +58,27 @@
   <section class="reviewed-content">
     <h2>Your Content (with issues highlighted)</h2>
     <div class="content-body">
-      {% if reviewData.reviewedContent and reviewData.reviewedContent.plainText %}
-        {# Render text with issue highlights #}
-        {% set content = reviewData.reviewedContent.plainText %}
-        {% set issues = reviewData.reviewedContent.issues %}
-        
-        {% if issues and issues.length > 0 %}
-          {# Build highlighted content by replacing issue text with marks #}
-          {% set highlightedContent = content %}
-          {% for issue in issues %}
-            {% set issueText = issue.text %}
-            {% set categoryClass = 'highlight-' + issue.category %}
-            {% set markedText = '<mark class="' + categoryClass + '">' + issueText + '</mark>' %}
-            {% set highlightedContent = highlightedContent | replace(issueText, markedText) %}
-          {% endfor %}
-          {{ highlightedContent | safe }}
-        {% else %}
-          {# No issues found, show plain text #}
-          {{ content }}
-        {% endif %}
-      {% else %}
+{% if reviewData.reviewedContent and reviewData.reviewedContent.plainText -%}
+{# Render text with issue highlights #}
+{% set content = reviewData.reviewedContent.plainText -%}
+{% set issues = reviewData.reviewedContent.issues -%}
+{% if issues and issues.length > 0 -%}
+{# Build highlighted content by replacing issue text with marks #}
+{% set highlightedContent = content -%}
+{% for issue in issues -%}
+{% set issueText = issue.text -%}
+{% set categoryClass = 'highlight-' + issue.category -%}
+{% set markedText = '<mark class="' + categoryClass + '">' + issueText + '</mark>' -%}
+{% set highlightedContent = highlightedContent | replace(issueText, markedText) -%}
+{% endfor -%}
+{{ highlightedContent | safe }}
+{%- else -%}
+{# No issues found, show plain text #}
+{{ content }}
+{%- endif %}
+{%- else %}
         <p>No content available</p>
-      {% endif %}
+{%- endif %}
     </div>
   </section>
 

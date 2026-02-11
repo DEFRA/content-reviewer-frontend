@@ -114,15 +114,18 @@
           <!-- Text Content Option -->
           <div class="govuk-form-group" id="textFormGroup">
             <label class="govuk-label govuk-label--s" for="text-content">
-              Type/paste your content directly
+              Type or paste your content for review
             </label>
+            <div class="govuk-hint" id="more-detail-int">
+              Do not include personal or financial information, like your National Insurance number or credit card details
+            </div>
             <textarea 
               class="govuk-textarea" 
               id="text-content" 
               name="textContent" 
               rows="8" 
               placeholder="Type or paste content here..."
-              aria-describedby="text-content-hint"
+              aria-describedby="more-detail-int"
             ></textarea>
           </div>
           
@@ -132,7 +135,7 @@
             data-module="govuk-button"
             id="uploadButton"
           >
-            Review Content
+            Review content
           </button>
 
           <!-- Upload Progress Indicator -->
@@ -252,48 +255,47 @@
 
       <!-- Pagination Controls -->
       {% if currentLimit > 25 and pagination and pagination.totalReviews > 25 %}
-      <nav class="govuk-pagination" aria-label="Pagination">
-        <div class="govuk-pagination__prev">
-          {% if pagination.hasPreviousPage %}
-          <a class="govuk-link govuk-pagination__link" href="?limit={{ currentLimit }}&page={{ pagination.currentPage - 1 }}" rel="prev">
-            <svg class="govuk-pagination__icon govuk-pagination__icon--prev" xmlns="http://www.w3.org/2000/svg" height="13" width="15" aria-hidden="true" focusable="false" viewBox="0 0 15 13">
-              <path d="m6.5938-0.0078125-6.7266 6.7266 6.7441 6.4062 1.377-1.449-4.1856-3.9768h12.896v-2h-12.984l4.2931-4.293-1.414-1.414z"></path>
-            </svg>
-            <span class="govuk-pagination__link-title">
-              Previous<span class="govuk-visually-hidden"> page</span>
-            </span>
-          </a>
-          {% endif %}
-        </div>
-        
+      <nav class="govuk-pagination" role="navigation" aria-label="Pagination">
         <ul class="govuk-pagination__list">
-          {% for page in range(1, pagination.totalPages + 1) %}
-          <li class="govuk-pagination__item{% if page == pagination.currentPage %} govuk-pagination__item--current{% endif %}">
-            {% if page == pagination.currentPage %}
-            <a class="govuk-link govuk-pagination__link" href="?limit={{ currentLimit }}&page={{ page }}" aria-label="Page {{ page }}" aria-current="page">
-              {{ page }}
-            </a>
+          <!-- Previous -->
+          <li class="govuk-pagination__item govuk-pagination__item--prev">
+            {% if pagination.hasPreviousPage %}
+              <a class="govuk-link govuk-pagination__link" href="?limit={{ currentLimit }}&page={{ pagination.currentPage - 1 }}" rel="prev">
+                <span class="govuk-pagination__icon govuk-pagination__icon--prev" aria-hidden="true"></span>
+                Previous
+              </a>
             {% else %}
-            <a class="govuk-link govuk-pagination__link" href="?limit={{ currentLimit }}&page={{ page }}" aria-label="Page {{ page }}">
-              {{ page }}
-            </a>
+              <span class="govuk-pagination__link govuk-pagination__link--disabled">
+                <span class="govuk-pagination__icon govuk-pagination__icon--prev" aria-hidden="true"></span>
+                Previous
+              </span>
             {% endif %}
           </li>
+          <!-- Page Numbers -->
+          {% for page in range(1, pagination.totalPages + 1) %}
+            <li class="govuk-pagination__item{% if page == pagination.currentPage %} govuk-pagination__item--current{% endif %}">
+              {% if page == pagination.currentPage %}
+                <a class="govuk-link govuk-pagination__link" href="?limit={{ currentLimit }}&page={{ page }}" aria-current="page">{{ page }}</a>
+              {% else %}
+                <a class="govuk-link govuk-pagination__link" href="?limit={{ currentLimit }}&page={{ page }}">{{ page }}</a>
+              {% endif %}
+            </li>
           {% endfor %}
+          <!-- Next -->
+          <li class="govuk-pagination__item govuk-pagination__item--next">
+            {% if pagination.hasNextPage %}
+              <a class="govuk-link govuk-pagination__link" href="?limit={{ currentLimit }}&page={{ pagination.currentPage + 1 }}" rel="next">
+                Next
+                <span class="govuk-pagination__icon govuk-pagination__icon--next" aria-hidden="true"></span>
+              </a>
+            {% else %}
+              <span class="govuk-pagination__link govuk-pagination__link--disabled">
+                Next
+                <span class="govuk-pagination__icon govuk-pagination__icon--next" aria-hidden="true"></span>
+              </span>
+            {% endif %}
+          </li>
         </ul>
-        
-        <div class="govuk-pagination__next">
-          {% if pagination.hasNextPage %}
-          <a class="govuk-link govuk-pagination__link" href="?limit={{ currentLimit }}&page={{ pagination.currentPage + 1 }}" rel="next">
-            <span class="govuk-pagination__link-title">
-              Next<span class="govuk-visually-hidden"> page</span>
-            </span>
-            <svg class="govuk-pagination__icon govuk-pagination__icon--next" xmlns="http://www.w3.org/2000/svg" height="13" width="15" aria-hidden="true" focusable="false" viewBox="0 0 15 13">
-              <path d="m8.107-0.0078125-1.4136 1.414 4.2926 4.293h-12.986v2h12.896l-4.1855 3.9766 1.377 1.4492 6.7441-6.4062-6.7246-6.7266z"></path>
-            </svg>
-          </a>
-          {% endif %}
-        </div>
       </nav>
       {% endif %}
       
