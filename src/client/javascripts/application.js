@@ -10,6 +10,8 @@ import {
 
 // Import upload handler
 import './upload-handler.js'
+// Import cookie banner
+import './cookie-banner.js'
 
 createAll(Button)
 createAll(Checkboxes)

@@ -5,6 +5,10 @@ import { about } from './about/index.js'
 import { health } from './health/index.js'
 // import { upload } from './upload/index.js' // Removed - upload now handled via AJAX on homepage
 import review from './review/index.js'
+import { cookies } from './cookies/index.js'
+import { privacy } from './privacy/index.js'
+import { accessibility } from './accessibility/index.js'
+import { contact } from './contact/index.js'
 import { uploadApiController } from './api/upload.js'
 import { textReviewApiController } from './api/text-review.js'
 import { getReviewsController } from './api/reviews.js'
@@ -61,7 +65,15 @@ export const router = {
       })
 
       // Application specific routes, add your own routes here
-      await server.register([home, about, review]) // upload removed - now via AJAX API
+      await server.register([
+        home,
+        about,
+        review,
+        cookies,
+        privacy,
+        accessibility,
+        contact
+      ]) // upload removed - now via AJAX API
 
       // Static assets
       await server.register([serveStaticFiles])

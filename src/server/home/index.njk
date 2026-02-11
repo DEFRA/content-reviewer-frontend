@@ -29,69 +29,6 @@
       transition: width 0.3s ease;
       width: 0%;
     }
-    .text-align-right { text-align: right; }
-    .margin-bottom-0 { margin-bottom: 0; }
-    .inline-block { display: inline-block; }
-    .margin-right-10 { margin-right: 10px; }
-    .width-auto { width: auto; }
-    .display-inline { display: inline; }
-    
-    /* Pagination styles */
-    .pagination {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      margin: 20px 0;
-      padding: 20px 0;
-      border-top: 1px solid #b1b4b6;
-      border-bottom: 1px solid #b1b4b6;
-    }
-    .pagination-item {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 40px;
-      height: 40px;
-      padding: 0 8px;
-      text-decoration: none;
-      border: 1px solid #b1b4b6;
-      background-color: #fff;
-      color: #1d70b8;
-      font-size: 16px;
-      cursor: pointer;
-      transition: background-color 0.2s;
-    }
-    .pagination-item:hover:not(:disabled):not(.pagination-current) {
-      background-color: #f3f2f1;
-    }
-    .pagination-item:focus {
-      outline: 3px solid #ffbf47;
-      outline-offset: 0;
-    }
-    .pagination-item:disabled,
-    .pagination-item[disabled] {
-      opacity: 0.5;
-      cursor: not-allowed;
-      pointer-events: none;
-    }
-    .pagination-current {
-      background-color: #1d70b8;
-      color: #fff;
-      border-color: #1d70b8;
-      text-decoration: underline;
-      font-weight: bold;
-    }
-    .pagination-arrow {
-      font-size: 20px;
-      line-height: 1;
-    }
-    .pagination-info {
-      margin-top: 10px;
-      text-align: center;
-      color: #505a5f;
-      font-size: 14px;
-    }
   </style>
 {% endblock %}
 
@@ -212,26 +149,30 @@
       </div>
 
       <!-- Document Review History Table -->
-      <div class="govuk-grid-row govuk-!-margin-top-8">
-        <div class="govuk-grid-column-one-half">
-          <h2 class="govuk-heading-m">Review History</h2>
+      <div class="govuk-!-margin-top-8">
+        <div class="govuk-grid-row">
+          <div class="govuk-grid-column-one-half">
+            <h2 class="govuk-heading-m">Review History</h2>
+          </div>
+          <div class="govuk-grid-column-one-half" style="text-align: right;">
+            <form id="reviewLimitForm" method="get" class="govuk-form-group" style="display: inline-block; text-align: left; margin-bottom: 0;">
+              <label class="govuk-label govuk-!-margin-bottom-1" for="reviewLimit">
+                Show latest
+              </label>
+              <select class="govuk-select" id="reviewLimit" name="limit" style="width: auto;">
+                <option value="5" {% if (currentLimit == 5) %}selected{% endif %}>5 reviews</option>
+                <option value="10" {% if (currentLimit == 10) %}selected{% endif %}>10 reviews</option>
+                <option value="50" {% if (currentLimit == 50) %}selected{% endif %}>50 reviews</option>
+                <option value="100" {% if (currentLimit == 100) %}selected{% endif %}>100 reviews</option>
+              </select>
+            </form>
+          </div>
         </div>
-        <div class="govuk-grid-column-one-half text-align-right">
-          <form id="reviewLimitForm" method="get" class="display-inline">
-            <label class="govuk-label inline-block margin-right-10" for="reviewLimit">
-              Show latest:
-            </label>
-            <select class="govuk-select width-auto inline-block" id="reviewLimit" name="limit">
-              <option value="5" {% if (currentLimit == 5) %}selected{% endif %}>5 reviews</option>
-              <option value="10" {% if (currentLimit == 10) %}selected{% endif %}>10 reviews</option>
-              <option value="50" {% if (currentLimit == 50) %}selected{% endif %}>50 reviews</option>
-              <option value="100" {% if (currentLimit == 100) %}selected{% endif %}>100 reviews</option>
-            </select>
-          </form>
-        </div>
+        <div class="govuk-!-margin-bottom-6"></div>
       </div>
         
       <table class="govuk-table" id="reviewHistoryTable">
+        <caption class="govuk-visually-hidden">Review History</caption>
         <thead class="govuk-table__head">
           <tr class="govuk-table__row">
             <th scope="col" class="govuk-table__header">Uploaded Content</th>
@@ -289,9 +230,10 @@
               </td>
               <td class="govuk-table__cell">
                 <button 
-                  class="govuk-button govuk-button--secondary govuk-button--small delete-review-btn" 
+                  class="govuk-button govuk-button--warning delete-review-btn" 
                   data-review-id="{{ review.reviewId or review.id }}"
                   data-filename="{{ review.filename }}"
+                  data-module="govuk-button"
                   type="button">
                   Delete
                 </button>
@@ -300,7 +242,7 @@
             {% endfor %}
           {% else %}
             <tr class="govuk-table__row">
-              <td class="govuk-table__cell" colspan="4">
+              <td class="govuk-table__cell" colspan="5">
                 <p class="govuk-body">No review history available.</p>
               </td>
             </tr>
@@ -310,47 +252,54 @@
 
       <!-- Pagination Controls -->
       {% if currentLimit > 25 and pagination and pagination.totalReviews > 25 %}
-      <div class="pagination">
-        <!-- Previous Arrow -->
-        <a 
-          href="?limit={{ currentLimit }}&page={{ pagination.currentPage - 1 }}" 
-          class="pagination-item pagination-arrow"
-          {% if not pagination.hasPreviousPage %}disabled{% endif %}
-          aria-label="Previous page"
-        >
-          &#60;
-        </a>
+      <nav class="govuk-pagination" aria-label="Pagination">
+        <div class="govuk-pagination__prev">
+          {% if pagination.hasPreviousPage %}
+          <a class="govuk-link govuk-pagination__link" href="?limit={{ currentLimit }}&page={{ pagination.currentPage - 1 }}" rel="prev">
+            <svg class="govuk-pagination__icon govuk-pagination__icon--prev" xmlns="http://www.w3.org/2000/svg" height="13" width="15" aria-hidden="true" focusable="false" viewBox="0 0 15 13">
+              <path d="m6.5938-0.0078125-6.7266 6.7266 6.7441 6.4062 1.377-1.449-4.1856-3.9768h12.896v-2h-12.984l4.2931-4.293-1.414-1.414z"></path>
+            </svg>
+            <span class="govuk-pagination__link-title">
+              Previous<span class="govuk-visually-hidden"> page</span>
+            </span>
+          </a>
+          {% endif %}
+        </div>
         
-        <!-- Page Numbers -->
-        {% for page in range(1, pagination.totalPages + 1) %}
-          {% if page == pagination.currentPage %}
-            <span class="pagination-item pagination-current" aria-current="page">{{ page }}</span>
-          {% else %}
-            <a 
-              href="?limit={{ currentLimit }}&page={{ page }}" 
-              class="pagination-item"
-              aria-label="Go to page {{ page }}"
-            >
+        <ul class="govuk-pagination__list">
+          {% for page in range(1, pagination.totalPages + 1) %}
+          <li class="govuk-pagination__item{% if page == pagination.currentPage %} govuk-pagination__item--current{% endif %}">
+            {% if page == pagination.currentPage %}
+            <a class="govuk-link govuk-pagination__link" href="?limit={{ currentLimit }}&page={{ page }}" aria-label="Page {{ page }}" aria-current="page">
               {{ page }}
             </a>
-          {% endif %}
-        {% endfor %}
+            {% else %}
+            <a class="govuk-link govuk-pagination__link" href="?limit={{ currentLimit }}&page={{ page }}" aria-label="Page {{ page }}">
+              {{ page }}
+            </a>
+            {% endif %}
+          </li>
+          {% endfor %}
+        </ul>
         
-        <!-- Next Arrow -->
-        <a 
-          href="?limit={{ currentLimit }}&page={{ pagination.currentPage + 1 }}" 
-          class="pagination-item pagination-arrow"
-          {% if not pagination.hasNextPage %}disabled{% endif %}
-          aria-label="Next page"
-        >
-          &#62;
-        </a>
-      </div>
+        <div class="govuk-pagination__next">
+          {% if pagination.hasNextPage %}
+          <a class="govuk-link govuk-pagination__link" href="?limit={{ currentLimit }}&page={{ pagination.currentPage + 1 }}" rel="next">
+            <span class="govuk-pagination__link-title">
+              Next<span class="govuk-visually-hidden"> page</span>
+            </span>
+            <svg class="govuk-pagination__icon govuk-pagination__icon--next" xmlns="http://www.w3.org/2000/svg" height="13" width="15" aria-hidden="true" focusable="false" viewBox="0 0 15 13">
+              <path d="m8.107-0.0078125-1.4136 1.414 4.2926 4.293h-12.986v2h12.896l-4.1855 3.9766 1.377 1.4492 6.7441-6.4062-6.7246-6.7266z"></path>
+            </svg>
+          </a>
+          {% endif %}
+        </div>
+      </nav>
       {% endif %}
       
       <!-- Pagination Info Message -->
       {% if pagination %}
-      <div class="pagination-info">
+      <p class="govuk-body govuk-!-font-size-19 govuk-!-margin-top-3">
         {% if currentLimit <= 25 %}
           Showing {{ reviewHistory.length }} of {{ pagination.totalReviews }} reviews
         {% else %}
@@ -358,7 +307,7 @@
           {{ [pagination.currentPage * pagination.pageSize, pagination.totalReviews] | min }} 
           of {{ pagination.totalReviews }} reviews
         {% endif %}
-      </div>
+      </p>
       {% endif %}
 
     </div>
@@ -764,9 +713,10 @@
       actionsCell.className = 'govuk-table__cell';
       
       const deleteBtn = document.createElement('button');
-      deleteBtn.className = 'govuk-button govuk-button--secondary govuk-button--small delete-review-btn';
+      deleteBtn.className = 'govuk-button govuk-button--warning delete-review-btn';
       deleteBtn.setAttribute('data-review-id', reviewId);
       deleteBtn.setAttribute('data-filename', review.filename || 'Unknown');
+      deleteBtn.setAttribute('data-module', 'govuk-button');
       deleteBtn.setAttribute('type', 'button');
       deleteBtn.textContent = 'Delete';
       actionsCell.appendChild(deleteBtn);
@@ -856,14 +806,14 @@
     async function deleteReview(reviewId, filename) {
       if (!reviewId) {
         console.error('[HOME] Cannot delete review - missing ID');
-        alert('Error: Missing review ID');
+        showErrorNotification('Error: Missing review ID');
         return;
       }
       
-      // Confirm deletion
-      const confirmMessage = `Are you sure you want to delete the review for "${filename}"?\n\nThis action cannot be undone.`;
+      // Show confirmation using GOV.UK pattern
+      const confirmDelete = confirm(`Are you sure you want to delete the review for "${filename}"?\n\nThis action cannot be undone.`);
       
-      if (!confirm(confirmMessage)) {
+      if (!confirmDelete) {
         console.log('[HOME] Delete cancelled by user');
         return;
       }
@@ -894,16 +844,66 @@
           console.log('[HOME] Review row removed from table:', reviewId);
         }
         
-        // Show success message
-        alert(`Review "${filename}" has been deleted successfully.`);
+        // Show success notification
+        showSuccessNotification(`Review "${filename}" has been deleted successfully.`);
         
         // Refresh the review history to update the table with fresh data from server
         await updateReviewHistory();
         
       } catch (error) {
         console.error('[HOME] Error deleting review:', error);
-        alert(`Failed to delete review: ${error.message}`);
+        showErrorNotification(`Failed to delete review: ${error.message}`);
       }
+    }
+    
+    // Helper function to show success notification
+    function showSuccessNotification(message) {
+      const notification = document.createElement('div');
+      notification.className = 'govuk-notification-banner govuk-notification-banner--success';
+      notification.setAttribute('role', 'alert');
+      notification.setAttribute('aria-labelledby', 'notification-title');
+      notification.setAttribute('data-module', 'govuk-notification-banner');
+      notification.innerHTML = `
+        <div class="govuk-notification-banner__header">
+          <h2 class="govuk-notification-banner__title" id="notification-title">Success</h2>
+        </div>
+        <div class="govuk-notification-banner__content">
+          <p class="govuk-notification-banner__heading">${message}</p>
+        </div>
+      `;
+      
+      // Insert at the top of the page
+      const container = document.querySelector('.govuk-grid-column-full');
+      container.insertBefore(notification, container.firstChild);
+      
+      // Auto-remove after 5 seconds
+      setTimeout(() => {
+        notification.remove();
+      }, 5000);
+    }
+    
+    // Helper function to show error notification
+    function showErrorNotification(message) {
+      const notification = document.createElement('div');
+      notification.className = 'govuk-error-summary';
+      notification.setAttribute('role', 'alert');
+      notification.setAttribute('aria-labelledby', 'error-summary-title');
+      notification.setAttribute('data-module', 'govuk-error-summary');
+      notification.innerHTML = `
+        <h2 class="govuk-error-summary__title" id="error-summary-title">There is a problem</h2>
+        <div class="govuk-error-summary__body">
+          <p class="govuk-body">${message}</p>
+        </div>
+      `;
+      
+      // Insert at the top of the page
+      const container = document.querySelector('.govuk-grid-column-full');
+      container.insertBefore(notification, container.firstChild);
+      
+      // Auto-remove after 7 seconds
+      setTimeout(() => {
+        notification.remove();
+      }, 7000);
     }
     
     // Attach delete button click handlers
