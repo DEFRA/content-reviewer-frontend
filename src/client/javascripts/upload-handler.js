@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', function () {
   initializeFileInput()
 
   if (textContentInput) {
-    textClearBtn = addClearButton(textContentInput, 'Clear Text', () => {
+    textClearBtn = addClearButton(textContentInput, 'Clear text', () => {
       textContentInput.value = ''
       textContentInput.disabled = false
       updateMutualExclusion()
