@@ -57,8 +57,7 @@
   {# Reviewed Content Section with Highlights #}
   <section class="reviewed-content">
     <h2>Your Content (with issues highlighted)</h2>
-    <div class="content-body">
-{% if reviewData.reviewedContent and reviewData.reviewedContent.plainText -%}
+    <div class="content-body">{%- if reviewData.reviewedContent and reviewData.reviewedContent.plainText -%}
 {# Render text with issue highlights #}
 {% set content = reviewData.reviewedContent.plainText -%}
 {% set issues = reviewData.reviewedContent.issues -%}
@@ -75,11 +74,11 @@
 {%- else -%}
 {# No issues found, show plain text #}
 {{ content }}
-{%- endif %}
-{%- else %}
-        <p>No content available</p>
-{%- endif %}
-    </div>
+{%- endif -%}
+{%- else -%}
+<p>No content available</p>
+{%- endif -%}
+</div>
   </section>
 
   {# Priority Improvements Section #}

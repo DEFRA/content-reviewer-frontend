@@ -11,12 +11,11 @@
     margin-bottom: 3rem;
     padding: 1.5rem;
     background-color: govuk-colour('light-grey');
-    border-left: 4px solid govuk-colour('blue');
   }
 
   h2 {
     margin-top: 0;
-    margin-bottom: 1.5rem;
+    margin-bottom: 0.5rem;
     font-size: 1.5rem;
     font-weight: 700;
     font-family: 'GDS Transport', arial, sans-serif;
@@ -77,7 +76,10 @@
 // Reviewed Content Section with Highlights
 .reviewed-content {
   background-color: govuk-colour('white');
-  border-left-color: govuk-colour('dark-grey');
+
+  h2 {
+    margin-bottom: 0.5rem;
+  }
 
   .content-body {
     font-family: 'GDS Transport', arial, sans-serif;
@@ -110,7 +112,6 @@
 // Example Improvements Section
 .example-improvements {
   background-color: govuk-colour('light-grey');
-  border-left-color: govuk-colour('blue');
 
   .improvement-list {
     list-style: none;
@@ -125,7 +126,6 @@
     padding: 1.5rem 1.5rem 1.5rem 3rem;
     margin-bottom: 1.5rem;
     background-color: govuk-colour('white');
-    border-left: 5px solid;
     border-radius: 4px;
 
     &::before {
@@ -205,8 +205,6 @@
 .severity-high,
 .severity-medium,
 .severity-low {
-  border-left-color: #1d70b8;
-
   &::before {
     color: #1d70b8;
   }
@@ -220,7 +218,6 @@
 @media print {
   .review-output section {
     page-break-inside: avoid;
-    border-left: none;
     background-color: #ffffff;
   }
 
