@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   // Character count logic
-  const CHARACTER_LIMIT = 100000 // Set your desired character limit here
+  const CHARACTER_LIMIT = window.contentReviewMaxCharLength || 100000; // Get from server config, fallback to 100000
   function updateCharacterCount() {
     if (!textContentInput || !characterCountMessage) return
     const currentLength = textContentInput.value.length
@@ -449,6 +449,7 @@ document.addEventListener('DOMContentLoaded', function () {
         textContentInput.value = ''
         textContentInput.disabled = false
       }
+      updateCharacterCount()
       updateMutualExclusion()
       uploadButton.disabled = false
 
