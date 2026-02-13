@@ -1,6 +1,7 @@
 // Upload form handler
 document.addEventListener('DOMContentLoaded', function () {
   const textContentInput = document.getElementById('text-content')
+  const characterCountMessage = document.getElementById('characterCountMessage')
   const uploadButton = document.getElementById('uploadButton')
   const uploadProgress = document.getElementById('uploadProgress')
   const progressBar = document.getElementById('progressBar')
@@ -19,10 +20,36 @@ document.addEventListener('DOMContentLoaded', function () {
     return
   }
 
+  // Character count logic
+  const CHARACTER_LIMIT = 100000 // Set your desired character limit here
+  function updateCharacterCount() {
+    if (!textContentInput || !characterCountMessage) return
+    const currentLength = textContentInput.value.length
+    if (currentLength === 0) {
+      characterCountMessage.textContent = ''
+      characterCountMessage.style.display = 'none'
+      characterCountMessage.classList.remove('govuk-error-message')
+      return
+    }
+    characterCountMessage.style.display = ''
+    const remaining = CHARACTER_LIMIT - currentLength
+    if (remaining >= 0) {
+      characterCountMessage.textContent = `${remaining} characters remaining`
+      characterCountMessage.classList.remove('govuk-error-message')
+    } else {
+      characterCountMessage.textContent = `You have ${Math.abs(remaining)} characters too many`
+      characterCountMessage.classList.add('govuk-error-message')
+    }
+  }
+  textContentInput.addEventListener('input', updateCharacterCount)
+  updateCharacterCount()
+
   // Ensure error and progress are hidden on page load
   hideError()
   hideProgress()
   hideSuccess()
+  // Initialize character count
+  updateCharacterCount()
 
   // ============ MUTUAL EXCLUSION LOGIC ============
   // Styles for mutual exclusion are now in utilities.scss - no need to inject dynamically
@@ -69,11 +96,26 @@ document.addEventListener('DOMContentLoaded', function () {
   initializeFileInput()
 
   if (textContentInput) {
+    // Insert Clear text button after the character count message
+    const characterCountMessage = document.getElementById(
+      'characterCountMessage'
+    )
     textClearBtn = addClearButton(textContentInput, 'Clear text', () => {
       textContentInput.value = ''
       textContentInput.disabled = false
       updateMutualExclusion()
+      updateCharacterCount() // Hide character count message when cleared
     })
+    if (
+      characterCountMessage &&
+      textClearBtn &&
+      characterCountMessage.parentNode === textContentInput.parentNode
+    ) {
+      characterCountMessage.parentNode.insertBefore(
+        textClearBtn,
+        characterCountMessage.nextSibling
+      )
+    }
   }
 
   function updateMutualExclusion() {
@@ -188,7 +230,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Enforce: only one input can be set
     if ((file && textContent) || (!file && !textContent)) {
-      showError('Please either upload a file or enter text content, not both.')
+      showError('Enter text content to continue')
       return
     }
 
@@ -250,9 +292,11 @@ document.addEventListener('DOMContentLoaded', function () {
         hideProgress()
       }
     } else if (textContent && !file) {
+      if (textContent.length < 10) {
+        showError('Text content must be at least 10 characters')
+        return
+      }
       await handleTextReview(textContent)
-    } else {
-      showError('Please either upload a file or enter text content to review')
     }
   })
 
@@ -264,7 +308,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
   function hideError() {
-    if (uploadError) uploadError.hidden = true
+    if (uploadError) {
+      uploadError.hidden = true
+    }
   }
   function hideSuccess() {
     if (uploadSuccess) uploadSuccess.hidden = true
