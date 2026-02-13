@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   // Character count logic
-  const CHARACTER_LIMIT = window.contentReviewMaxCharLength || 100000; // Get from server config, fallback to 100000
+  const CHARACTER_LIMIT = window.contentReviewMaxCharLength || 100000 // Get from server config, fallback to 100000
   function updateCharacterCount() {
     if (!textContentInput || !characterCountMessage) return
     const currentLength = textContentInput.value.length
