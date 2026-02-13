@@ -459,8 +459,6 @@ class ConversationManager {
     const backendUrl =
       window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001'
 
-    console.log('Uploading file to:', `${backendUrl}/api/upload`)
-
     const response = await fetch(`${backendUrl}/api/upload`, {
       method: 'POST',
       body: formData,
@@ -475,7 +473,6 @@ class ConversationManager {
     }
 
     const result = await response.json()
-    console.log('Upload successful:', result)
 
     return {
       filename: result.filename || file.name,
@@ -493,11 +490,6 @@ class ConversationManager {
       window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001'
 
     try {
-      console.log(
-        'Submitting text for AI review:',
-        textContent.substring(0, 100) + '...'
-      )
-
       const response = await fetch(`${backendUrl}/api/review/text`, {
         method: 'POST',
         headers: {
@@ -518,8 +510,14 @@ class ConversationManager {
       }
 
       const result = await response.json()
-      console.log('Text review submitted successfully:', result)
-
+      if (window.logger && typeof window.logger.info === 'function') {
+        window.logger.info('Text review submitted successfully', {
+          length: textContent.length,
+          preview:
+            textContent.substring(0, 100) +
+            (textContent.length > 100 ? '...' : '')
+        })
+      }
       return result.reviewId
     } catch (error) {
       console.error('Failed to submit text review:', error)

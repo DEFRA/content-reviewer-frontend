@@ -38,8 +38,8 @@ export const textReviewApiController = {
           .length
       }
 
-      // Validate text content length
-      const maxLength = config.get('contentReview.maxCharLength')
+      // Validate text content length (max 50,000 characters)
+      const maxLength = 50000
       if (textContent.length > maxLength) {
         logger.warn('Text review validation failed: Content too long', {
           length: textInfo.length,

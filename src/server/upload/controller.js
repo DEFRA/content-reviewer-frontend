@@ -23,7 +23,8 @@ const uploadController = {
       const redirectUrl = `${host}/upload/status-poller`
       const callbackUrl = `${host}/upload/callback`
 
-      console.log('Initiating upload')
+      // Minimal process log for visibility
+      console.log('[UPLOAD-CONTROLLER] Initiating upload')
 
       // Get metadata from form if any
       const metadata = {
@@ -36,8 +37,6 @@ const uploadController = {
         callback: callbackUrl,
         metadata
       })
-
-      console.log('✅ Upload session created:', uploadSession.uploadId)
 
       // Store uploadId in session
       request.yar.set('currentUploadId', uploadSession.uploadId)
@@ -93,7 +92,8 @@ const uploadController = {
    */
   async uploadComplete(request, h) {
     const uploadId = request.yar.get('currentUploadId')
-    console.log('🏁 Upload complete for:', uploadId)
+    // Minimal process log for upload complete
+    console.log('[UPLOAD-CONTROLLER] Upload complete for:', uploadId)
 
     if (!uploadId) {
       return h.redirect('/')
@@ -109,17 +109,12 @@ const uploadController = {
         status.uploadStatus === 'ready' &&
         status.numberOfRejectedFiles === 0
       ) {
-        console.log('Upload successful, processing file...')
-
         // Get file details
         const fileDetails = status.form?.file || {}
-
-        console.log('🗄️ S3 Upload:', fileDetails.s3Bucket, fileDetails.s3Key)
 
         // Trigger AI review in backend
         const config = request.server.app.config
         const backendUrl = config.get('backendUrl')
-        console.log('Triggering AI review at:', backendUrl)
 
         try {
           const reviewPayload = {
@@ -140,7 +135,11 @@ const uploadController = {
 
           if (reviewResponse.ok) {
             const reviewData = await reviewResponse.json()
-            console.log('AI review initiated:', reviewData.reviewId)
+            // Minimal process log for AI review initiation (after reviewData is defined)
+            console.log(
+              '[UPLOAD-CONTROLLER] AI review initiated:',
+              reviewData.reviewId
+            )
 
             const reviewId = reviewData.reviewId
 
@@ -210,8 +209,6 @@ const uploadController = {
           })
         }
       } else {
-        console.log('Upload failed:', status.uploadStatus)
-
         request.yar.set('hasUploadSuccess', false)
 
         // Handle rejected files - store error in session
