@@ -23,7 +23,7 @@ const uploadController = {
       const redirectUrl = `${host}/upload/status-poller`
       const callbackUrl = `${host}/upload/callback`
 
-      console.log('🚀 Initiating upload')
+      console.log('Initiating upload')
 
       // Get metadata from form if any
       const metadata = {
@@ -45,7 +45,7 @@ const uploadController = {
       // Redirect to CDP uploader upload page
       return h.redirect(uploadSession.uploadUrl)
     } catch (error) {
-      console.error('❌ UPLOAD INITIATION FAILED:', error)
+      console.error('UPLOAD INITIATION FAILED:', error)
       request.logger.error(error, 'Failed to initiate upload')
       return h.view('upload/index', {
         pageTitle: 'Upload Document',
@@ -109,7 +109,7 @@ const uploadController = {
         status.uploadStatus === 'ready' &&
         status.numberOfRejectedFiles === 0
       ) {
-        console.log('✅ Upload successful, processing file...')
+        console.log('Upload successful, processing file...')
 
         // Get file details
         const fileDetails = status.form?.file || {}
@@ -119,7 +119,7 @@ const uploadController = {
         // Trigger AI review in backend
         const config = request.server.app.config
         const backendUrl = config.get('backendUrl')
-        console.log('🤖 Triggering AI review at:', backendUrl)
+        console.log('Triggering AI review at:', backendUrl)
 
         try {
           const reviewPayload = {
@@ -140,7 +140,7 @@ const uploadController = {
 
           if (reviewResponse.ok) {
             const reviewData = await reviewResponse.json()
-            console.log('✅ AI review initiated:', reviewData.reviewId)
+            console.log('AI review initiated:', reviewData.reviewId)
 
             const reviewId = reviewData.reviewId
 
@@ -158,7 +158,7 @@ const uploadController = {
             return h.redirect(`/review/status-poller/${reviewId}`)
           } else {
             await reviewResponse.text()
-            console.error('❌ Backend review failed:', reviewResponse.status)
+            console.error('Backend review failed:', reviewResponse.status)
             request.logger.error('Failed to initiate AI review')
 
             // Still set success flag since file uploaded successfully to S3
@@ -184,7 +184,7 @@ const uploadController = {
             })
           }
         } catch (error) {
-          console.error('❌ Backend request failed:', error.message)
+          console.error('Backend request failed:', error.message)
           request.logger.error(error, 'Error triggering AI review')
 
           // Still set success flag since file uploaded successfully to S3
@@ -210,7 +210,7 @@ const uploadController = {
           })
         }
       } else {
-        console.log('❌ Upload failed:', status.uploadStatus)
+        console.log('Upload failed:', status.uploadStatus)
 
         request.yar.set('hasUploadSuccess', false)
 
@@ -224,7 +224,7 @@ const uploadController = {
         return h.redirect('/')
       }
     } catch (error) {
-      console.error('❌ Upload complete error:', error.message)
+      console.error('Upload complete error:', error.message)
       request.logger.error(error, 'Failed to process upload completion')
 
       request.yar.set('hasUploadSuccess', false)
