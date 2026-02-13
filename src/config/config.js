@@ -262,6 +262,14 @@ export const config = convict({
       ],
       env: 'CDP_UPLOADER_MIME_TYPES'
     }
+  },
+  contentReview: {
+    maxCharLength: {
+      doc: 'Maximum character length for content review textarea',
+      format: Number,
+      default: 100000,
+      env: 'CONTENT_REVIEW_MAX_CHAR_LEN'
+    }
   }
 })
 

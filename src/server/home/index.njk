@@ -267,13 +267,21 @@
           <li class="govuk-pagination__item govuk-pagination__item--prev">
             {% if pagination.hasPreviousPage %}
               <a class="govuk-link govuk-pagination__link" href="?limit={{ currentLimit }}&page={{ pagination.currentPage - 1 }}" rel="prev">
-                <span class="govuk-pagination__icon govuk-pagination__icon--prev" aria-hidden="true"></span>
-                Previous
+                <svg class="govuk-pagination__icon govuk-pagination__icon--prev" xmlns="http://www.w3.org/2000/svg" height="13" width="15" aria-hidden="true" focusable="false" viewBox="0 0 15 13">
+                  <path d="m6.5938-0.0078125-6.7266 6.7266 6.7441 6.4062 1.377-1.449-4.1856-3.9768h12.896v-2h-12.984l4.2931-4.293-1.414-1.414z"></path>
+                </svg>
+                <span class="govuk-pagination__link-title">
+                  Previous<span class="govuk-visually-hidden"> page</span>
+                </span>
               </a>
             {% else %}
               <span class="govuk-pagination__link govuk-pagination__link--disabled">
-                <span class="govuk-pagination__icon govuk-pagination__icon--prev" aria-hidden="true"></span>
-                Previous
+                <svg class="govuk-pagination__icon govuk-pagination__icon--prev" xmlns="http://www.w3.org/2000/svg" height="13" width="15" aria-hidden="true" focusable="false" viewBox="0 0 15 13">
+                  <path d="m6.5938-0.0078125-6.7266 6.7266 6.7441 6.4062 1.377-1.449-4.1856-3.9768h12.896v-2h-12.984l4.2931-4.293-1.414-1.414z"></path>
+                </svg>
+                <span class="govuk-pagination__link-title">
+                  Previous<span class="govuk-visually-hidden"> page</span>
+                </span>
               </span>
             {% endif %}
           </li>
@@ -291,13 +299,21 @@
           <li class="govuk-pagination__item govuk-pagination__item--next">
             {% if pagination.hasNextPage %}
               <a class="govuk-link govuk-pagination__link" href="?limit={{ currentLimit }}&page={{ pagination.currentPage + 1 }}" rel="next">
-                Next
-                <span class="govuk-pagination__icon govuk-pagination__icon--next" aria-hidden="true"></span>
+                <span class="govuk-pagination__link-title">
+                  Next<span class="govuk-visually-hidden"> page</span>
+                </span>
+                <svg class="govuk-pagination__icon govuk-pagination__icon--next" xmlns="http://www.w3.org/2000/svg" height="13" width="15" aria-hidden="true" focusable="false" viewBox="0 0 15 13">
+                  <path d="m8.107-0.0078125-1.4136 1.414 4.2926 4.293h-12.986v2h12.896l-4.1855 3.9766 1.377 1.4492 6.7441-6.4062-6.7246-6.7266z"></path>
+                </svg>
               </a>
             {% else %}
               <span class="govuk-pagination__link govuk-pagination__link--disabled">
-                Next
-                <span class="govuk-pagination__icon govuk-pagination__icon--next" aria-hidden="true"></span>
+                <span class="govuk-pagination__link-title">
+                  Next<span class="govuk-visually-hidden"> page</span>
+                </span>
+                <svg class="govuk-pagination__icon govuk-pagination__icon--next" xmlns="http://www.w3.org/2000/svg" height="13" width="15" aria-hidden="true" focusable="false" viewBox="0 0 15 13">
+                  <path d="m8.107-0.0078125-1.4136 1.414 4.2926 4.293h-12.986v2h12.896l-4.1855 3.9766 1.377 1.4492 6.7441-6.4062-6.7246-6.7266z"></path>
+                </svg>
               </span>
             {% endif %}
           </li>
@@ -327,6 +343,9 @@
   {{ super() }}
   <script nonce="{{ cspNonce }}" src="{{ getAssetPath('upload-handler.js') }}"></script>
   <script nonce="{{ cspNonce }}">
+    // Make content review max character length available to upload-handler.js
+    window.contentReviewMaxCharLength = {{ contentReviewMaxCharLength }};
+    
     console.log('[HOME] Page loaded with data:', {
       currentLimit: {{ currentLimit }},
       currentPage: {{ pagination.currentPage }},
@@ -335,7 +354,8 @@
       totalPages: {{ pagination.totalPages }},
       reviewHistoryLength: {{ reviewHistory | length }},
       hasPreviousPage: {{ pagination.hasPreviousPage | dump }},
-      hasNextPage: {{ pagination.hasNextPage | dump }}
+      hasNextPage: {{ pagination.hasNextPage | dump }},
+      contentReviewMaxCharLength: {{ contentReviewMaxCharLength }}
     });
     
     console.log('[HOME] Review history items on initial load:');
