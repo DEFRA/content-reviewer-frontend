@@ -157,6 +157,7 @@ export const homeController = {
       uploadError: uploadError.length > 0 ? uploadError[0] : null,
       reviewHistory,
       backendUrl, // Pass to template for client-side use
+      contentReviewMaxCharLength: config.get('contentReview.maxCharLength'), // Pass character limit
       cacheBuster: Date.now(), // Add cacheBuster for template
       currentLimit: limit, // Pass the current limit to template
       pagination: {
