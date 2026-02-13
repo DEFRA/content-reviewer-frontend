@@ -29,15 +29,11 @@ export const homeController = {
 
     try {
       const backendRequestStart = Date.now()
-      console.log('[HOME-CONTROLLER] Fetching review history from backend')
 
       // For pagination: if limit > pageSize, use skip/pageSize for efficient backend pagination
       // Otherwise, just fetch the limit amount
       //
-      // PAGINATION FLOW (e.g., user selects 50 reviews):
-      // - Page 1: limit=25, skip=0  → Backend returns 25 MOST RECENT reviews (1-25)
-      // - Page 2: limit=25, skip=25 → Backend returns 25 OLDER reviews (26-50)
-      //
+
       // Backend sorts by most recent first, then applies skip/limit
       // This ensures page 1 always shows the newest content
       let backendEndpoint

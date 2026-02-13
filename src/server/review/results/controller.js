@@ -22,7 +22,7 @@ export const resultsController = {
       // Fetch review status and results from backend
       request.logger.info(
         { reviewId },
-        `⏱️ [FRONTEND] Requesting review results from backend - START`
+        `[FRONTEND] Requesting review results from backend - START`
       )
 
       const fetchStart = performance.now()
@@ -40,7 +40,7 @@ export const resultsController = {
           parseDurationMs: parseDuration,
           status: response.status
         },
-        `⏱️ [FRONTEND] Backend response received in ${fetchDuration}ms (parse: ${parseDuration}ms)`
+        `[FRONTEND] Backend response received in ${fetchDuration}ms (parse: ${parseDuration}ms)`
       )
 
       if (!response.ok) {
@@ -89,7 +89,7 @@ export const resultsController = {
           parseMs: parseDuration,
           transformMs: transformDuration
         },
-        `⏱️ [FRONTEND] Results page rendered - TOTAL: ${totalDuration}ms (Fetch: ${fetchDuration}ms, Parse: ${parseDuration}ms, Transform: ${transformDuration}ms)`
+        `[FRONTEND] Results page rendered - TOTAL: ${totalDuration}ms (Fetch: ${fetchDuration}ms, Parse: ${parseDuration}ms, Transform: ${transformDuration}ms)`
       )
 
       return h.view('review/results/index', {
