@@ -27,13 +27,19 @@ export const homeController = {
     let totalReviews = 0
     let totalPages = 0
 
+    const backendRequestStart = Date.now()
+
     try {
-      const backendRequestStart = Date.now()
+      // Minimal process log for visibility
+      console.log('[HOME-CONTROLLER] Fetching review history from backend')
 
       // For pagination: if limit > pageSize, use skip/pageSize for efficient backend pagination
       // Otherwise, just fetch the limit amount
       //
-
+      // PAGINATION FLOW (e.g., user selects 50 reviews):
+      // - Page 1: limit=25, skip=0  → Backend returns 25 MOST RECENT reviews (1-25)
+      // - Page 2: limit=25, skip=25 → Backend returns 25 OLDER reviews (26-50)
+      //
       // Backend sorts by most recent first, then applies skip/limit
       // This ensures page 1 always shows the newest content
       let backendEndpoint
@@ -92,20 +98,6 @@ export const homeController = {
             data.pagination?.total || data.total || limit
           )
           totalPages = Math.ceil(totalReviews / pageSize)
-
-          console.log('[HOME-CONTROLLER] Paginated view calculation:', {
-            userSelectedLimit: limit,
-            backendTotal: data.pagination?.total || data.total,
-            calculatedTotalReviews: totalReviews,
-            calculatedTotalPages: totalPages,
-            pageSize,
-            example:
-              limit === 100
-                ? 'Page 1: 1-25, Page 2: 26-50, Page 3: 51-75, Page 4: 76-100'
-                : limit === 50
-                  ? 'Page 1: 1-25, Page 2: 26-50'
-                  : `${totalPages} page(s) with ${pageSize} reviews each`
-          })
         } else {
           // Non-paginated view - use actual count
           totalReviews =
@@ -120,41 +112,9 @@ export const homeController = {
         // Backend already returned the correct page's data when limit > pageSize
         // No client-side slicing needed - just use what backend returned
         if (limit > pageSize) {
-          const reviewRangeStart = skip + 1
-          const reviewRangeEnd = skip + normalized.length
-          const pageDescription =
-            limit === 100
-              ? `Page ${currentPage} of 4 (100 reviews total, 25 per page)`
-              : limit === 50
-                ? `Page ${currentPage} of 2 (50 reviews total, 25 per page)`
-                : `Page ${currentPage} of ${totalPages} (${totalReviews} reviews total, ${pageSize} per page)`
-
-          console.log(
-            '[HOME-CONTROLLER] Using backend-paginated data (no client-side slicing):',
-            {
-              userSelectedLimit: limit,
-              pageSize,
-              currentPage,
-              totalReviews,
-              totalPages,
-              returnedItems: normalized.length,
-              expectedItems: Math.min(pageSize, totalReviews - skip),
-              reviewRange: `${reviewRangeStart}-${reviewRangeEnd}`,
-              pageDescription
-            }
-          )
-
           // Backend already sent skip+limit items, use them directly
           // These are sorted by most recent first
           reviewHistory = normalized
-
-          console.log('[HOME-CONTROLLER] Backend-paginated results:', {
-            resultLength: reviewHistory.length,
-            reviewRange: `Reviews ${skip + 1} to ${skip + reviewHistory.length}`,
-            firstReview: reviewHistory[0]?.filename,
-            lastReview: reviewHistory[reviewHistory.length - 1]?.filename,
-            sortOrder: 'Most recent first (page 1 = newest, page 2 = older)'
-          })
         } else {
           // Show all returned records if limit <= 25 (no pagination needed)
           reviewHistory = normalized
@@ -197,7 +157,6 @@ export const homeController = {
       uploadError: uploadError.length > 0 ? uploadError[0] : null,
       reviewHistory,
       backendUrl, // Pass to template for client-side use
-      contentReviewMaxCharLength: config.get('contentReview.maxCharLength'), // Pass character limit
       cacheBuster: Date.now(), // Add cacheBuster for template
       currentLimit: limit, // Pass the current limit to template
       pagination: {

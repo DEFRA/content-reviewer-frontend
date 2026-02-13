@@ -157,16 +157,9 @@ export const reviewHistoryController = {
         stack: error.stack,
         totalProcessingTime: `${totalProcessingTime}s`
       })
-      console.error('[REVIEW-HISTORY-CONTROLLER] Error deleting review:', {
-        message: error.message,
-        stack: error.stack
-      })
 
       request.logger.error(error, 'Failed to delete review')
       logger.info('Redirecting with error parameter after delete failure')
-      console.log(
-        '[REVIEW-HISTORY-CONTROLLER] Redirecting with error parameter'
-      )
       return h.redirect('/review/history?error=delete_failed')
     }
   }
