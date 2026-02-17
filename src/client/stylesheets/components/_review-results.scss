@@ -29,48 +29,29 @@
   }
 }
 
-// Summary Section with Category Scores - HIDDEN (can be restored later)
-.review-summary {
-  display: none;
+// Scores Summary Section with Category Scores
+.scores-summary {
+  background-color: govuk-colour('light-grey');
 
-  // background-color: govuk-colour('light-grey');
+  .govuk-summary-list {
+    margin-bottom: 0;
+  }
 
-  // .category-scores {
-  //   display: grid;
-  //   grid-template-columns: 1fr;
-  //   gap: 1rem;
+  .govuk-summary-list__row {
+    border-bottom: 1px solid govuk-colour('mid-grey');
+  }
 
-  //   @media (min-width: 768px) {
-  //     grid-template-columns: repeat(2, 1fr);
-  //   }
-  // }
+  .score-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1d70b8;
+    margin-right: 1rem;
+  }
 
-  // .score-item {
-  //   padding: 1rem;
-  //   border-radius: 4px;
-  //   border-left: 5px solid #1d70b8;
-  //   background-color: govuk-colour('white');
-  //   display: flex;
-  //   flex-direction: column;
-  //   gap: 0.5rem;
-
-  //   .category-name {
-  //     font-weight: 700;
-  //     font-size: 1rem;
-  //     color: govuk-colour('black');
-  //   }
-
-  //   .category-score {
-  //     font-size: 1.5rem;
-  //     font-weight: 700;
-  //     color: #1d70b8;
-  //   }
-
-  //   .category-note {
-  //     font-size: 0.875rem;
-  //     color: govuk-colour('dark-grey');
-  //   }
-  // }
+  .score-note {
+    font-size: 0.875rem;
+    color: govuk-colour('dark-grey');
+  }
 }
 
 // Reviewed Content Section with Highlights

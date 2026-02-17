@@ -1,5 +1,6 @@
 import {
   createAll,
+  Accordion,
   Button,
   Checkboxes,
   ErrorSummary,
@@ -13,6 +14,7 @@ import './upload-handler.js'
 // Import cookie banner
 import './cookie-banner.js'
 
+createAll(Accordion)
 createAll(Button)
 createAll(Checkboxes)
 createAll(ErrorSummary)
