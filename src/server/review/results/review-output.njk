@@ -31,27 +31,50 @@
 
 <div class="review-output">
   
-  {# Scores Section - Check if scores object has any keys by attempting to loop #}
-  {% set hasScores = false %}
-  {% for category in reviewData.scores %}
-    {% set hasScores = true %}
-  {% endfor %}
-  
-  {% if reviewData.scores and hasScores %}
-    <section class="scores-summary">
-      <h2>Content Scores</h2>
-      <dl class="govuk-summary-list">
-        {% for category, scoreData in reviewData.scores %}
-          <div class="govuk-summary-list__row">
-            <dt class="govuk-summary-list__key">{{ category }}</dt>
-            <dd class="govuk-summary-list__value">
-              <span class="score-value">{{ scoreData.score }}/5</span>
-              <span class="score-note">{{ scoreData.note }}</span>
-            </dd>
-          </div>
-        {% endfor %}
-      </dl>
-    </section>
+  {# Scores Section - Using GOV.UK Accordion without "Show all sections" #}
+  {% if reviewData.scores %}
+    <div class="govuk-accordion" data-module="govuk-accordion" data-show-all-sections="false" id="accordion-scores">
+      <div class="govuk-accordion__section govuk-accordion__section--expanded">
+        <div class="govuk-accordion__section-header">
+          <h2 class="govuk-accordion__section-heading">
+            <button type="button" id="accordion-scores-heading-1" 
+                    aria-controls="accordion-scores-content-1" 
+                    class="govuk-accordion__section-button" 
+                    aria-expanded="true">
+              Content scorecard
+            </button>
+          </h2>
+        </div>
+        <div id="accordion-scores-content-1" 
+             class="govuk-accordion__section-content" 
+             aria-labelledby="accordion-scores-heading-1">
+          <dl class="govuk-summary-list">
+            {% for category, scoreData in reviewData.scores %}
+              <div class="govuk-summary-list__row">
+                <dt class="govuk-summary-list__key">{{ category }}</dt>
+                <dd class="govuk-summary-list__value">
+                  <span class="score-value">{{ scoreData.score }}/5</span>
+                  <span class="score-separator"> - </span>
+                  <span class="score-note">{{ scoreData.note }}</span>
+                </dd>
+              </div>
+            {% endfor %}
+          </dl>
+        </div>
+      </div>
+    </div>
+
+    <style>
+      /* Hide the "Show all sections" control at the top of accordion */
+      #accordion-scores .govuk-accordion__show-all {
+        display: none !important;
+      }
+
+      .score-separator {
+        color: #505a5f;
+        font-weight: normal;
+      }
+    </style>
   {% endif %}
   
   {# Reviewed Content Section with Highlights #}
