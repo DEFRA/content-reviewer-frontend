@@ -1,7 +1,7 @@
 import assign from 'lodash/assign.js'
 
-import { formatDate } from './format-date.js'
 import { formatCurrency } from './format-currency.js'
+import { formatDate } from './format-date.js'
 
 /**
  * Return the minimum value from an array

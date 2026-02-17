@@ -1,4 +1,26 @@
 // Upload form handler
+
+// Helper functions for form group state management
+function disableFormGroup(formGroup) {
+  if (!formGroup) return
+  formGroup.classList.add('app-disabled')
+  formGroup.setAttribute('aria-disabled', 'true')
+  formGroup.classList.remove('app-highlight')
+}
+
+function enableFormGroup(formGroup) {
+  if (!formGroup) return
+  formGroup.classList.remove('app-disabled')
+  formGroup.classList.add('app-highlight')
+  formGroup.removeAttribute('aria-disabled')
+}
+
+function resetFormGroup(formGroup) {
+  if (!formGroup) return
+  formGroup.classList.remove('app-disabled', 'app-highlight')
+  formGroup.removeAttribute('aria-disabled')
+}
+
 document.addEventListener('DOMContentLoaded', function () {
   const textContentInput = document.getElementById('text-content')
   const characterCountMessage = document.getElementById('characterCountMessage')
@@ -21,7 +43,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   // Character count logic
-  const CHARACTER_LIMIT = window.contentReviewMaxCharLength || 100000 // Get from server config, fallback to 100000
+  const CHARACTER_LIMIT = globalThis.contentReviewMaxCharLength || 100000 // Get from server config, fallback to 100000
   function updateCharacterCount() {
     if (!textContentInput || !characterCountMessage) return
     const currentLength = textContentInput.value.length
@@ -73,8 +95,8 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!fileInput) return
 
     // Remove existing clear button if present
-    if (fileClearBtn && fileClearBtn.parentNode) {
-      fileClearBtn.parentNode.removeChild(fileClearBtn)
+    if (fileClearBtn?.parentNode) {
+      fileClearBtn.remove()
     }
 
     // Add clear button
@@ -95,96 +117,60 @@ document.addEventListener('DOMContentLoaded', function () {
   // Initialize file input
   initializeFileInput()
 
-  if (textContentInput) {
-    // Insert Clear text button after the character count message
-    const characterCountMessage = document.getElementById(
-      'characterCountMessage'
-    )
-    textClearBtn = addClearButton(textContentInput, 'Clear text', () => {
+  function handleFileSelected(fileInput, fileFormGroup, textFormGroup) {
+    disableFormGroup(textFormGroup)
+    if (textContentInput) {
       textContentInput.value = ''
-      textContentInput.disabled = false
-      updateMutualExclusion()
-      updateCharacterCount() // Hide character count message when cleared
-    })
-    if (
-      characterCountMessage &&
-      textClearBtn &&
-      characterCountMessage.parentNode === textContentInput.parentNode
-    ) {
-      characterCountMessage.parentNode.insertBefore(
-        textClearBtn,
-        characterCountMessage.nextSibling
-      )
+      textContentInput.disabled = true
+      textContentInput.placeholder =
+        'File upload selected - text input disabled'
     }
+    enableFormGroup(fileFormGroup)
+    if (fileInput) fileInput.disabled = false
+    if (fileClearBtn) fileClearBtn.disabled = false
+    if (textClearBtn) textClearBtn.disabled = true
+  }
+
+  function handleTextEntered(fileInput, fileFormGroup, textFormGroup) {
+    disableFormGroup(fileFormGroup)
+    if (fileInput) {
+      fileInput.value = ''
+      fileInput.disabled = true
+    }
+    enableFormGroup(textFormGroup)
+    if (textContentInput) {
+      textContentInput.disabled = false
+      textContentInput.placeholder = 'Type or paste content here...'
+    }
+    if (fileClearBtn) fileClearBtn.disabled = true
+    if (textClearBtn) textClearBtn.disabled = false
+  }
+
+  function handleNothingSelected(fileInput, fileFormGroup, textFormGroup) {
+    resetFormGroup(fileFormGroup)
+    resetFormGroup(textFormGroup)
+    if (fileInput) fileInput.disabled = false
+    if (textContentInput) {
+      textContentInput.disabled = false
+      textContentInput.placeholder = 'Type or paste content here...'
+    }
+    if (fileClearBtn) fileClearBtn.disabled = false
+    if (textClearBtn) textClearBtn.disabled = false
   }
 
   function updateMutualExclusion() {
     const fileInput = getFileInput()
-    const hasFile = fileInput && fileInput.files && fileInput.files.length > 0
+    const hasFile = fileInput?.files?.length > 0
     const hasText = textContentInput && textContentInput.value.trim().length > 0
     const fileFormGroup = document.getElementById('fileFormGroup')
     const textFormGroup = document.getElementById('textFormGroup')
 
     if (hasFile) {
-      // File selected: clear and disable textarea
-      if (textFormGroup) {
-        textFormGroup.classList.add('app-disabled')
-        textFormGroup.setAttribute('aria-disabled', 'true')
-        textFormGroup.classList.remove('app-highlight')
-      }
-      if (textContentInput) {
-        textContentInput.value = ''
-        textContentInput.disabled = true
-        textContentInput.placeholder =
-          'File upload selected - text input disabled'
-      }
-      if (fileFormGroup) {
-        fileFormGroup.classList.remove('app-disabled')
-        fileFormGroup.classList.add('app-highlight')
-        fileFormGroup.removeAttribute('aria-disabled')
-      }
-      if (fileInput) fileInput.disabled = false
-      if (fileClearBtn) fileClearBtn.disabled = false
-      if (textClearBtn) textClearBtn.disabled = true
+      handleFileSelected(fileInput, fileFormGroup, textFormGroup)
     } else if (hasText) {
-      // Text entered: clear and disable file input
-      if (fileFormGroup) {
-        fileFormGroup.classList.add('app-disabled')
-        fileFormGroup.setAttribute('aria-disabled', 'true')
-        fileFormGroup.classList.remove('app-highlight')
-      }
-      if (fileInput) {
-        fileInput.value = ''
-        fileInput.disabled = true
-      }
-      if (textFormGroup) {
-        textFormGroup.classList.remove('app-disabled')
-        textFormGroup.classList.add('app-highlight')
-        textFormGroup.removeAttribute('aria-disabled')
-      }
-      if (textContentInput) {
-        textContentInput.disabled = false
-        textContentInput.placeholder = 'Type or paste content here...'
-      }
-      if (fileClearBtn) fileClearBtn.disabled = true
-      if (textClearBtn) textClearBtn.disabled = false
+      handleTextEntered(fileInput, fileFormGroup, textFormGroup)
     } else {
-      // Nothing selected: enable both
-      if (fileFormGroup) {
-        fileFormGroup.classList.remove('app-disabled', 'app-highlight')
-        fileFormGroup.removeAttribute('aria-disabled')
-      }
-      if (textFormGroup) {
-        textFormGroup.classList.remove('app-disabled', 'app-highlight')
-        textFormGroup.removeAttribute('aria-disabled')
-      }
-      if (fileInput) fileInput.disabled = false
-      if (textContentInput) {
-        textContentInput.disabled = false
-        textContentInput.placeholder = 'Type or paste content here...'
-      }
-      if (fileClearBtn) fileClearBtn.disabled = false
-      if (textClearBtn) textClearBtn.disabled = false
+      handleNothingSelected(fileInput, fileFormGroup, textFormGroup)
     }
   }
 
@@ -214,84 +200,101 @@ document.addEventListener('DOMContentLoaded', function () {
   // Initial state
   updateMutualExclusion()
 
+  // Validation functions
+  function validateInputs(file, textContent) {
+    if ((file && textContent) || (!file && !textContent)) {
+      showError('Enter text content to continue')
+      return false
+    }
+    return true
+  }
+
+  function validateFile(file) {
+    const maxSize = 10 * 1024 * 1024
+    if (file.size > maxSize) {
+      const fileSizeMB = (file.size / 1024 / 1024).toFixed(2)
+      showError(
+        `File too large. Maximum size is 10MB. Your file is ${fileSizeMB}MB`
+      )
+      return false
+    }
+    const allowedTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ]
+    if (
+      !allowedTypes.includes(file.type) &&
+      !file.name.match(/\.(pdf|doc|docx)$/i)
+    ) {
+      showError('Invalid file type. Please upload a PDF or Word document')
+      return false
+    }
+    return true
+  }
+
+  async function handleFileUpload(file) {
+    try {
+      uploadButton.disabled = true
+      showProgress('Preparing upload...', 0)
+
+      const formData = new FormData()
+      formData.append('file', file)
+      showProgress('Uploading to server...', 30)
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include'
+      })
+
+      showProgress('Processing upload...', 70)
+      if (!response.ok) {
+        const error = await response
+          .json()
+          .catch(() => ({ error: `Server error: ${response.status}` }))
+        throw new Error(error.error || 'Upload failed')
+      }
+      await response.json()
+
+      showProgress('Upload complete!', 100)
+      const fileInput = getFileInput()
+      if (fileInput) fileInput.value = ''
+      updateMutualExclusion()
+      setTimeout(() => {
+        globalThis.location.reload()
+      }, 1500)
+    } catch (error) {
+      showError(error.message || 'Upload failed. Please try again.')
+      uploadButton.disabled = false
+      if (textContentInput) textContentInput.disabled = false
+      updateMutualExclusion()
+      hideProgress()
+    }
+  }
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault()
 
     hideError()
     hideSuccess()
     hideProgress()
-
-    // Always re-check mutual exclusion before submit
     updateMutualExclusion()
 
     const fileInput = getFileInput()
     const file = fileInput?.files?.[0]
     const textContent = textContentInput?.value.trim()
 
-    // Enforce: only one input can be set
-    if ((file && textContent) || (!file && !textContent)) {
-      showError('Enter text content to continue')
+    if (!validateInputs(file, textContent)) {
       return
     }
 
-    if (file && !textContent) {
-      const maxSize = 10 * 1024 * 1024
-      if (file.size > maxSize) {
-        const fileSizeMB = (file.size / 1024 / 1024).toFixed(2)
-        showError(
-          `File too large. Maximum size is 10MB. Your file is ${fileSizeMB}MB`
-        )
+    if (file) {
+      if (!validateFile(file)) {
         return
       }
-      const allowedTypes = [
-        'application/pdf',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-      ]
-      if (
-        !allowedTypes.includes(file.type) &&
-        !file.name.match(/\.(pdf|doc|docx)$/i)
-      ) {
-        showError('Invalid file type. Please upload a PDF or Word document')
-        return
-      }
-      try {
-        uploadButton.disabled = true
-        showProgress('Preparing upload...', 0)
-
-        const formData = new FormData()
-        formData.append('file', file)
-        showProgress('Uploading to server...', 30)
-
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-          credentials: 'include'
-        })
-
-        showProgress('Processing upload...', 70)
-        if (!response.ok) {
-          const error = await response
-            .json()
-            .catch(() => ({ error: `Server error: ${response.status}` }))
-          throw new Error(error.error || 'Upload failed')
-        }
-        await response.json()
-
-        showProgress('Upload complete!', 100)
-        if (fileInput) fileInput.value = ''
-        updateMutualExclusion()
-        setTimeout(() => {
-          window.location.reload()
-        }, 1500)
-      } catch (error) {
-        showError(error.message || 'Upload failed. Please try again.')
-        uploadButton.disabled = false
-        if (textContentInput) textContentInput.disabled = false
-        updateMutualExclusion()
-        hideProgress()
-      }
-    } else if (textContent && !file) {
+      await handleFileUpload(file)
+    } else if (textContent) {
       if (textContent.length < 10) {
         showError('Text content must be at least 10 characters')
         return
@@ -320,13 +323,13 @@ document.addEventListener('DOMContentLoaded', function () {
     if (uploadProgressText) uploadProgressText.textContent = percentage + '%'
     const roundedPercentage = Math.round(percentage / 10) * 10
     if (progressBar) {
-      progressBar.setAttribute('data-progress', roundedPercentage.toString())
+      progressBar.dataset.progress = roundedPercentage.toString()
     }
     if (uploadProgress) uploadProgress.hidden = false
   }
   function hideProgress() {
     if (uploadProgress) uploadProgress.hidden = true
-    if (progressBar) progressBar.setAttribute('data-progress', '0')
+    if (progressBar) progressBar.dataset.progress = '0'
   }
 
   // Function to add a new review to the top of the table

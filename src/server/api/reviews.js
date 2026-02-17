@@ -26,12 +26,12 @@ export async function getReviewsController(request, h) {
   const requestLogger = request.logger
 
   // Get limit, skip, and page from query parameters
-  const limit = parseInt(request.query.limit) || 10
-  const page = parseInt(request.query.page) || 1
+  const limit = Number.parseInt(request.query.limit) || 10
+  const page = Number.parseInt(request.query.page) || 1
   const pageSize = 25
 
   // Calculate skip based on page if provided, otherwise use skip directly
-  let skip = parseInt(request.query.skip) || 0
+  let skip = Number.parseInt(request.query.skip) || 0
 
   // If page parameter is provided and limit > pageSize, calculate skip from page
   if (request.query.page && limit > pageSize) {

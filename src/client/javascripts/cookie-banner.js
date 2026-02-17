@@ -4,9 +4,10 @@
  */
 
 class CookieBanner {
+  COOKIE_NAME = 'cookie_preferences'
+  COOKIE_DURATION = 90 // days (Defra standard for essential cookies)
+
   constructor() {
-    this.COOKIE_NAME = 'cookie_preferences'
-    this.COOKIE_DURATION = 90 // days (Defra standard for essential cookies)
     this.init()
   }
 
@@ -83,7 +84,7 @@ class CookieBanner {
     expiryDate.setDate(expiryDate.getDate() + this.COOKIE_DURATION)
 
     // Set Secure flag when using HTTPS (production)
-    const isSecure = window.location.protocol === 'https:'
+    const isSecure = globalThis.location.protocol === 'https:'
     const secureFlag = isSecure ? '; Secure' : ''
 
     document.cookie = `${this.COOKIE_NAME}=${value}; expires=${expiryDate.toUTCString()}; path=/; SameSite=Strict${secureFlag}`
@@ -93,15 +94,16 @@ class CookieBanner {
     const nameEQ = this.COOKIE_NAME + '='
     const cookies = document.cookie.split(';')
 
-    for (let i = 0; i < cookies.length; i++) {
-      let cookie = cookies[i]
-      while (cookie.charAt(0) === ' ') {
+    for (const item of cookies) {
+      let cookie = item
+      while (cookie.startsWith(' ')) {
         cookie = cookie.substring(1, cookie.length)
       }
-      if (cookie.indexOf(nameEQ) === 0) {
+      if (cookie.startsWith(nameEQ)) {
         try {
           return JSON.parse(cookie.substring(nameEQ.length, cookie.length))
         } catch (e) {
+          console.error('Failed to parse cookie preferences:', e)
           return null
         }
       }

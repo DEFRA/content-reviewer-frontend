@@ -18,9 +18,9 @@ export const homeController = {
 
     // Fetch review history from backend
     // Default to 5, but support limit query param for future use
-    const limit = parseInt(request.query.limit) || 5
+    const limit = Number.parseInt(request.query.limit) || 5
     const pageSize = 25 // Number of items per page
-    const currentPage = parseInt(request.query.page) || 1
+    const currentPage = Number.parseInt(request.query.page) || 1
     const skip = (currentPage - 1) * pageSize
 
     let reviewHistory = []
@@ -86,8 +86,6 @@ export const homeController = {
 
         const missingId = normalized.filter((r) => !r.id && !r.reviewId)
 
-        reviewHistory = normalized
-
         // Calculate total reviews and pages based on user's selected limit
         // For paginated views (limit > 25): totalReviews = user's limit (50, 100, etc.)
         // For non-paginated views (limit <= 25): totalReviews = actual count from backend
@@ -111,16 +109,9 @@ export const homeController = {
 
         // Backend already returned the correct page's data when limit > pageSize
         // No client-side slicing needed - just use what backend returned
-        if (limit > pageSize) {
-          // Backend already sent skip+limit items, use them directly
-          // These are sorted by most recent first
-          reviewHistory = normalized
-        } else {
-          // Show all returned records if limit <= 25 (no pagination needed)
-          reviewHistory = normalized
-        }
+        reviewHistory = normalized
 
-        logger.info('Review history retrieved successfully', {
+        logger.info('Review history fetched successfully', {
           count: reviewHistory.length,
           totalFromResponse: data.total || data.count || 0,
           totalReviews,

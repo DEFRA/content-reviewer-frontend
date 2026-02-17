@@ -310,7 +310,9 @@ class ConversationManager {
 
   saveMessage(content, role, fileInfo) {
     const conversation = this.findOrCreateConversation()
-    if (!conversation) return
+    if (!conversation) {
+      return
+    }
 
     const message = this.createMessage(content, role, fileInfo)
     conversation.messages.push(message)
