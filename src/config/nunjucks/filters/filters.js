@@ -9,7 +9,9 @@ import { formatCurrency } from './format-currency.js'
  * @returns {*} Minimum value
  */
 export const min = (arr) => {
-  if (!Array.isArray(arr) || arr.length === 0) return 0
+  if (!Array.isArray(arr) || arr.length === 0) {
+    return 0
+  }
   return Math.min(...arr)
 }
 
