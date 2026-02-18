@@ -21,24 +21,29 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   // Character count logic
-  const CHARACTER_LIMIT = window.contentReviewMaxCharLength || 100000 // Get from server config, fallback to 100000
+  const CHARACTER_LIMIT = globalThis.contentReviewMaxCharLength || 100000 // Get from server config, fallback to 100000
+  const GOVUK_ERROR_MESSAGE_CLASS = 'govuk-error-message'
+  const STYLE_DISPLAY_NONE = 'none'
+  const STYLE_DISPLAY_DEFAULT = ''
   function updateCharacterCount() {
-    if (!textContentInput || !characterCountMessage) return
+    if (!textContentInput || !characterCountMessage) {
+      return
+    }
     const currentLength = textContentInput.value.length
     if (currentLength === 0) {
       characterCountMessage.textContent = ''
-      characterCountMessage.style.display = 'none'
-      characterCountMessage.classList.remove('govuk-error-message')
+      characterCountMessage.style.display = STYLE_DISPLAY_NONE
+      characterCountMessage.classList.remove(GOVUK_ERROR_MESSAGE_CLASS)
       return
     }
-    characterCountMessage.style.display = ''
+    characterCountMessage.style.display = STYLE_DISPLAY_DEFAULT
     const remaining = CHARACTER_LIMIT - currentLength
     if (remaining >= 0) {
       characterCountMessage.textContent = `${remaining} characters remaining`
-      characterCountMessage.classList.remove('govuk-error-message')
+      characterCountMessage.classList.remove(GOVUK_ERROR_MESSAGE_CLASS)
     } else {
       characterCountMessage.textContent = `You have ${Math.abs(remaining)} characters too many`
-      characterCountMessage.classList.add('govuk-error-message')
+      characterCountMessage.classList.add(GOVUK_ERROR_MESSAGE_CLASS)
     }
   }
   textContentInput.addEventListener('input', updateCharacterCount)
