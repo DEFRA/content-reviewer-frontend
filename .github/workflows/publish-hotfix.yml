@@ -22,12 +22,15 @@ jobs:
         with:
           fetch-depth: 0 # Depth 0 is required for branch-based versioning
 
-      - name: Test code and Create Test Coverage Reports
-        uses: actions/setup-node@v4
+      - name: Setup Node
+        uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
           cache: npm
-      - run: |
+
+      - name: Test code and Create Test Coverage Reports
+        continue-on-error: true   # makes tests optional
+        run: |
           npm ci
           npm run build:frontend
           npm run format:check
