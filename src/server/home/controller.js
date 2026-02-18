@@ -176,24 +176,27 @@ export const homeController = {
     const backendUrl = config.get('backendUrl')
 
     const { limit, pageSize, currentPage, skip } = getPaginationParams(request)
-    const { reviewHistory, totalPages } = await fetchReviewHistory(
-      backendUrl,
-      limit,
-      pageSize,
-      currentPage,
-      skip
-    )
+    const { reviewHistory, totalReviews, totalPages } =
+      await fetchReviewHistory(backendUrl, limit, pageSize, currentPage, skip)
 
     const viewData = {
       pageTitle: 'Home',
-      uploadSuccess: uploadSuccess[0],
-      uploadError: uploadError[0],
-      reviews: reviewHistory,
-      limit,
-      currentPage,
-      totalPages,
-      hasNextPage: currentPage < totalPages,
-      hasPreviousPage: currentPage > 1
+      heading: 'Home',
+      uploadSuccess: uploadSuccess.length > 0 ? uploadSuccess[0] : null,
+      uploadError: uploadError.length > 0 ? uploadError[0] : null,
+      reviewHistory,
+      backendUrl,
+      contentReviewMaxCharLength: config.get('contentReview.maxCharLength'),
+      cacheBuster: Date.now(),
+      currentLimit: limit,
+      pagination: {
+        currentPage,
+        pageSize,
+        totalReviews,
+        totalPages,
+        hasNextPage: currentPage < totalPages,
+        hasPreviousPage: currentPage > 1
+      }
     }
 
     return h.view('home/index', viewData)
