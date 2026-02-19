@@ -54,7 +54,7 @@ async function fetchAndParseBackendResults(request, reviewId) {
 
   request.logger.info(
     { reviewId },
-    `⏱️ [FRONTEND] Requesting review results from backend - START`
+    `[FRONTEND] Requesting review results from backend - START`
   )
 
   const fetchStart = performance.now()
@@ -72,7 +72,7 @@ async function fetchAndParseBackendResults(request, reviewId) {
       parseDurationMs: parseDuration,
       status: response.status
     },
-    `⏱️ [FRONTEND] Backend response received in ${fetchDuration}ms (parse: ${parseDuration}ms)`
+    `[FRONTEND] Backend response received in ${fetchDuration}ms (parse: ${parseDuration}ms)`
   )
 
   if (!response.ok) {
@@ -131,7 +131,7 @@ function logResultsPageRender(
       parseMs: parseDuration,
       transformMs: transformDuration
     },
-    `⏱️ [FRONTEND] Results page rendered - TOTAL: ${totalDuration}ms (Fetch: ${fetchDuration}ms, Parse: ${parseDuration}ms, Transform: ${transformDuration}ms)`
+    `[FRONTEND] Results page rendered - TOTAL: ${totalDuration}ms (Fetch: ${fetchDuration}ms, Parse: ${parseDuration}ms, Transform: ${transformDuration}ms)`
   )
 }
 
