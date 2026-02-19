@@ -2,7 +2,6 @@ import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'path'
 import CopyPlugin from 'copy-webpack-plugin'
-import { CleanWebpackPlugin } from 'clean-webpack-plugin'
 import TerserPlugin from 'terser-webpack-plugin'
 import { WebpackAssetsManifest } from 'webpack-assets-manifest'
 
@@ -37,6 +36,7 @@ export default {
     poll: 1000
   },
   output: {
+    clean: true,
     filename:
       NODE_ENV === 'production'
         ? 'javascripts/[name].[contenthash:7].min.js'
@@ -160,7 +160,6 @@ export default {
     usedExports: true
   },
   plugins: [
-    new CleanWebpackPlugin(),
     new WebpackAssetsManifest(),
     new CopyPlugin({
       patterns: [
