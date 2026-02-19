@@ -33,6 +33,8 @@ export const cookiesGetController = {
 /**
  * POST handler - Save cookie preferences
  */
+const COOKIE_EXPIRY_DAYS = 90 // Defra standard for essential cookies
+
 export const cookiesPostController = {
   handler(request, h) {
     const analytics = request.payload?.analytics === 'yes'
@@ -43,7 +45,7 @@ export const cookiesPostController = {
     // Set cookie with preferences (90 days expiry - Defra standard for essential cookies)
     const response = h.redirect('/cookies?saved=true')
     response.state('cookie_preferences', cookiePreferences, {
-      ttl: 90 * 24 * 60 * 60 * 1000, // 90 days in milliseconds
+      ttl: COOKIE_EXPIRY_DAYS * 24 * 60 * 60 * 1000, // 90 days in milliseconds
       isSecure: process.env.NODE_ENV === 'production',
       isHttpOnly: false, // Needs to be accessible by JavaScript for banner logic
       isSameSite: 'Strict',
