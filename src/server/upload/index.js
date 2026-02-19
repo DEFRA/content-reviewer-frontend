@@ -18,7 +18,7 @@ const upload = {
         {
           method: 'GET',
           path: '/upload/form',
-          handler: (request, h) => {
+          handler: (_request, h) => {
             return h.view('upload/upload-form', {
               pageTitle: 'Upload Document',
               heading: 'Upload Your Document'

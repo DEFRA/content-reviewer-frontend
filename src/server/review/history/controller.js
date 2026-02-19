@@ -5,6 +5,7 @@
 import { createLogger } from '../../common/helpers/logging/logger.js'
 
 const logger = createLogger()
+const REVIEW_HISTORY_TITLE = 'Review History'
 
 export const reviewHistoryController = {
   /**
@@ -57,10 +58,9 @@ export const reviewHistoryController = {
         totalProcessingTime: `${totalProcessingTime}s`,
         backendRequestTime: `${backendRequestTime}s`
       })
-
       const viewData = {
-        pageTitle: 'Review History',
-        heading: 'Review History',
+        pageTitle: REVIEW_HISTORY_TITLE,
+        heading: REVIEW_HISTORY_TITLE,
         reviews: data.reviews || [],
         count: data.total || data.count || 0
       }
@@ -79,8 +79,8 @@ export const reviewHistoryController = {
       request.logger.error(error, 'Failed to fetch review history')
 
       const errorViewData = {
-        pageTitle: 'Review History',
-        heading: 'Review History',
+        pageTitle: REVIEW_HISTORY_TITLE,
+        heading: REVIEW_HISTORY_TITLE,
         reviews: [],
         count: 0,
         error: 'Unable to load review history. Please try again later.'
