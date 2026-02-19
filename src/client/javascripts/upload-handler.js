@@ -418,12 +418,12 @@ async function submitTextReview(textContent) {
         ? `${words.slice(0, PREVIEW_WORDS_LIMIT).join(' ').substring(0, PREVIEW_CHARS_LIMIT)}...`
         : 'Text content'
 
-    const response = await fetch('/api/text-review', {
+    const response = await fetch('/api/review/text', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ text: textContent })
+      body: JSON.stringify({ textContent })
     })
 
     if (!response.ok) {
