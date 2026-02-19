@@ -1,9 +1,52 @@
-import fetch from 'node-fetch'
 import { config } from '../../config/config.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
 
 const logger = createLogger()
 const backendUrl = config.get('backendUrl')
+const PAGE_SIZE = 25
+const INTERNAL_SERVER_ERROR = 500
+const OK = 200
+
+/**
+ * Calculate pagination parameters
+ * @param {Object} query - Query parameters
+ * @returns {Object} Pagination parameters
+ */
+function calculatePagination(query) {
+  const page = Number.parseInt(query.page) || 1
+  const limit = Number.parseInt(query.limit) || PAGE_SIZE
+  const skip = (page - 1) * limit
+  return { limit, page, skip }
+}
+
+/**
+ * Normalize reviews data
+ * @param {Array} reviews - Reviews array
+ * @returns {Array} Normalized reviews
+ */
+function normalizeReviews(reviews) {
+  return Array.isArray(reviews) ? reviews : []
+}
+
+/**
+ * Create error response
+ * @param {import('@hapi/hapi').ResponseToolkit} h - Response toolkit
+ * @param {string} message - Error message
+ * @param {number} _limit - Limit parameter
+ * @param {number} _skip - Skip parameter
+ * @returns {import('@hapi/hapi').ResponseObject}
+ */
+function createErrorResponse(h, message, _limit, _skip) {
+  return h
+    .response({
+      success: false,
+      reviews: [],
+      count: 0,
+      total: 0,
+      error: message
+    })
+    .code(INTERNAL_SERVER_ERROR)
+}
 
 /**
  * @typedef {Object} ReviewItem
@@ -16,6 +59,30 @@ const backendUrl = config.get('backendUrl')
  */
 
 /**
+ * Fetch reviews from backend
+ * @param {number} limit - Limit parameter
+ * @param {number} skip - Skip parameter
+ * @param {number} _page - Page number
+ * @returns {Promise<Object>}
+ */
+async function fetchReviewsFromBackend(limit, skip, _page) {
+  const endpoint = `${backendUrl}/api/reviews?limit=${limit}&skip=${skip}`
+  const startTime = Date.now()
+  const response = await fetch(endpoint)
+  const backendRequestTime = ((Date.now() - startTime) / 1000).toFixed(2)
+  return { response, backendRequestTime, endpoint }
+}
+
+/**
+ * @typedef {Object} ReviewItem
+ * @property {string} uploadId
+ * @property {string} filename
+ * @property {string} status
+ * @property {string} method
+ * @property {string} uploadedAt
+ * @property {string} timestamp
+ */
+/**
  * Get review history from backend
  * @param {import('@hapi/hapi').Request} request
  * @param {import('@hapi/hapi').ResponseToolkit} h
@@ -24,72 +91,30 @@ const backendUrl = config.get('backendUrl')
 export async function getReviewsController(request, h) {
   const startTime = Date.now()
   const requestLogger = request.logger
-
-  // Get limit, skip, and page from query parameters
-  const limit = parseInt(request.query.limit) || 10
-  const page = parseInt(request.query.page) || 1
-  const pageSize = 25
-
-  // Calculate skip based on page if provided, otherwise use skip directly
-  let skip = parseInt(request.query.skip) || 0
-
-  // If page parameter is provided and limit > pageSize, calculate skip from page
-  if (request.query.page && limit > pageSize) {
-    skip = (page - 1) * pageSize
-  }
+  const { limit, page, skip } = calculatePagination(request.query)
 
   try {
-    const backendRequestStart = Date.now()
-    const endpoint = `${backendUrl}/api/reviews?limit=${limit > pageSize ? pageSize : limit}&skip=${skip}`
-    logger.info(`Requesting review history from backend: ${endpoint}`, {
-      requestedLimit: limit,
-      requestedPage: page,
-      calculatedSkip: skip,
-      pageSize
-    })
-
-    // Fetch review history from backend
-    const response = await fetch(endpoint, {
-      method: 'GET',
-      headers: {
-        Accept: 'application/json'
-      }
-    })
-
-    const backendRequestEnd = Date.now()
-    const backendRequestTime = (backendRequestEnd - backendRequestStart) / 1000
+    const { response, backendRequestTime, endpoint } =
+      await fetchReviewsFromBackend(limit, skip, page)
 
     if (!response.ok) {
       logger.error(
         `Backend review history request failed - endpoint: ${endpoint}, status: ${response.status}, statusText: ${response.statusText}, requestTime: ${backendRequestTime}s`
       )
-
       requestLogger.error(
         { status: response.status },
         'Failed to fetch review history from backend'
       )
-      return h
-        .response({
-          success: false,
-          message: 'Failed to fetch review history',
-          reviews: [],
-          pagination: {
-            total: 0,
-            limit,
-            skip,
-            returned: 0
-          }
-        })
-        .code(500)
+      return createErrorResponse(
+        h,
+        'Failed to fetch review history',
+        limit,
+        skip
+      )
     }
 
     const data = await response.json()
-
-    // Normalize review items to always include an `id` field
-    const normalizedReviews = (data.reviews || []).map((r) => ({
-      ...r,
-      id: r.id || r.reviewId // ensure id is present for frontend links
-    }))
+    const normalizedReviews = normalizeReviews(data.reviews)
 
     return h
       .response({
@@ -104,7 +129,7 @@ export async function getReviewsController(request, h) {
           returned: normalizedReviews.length
         }
       })
-      .code(200)
+      .code(OK)
   } catch (error) {
     const totalProcessingTime = (Date.now() - startTime) / 1000
 
@@ -119,18 +144,6 @@ export async function getReviewsController(request, h) {
       { error: error.message },
       'Error fetching review history'
     )
-    return h
-      .response({
-        success: false,
-        message: error.message,
-        reviews: [],
-        pagination: {
-          total: 0,
-          limit,
-          skip,
-          returned: 0
-        }
-      })
-      .code(500)
+    return createErrorResponse(h, error.message, limit, skip)
   }
 }
