@@ -159,7 +159,7 @@ const uploadController = {
    * @param {object} h - Hapi response toolkit
    * @param {object} fileDetails - File details from upload
    * @param {string} backendUrl - Backend API URL
-   * @returns {object} Redirect or view response
+   * @returns {Promise<object>} Redirect or view response
    */
   async handleSuccessfulUpload(request, h, fileDetails, backendUrl) {
     try {
@@ -191,6 +191,7 @@ const uploadController = {
         `File "${fileDetails.filename}" uploaded successfully but AI review could not start.`
       )
 
+      // Ensure this returns a Promise
       return this.renderUploadSuccessView(h, fileDetails)
     }
   },
