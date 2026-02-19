@@ -1,3 +1,4 @@
+// eslint-disable-next-line sonarjs/max-lines
 import {
   createAll,
   Accordion,
@@ -28,6 +29,8 @@ class ConversationManager {
     this.conversations = this.loadConversations()
     this.currentConversationId = null
     this.selectedFile = null // Track selected file for upload
+    this.ERROR_NOTIFICATION_TIMEOUT = 5000 // Auto-remove error notifications after 5 seconds
+    this.CONVERSATION_TITLE_MAX_LENGTH = 50 // Maximum length for conversation title preview
     this.init()
   }
 
@@ -166,7 +169,7 @@ class ConversationManager {
     errorDiv.className = 'govuk-error-summary'
     errorDiv.setAttribute('role', 'alert')
     errorDiv.setAttribute('aria-labelledby', 'error-summary-title')
-    errorDiv.setAttribute('data-module', 'govuk-error-summary')
+    errorDiv.dataset.module = 'govuk-error-summary'
 
     errorDiv.innerHTML = `
       <h2 class="govuk-error-summary__title" id="error-summary-title">
@@ -181,13 +184,10 @@ class ConversationManager {
     const chatContainer = document.querySelector('.chat-container')
     if (chatContainer) {
       chatContainer.insertBefore(errorDiv, chatContainer.firstChild)
-
       // Auto-remove after 5 seconds
       setTimeout(() => {
-        if (errorDiv && errorDiv.parentNode) {
-          errorDiv.remove()
-        }
-      }, 5000)
+        errorDiv?.parentNode && errorDiv.remove()
+      }, this.ERROR_NOTIFICATION_TIMEOUT)
     }
   }
 
@@ -309,63 +309,58 @@ class ConversationManager {
   }
 
   saveMessage(content, role, fileInfo) {
-    const conversation = this.conversations.find(
-      (c) => c.id === this.currentConversationId
-    )
+    let conversation = this.findCurrentConversation()
+
+    if (!conversation) {
+      this.createNewConversation()
+      conversation = this.findCurrentConversation()
+    }
+
     if (conversation) {
-      const message = {
-        content,
-        role,
-        timestamp: new Date().toISOString()
-      }
-
-      // Add file info if present
-      if (fileInfo) {
-        message.attachment = {
-          filename: fileInfo.filename,
-          uploadId: fileInfo.uploadId || fileInfo.fileId,
-          s3Location: fileInfo.s3Location,
-          size: fileInfo.size,
-          contentType: fileInfo.contentType
-        }
-      }
-
+      const message = this.createMessage(content, role, fileInfo)
       conversation.messages.push(message)
-
-      // Update conversation title from first user message
-      if (
-        role === 'user' &&
-        conversation.messages.filter((m) => m.role === 'user').length === 1
-      ) {
-        if (fileInfo && !content) {
-          conversation.title = fileInfo.filename
-        } else {
-          conversation.title =
-            content.substring(0, 50) + (content.length > 50 ? '...' : '')
-        }
-      }
-
+      this.updateConversationTitle(conversation, content, role, fileInfo)
       this.saveConversations()
       this.renderConversationList()
-    } else {
-      // If no conversation exists, create one
-      this.createNewConversation()
-      // Retry saving the message
-      const newConversation = this.conversations.find(
-        (c) => c.id === this.currentConversationId
-      )
-      if (newConversation) {
-        newConversation.messages.push({
-          content,
-          role,
-          timestamp: new Date().toISOString()
-        })
-        if (role === 'user') {
-          newConversation.title =
-            content.substring(0, 50) + (content.length > 50 ? '...' : '')
-        }
-        this.saveConversations()
-        this.renderConversationList()
+    }
+  }
+
+  findCurrentConversation() {
+    return this.conversations.find((c) => c.id === this.currentConversationId)
+  }
+
+  createMessage(content, role, fileInfo) {
+    const message = {
+      content,
+      role,
+      timestamp: new Date().toISOString()
+    }
+
+    if (fileInfo) {
+      message.attachment = {
+        filename: fileInfo.filename,
+        uploadId: fileInfo.uploadId || fileInfo.fileId,
+        s3Location: fileInfo.s3Location,
+        size: fileInfo.size,
+        contentType: fileInfo.contentType
+      }
+    }
+
+    return message
+  }
+
+  updateConversationTitle(conversation, content, role, fileInfo) {
+    const isFirstUserMessage =
+      role === 'user' &&
+      conversation.messages.filter((m) => m.role === 'user').length === 1
+
+    if (isFirstUserMessage) {
+      if (fileInfo && !content) {
+        // File only, no text content
+      } else {
+        conversation.title =
+          content.substring(0, this.CONVERSATION_TITLE_MAX_LENGTH) +
+          (content.length > this.CONVERSATION_TITLE_MAX_LENGTH ? '...' : '')
       }
     }
   }
@@ -403,7 +398,7 @@ class ConversationManager {
 
         // Redirect to polling page if we have a reviewId
         if (fileInfo.reviewId) {
-          window.location.href = `/review/status-poller/${fileInfo.reviewId}`
+          globalThis.location.href = `/review/status-poller/${fileInfo.reviewId}`
           return
         }
 
@@ -432,7 +427,7 @@ class ConversationManager {
 
         if (reviewId) {
           // Redirect to polling page to track review progress
-          window.location.href = `/review/status-poller/${reviewId}`
+          globalThis.location.href = `/review/status-poller/${reviewId}`
         } else {
           // No reviewId - fallback to placeholder
           this.showTypingIndicator()
@@ -459,7 +454,7 @@ class ConversationManager {
 
     // Get backend URL from global config
     const backendUrl =
-      window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001'
+      globalThis.APP_CONFIG?.backendApiUrl || 'http://localhost:3001'
 
     const response = await fetch(`${backendUrl}/api/upload`, {
       method: 'POST',
@@ -489,7 +484,7 @@ class ConversationManager {
   async submitTextReview(textContent) {
     // Get backend URL from global config
     const backendUrl =
-      window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001'
+      globalThis.APP_CONFIG?.backendApiUrl || 'http://localhost:3001'
 
     try {
       const response = await fetch(`${backendUrl}/api/review/text`, {
@@ -512,8 +507,8 @@ class ConversationManager {
       }
 
       const result = await response.json()
-      if (window.logger && typeof window.logger.info === 'function') {
-        window.logger.info('Text review submitted successfully', {
+      if (globalThis.logger && typeof globalThis.logger.info === 'function') {
+        globalThis.logger.info('Text review submitted successfully', {
           length: textContent.length,
           preview:
             textContent.substring(0, 100) +
@@ -547,7 +542,9 @@ class ConversationManager {
 
   showTypingIndicator() {
     const chatMessages = document.getElementById('chatMessages')
-    if (!chatMessages) return
+    if (!chatMessages) {
+      return
+    }
 
     const indicator = document.createElement('div')
     indicator.className = 'message bot-message typing-indicator-message'
@@ -576,9 +573,9 @@ class ConversationManager {
     const listContainer = document.getElementById('conversationList')
     if (!listContainer) {
       // Element not found - add visual debug
-      const newChatBtn = document.getElementById('newChatBtn')
-      if (newChatBtn) {
-        newChatBtn.textContent = '+ ERROR: List not found'
+      const debugNewChatBtn = document.getElementById('newChatBtn')
+      if (debugNewChatBtn) {
+        debugNewChatBtn.textContent = '+ ERROR: List not found'
       }
       return
     }
@@ -640,8 +637,8 @@ class ConversationManager {
 // Initialize conversation manager when DOM is ready
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
-    window.conversationManager = new ConversationManager()
+    globalThis.conversationManager = new ConversationManager()
   })
 } else {
-  window.conversationManager = new ConversationManager()
+  globalThis.conversationManager = new ConversationManager()
 }
