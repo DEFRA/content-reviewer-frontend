@@ -9,9 +9,7 @@ import {
   SkipLink
 } from 'govuk-frontend'
 
-// Import upload handler
 import './upload-handler.js'
-// Import cookie banner
 import './cookie-banner.js'
 
 createAll(Accordion)
@@ -28,33 +26,25 @@ class ConversationManager {
     this.conversations = this.loadConversations()
     this.currentConversationId = null
     this.selectedFile = null // Track selected file for upload
+    this.ERROR_NOTIFICATION_TIMEOUT = 5000 // Auto-remove error notifications after 5 seconds
+    this.CONVERSATION_TITLE_MAX_LENGTH = 50 // Maximum length for conversation title preview
     this.init()
   }
 
   init() {
-    // Event listeners
     const newChatBtn = document.getElementById('newChatBtn')
     if (newChatBtn) {
       newChatBtn.addEventListener('click', () => this.createNewConversation())
     }
-
-    // Form submit handler
     const chatForm = document.getElementById('chatForm')
     if (chatForm) {
       chatForm.addEventListener('submit', (e) => this.handleSendMessage(e))
     }
-
-    // File upload handlers
     this.initFileUpload()
-
-    // Load existing conversations in sidebar
     this.renderConversationList()
-
-    // If no conversations exist, create a new one
     if (this.conversations.length === 0) {
       this.createNewConversation()
     } else {
-      // Load the most recent conversation
       this.loadConversation(this.conversations[0].id)
     }
   }
@@ -63,29 +53,18 @@ class ConversationManager {
     const attachButton = document.getElementById('attachButton')
     const fileInput = document.getElementById('fileInput')
     const removeFileBtn = document.getElementById('removeFile')
-
     if (!attachButton || !fileInput) {
       return
     }
-
-    // Attach button click - open file picker
-    attachButton.addEventListener('click', () => {
-      fileInput.click()
-    })
-
-    // File selected
+    attachButton.addEventListener('click', () => fileInput.click())
     fileInput.addEventListener('change', (e) => {
       const file = e.target.files[0]
       if (file) {
         this.handleFileSelected(file)
       }
     })
-
-    // Remove file button
     if (removeFileBtn) {
-      removeFileBtn.addEventListener('click', () => {
-        this.clearSelectedFile()
-      })
+      removeFileBtn.addEventListener('click', () => this.clearSelectedFile())
     }
   }
 
@@ -166,7 +145,7 @@ class ConversationManager {
     errorDiv.className = 'govuk-error-summary'
     errorDiv.setAttribute('role', 'alert')
     errorDiv.setAttribute('aria-labelledby', 'error-summary-title')
-    errorDiv.setAttribute('data-module', 'govuk-error-summary')
+    errorDiv.dataset.module = 'govuk-error-summary'
 
     errorDiv.innerHTML = `
       <h2 class="govuk-error-summary__title" id="error-summary-title">
@@ -181,13 +160,10 @@ class ConversationManager {
     const chatContainer = document.querySelector('.chat-container')
     if (chatContainer) {
       chatContainer.insertBefore(errorDiv, chatContainer.firstChild)
-
       // Auto-remove after 5 seconds
       setTimeout(() => {
-        if (errorDiv && errorDiv.parentNode) {
-          errorDiv.remove()
-        }
-      }, 5000)
+        errorDiv?.parentNode && errorDiv.remove()
+      }, this.ERROR_NOTIFICATION_TIMEOUT)
     }
   }
 
@@ -203,19 +179,10 @@ class ConversationManager {
   }
 
   createNewConversation() {
-    // Clear the chat window
     const chatMessages = document.getElementById('chatMessages')
     if (chatMessages) {
-      chatMessages.innerHTML = `
-        <div class="message bot-message">
-          <div class="message-content">
-            <p>Hello! I'm ready to help you review content for GOV.UK compliance. You can paste any text for me to review, or ask me about specific content standards.</p>
-          </div>
-        </div>
-      `
+      chatMessages.innerHTML = `<div class="message bot-message"><div class="message-content"><p>Hello! I'm ready to help you review content for GOV.UK compliance. You can paste any text for me to review, or ask me about specific content standards.</p></div></div>`
     }
-
-    // Create new conversation
     const id = 'conv_' + Date.now()
     const conversation = {
       id,
@@ -223,7 +190,6 @@ class ConversationManager {
       messages: [],
       createdAt: new Date().toISOString()
     }
-
     this.conversations.unshift(conversation)
     this.currentConversationId = id
     this.saveConversations()
@@ -233,31 +199,18 @@ class ConversationManager {
   loadConversation(id) {
     this.currentConversationId = id
     const conversation = this.conversations.find((c) => c.id === id)
-
     if (conversation) {
-      // Clear chat messages
       const chatMessages = document.getElementById('chatMessages')
       if (chatMessages) {
         chatMessages.innerHTML = ''
-
-        // Add welcome message if no messages
         if (conversation.messages.length === 0) {
-          chatMessages.innerHTML = `
-            <div class="message bot-message">
-              <div class="message-content">
-                <p>Hello! I'm ready to help you review content for GOV.UK compliance. You can paste any text for me to review, or ask me about specific content standards.</p>
-              </div>
-            </div>
-          `
+          chatMessages.innerHTML = `<div class="message bot-message"><div class="message-content"><p>Hello! I'm ready to help you review content for GOV.UK compliance. You can paste any text for me to review, or ask me about specific content standards.</p></div></div>`
         } else {
-          // Load conversation messages
-          conversation.messages.forEach((msg) => {
+          conversation.messages.forEach((msg) =>
             this.addMessageToUI(msg.content, msg.role)
-          })
+          )
         }
       }
-
-      // Update active state in sidebar
       this.renderConversationList()
     }
   }
@@ -309,63 +262,58 @@ class ConversationManager {
   }
 
   saveMessage(content, role, fileInfo) {
-    const conversation = this.conversations.find(
-      (c) => c.id === this.currentConversationId
-    )
+    let conversation = this.findCurrentConversation()
+
+    if (!conversation) {
+      this.createNewConversation()
+      conversation = this.findCurrentConversation()
+    }
+
     if (conversation) {
-      const message = {
-        content,
-        role,
-        timestamp: new Date().toISOString()
-      }
-
-      // Add file info if present
-      if (fileInfo) {
-        message.attachment = {
-          filename: fileInfo.filename,
-          uploadId: fileInfo.uploadId || fileInfo.fileId,
-          s3Location: fileInfo.s3Location,
-          size: fileInfo.size,
-          contentType: fileInfo.contentType
-        }
-      }
-
+      const message = this.createMessage(content, role, fileInfo)
       conversation.messages.push(message)
-
-      // Update conversation title from first user message
-      if (
-        role === 'user' &&
-        conversation.messages.filter((m) => m.role === 'user').length === 1
-      ) {
-        if (fileInfo && !content) {
-          conversation.title = fileInfo.filename
-        } else {
-          conversation.title =
-            content.substring(0, 50) + (content.length > 50 ? '...' : '')
-        }
-      }
-
+      this.updateConversationTitle(conversation, content, role, fileInfo)
       this.saveConversations()
       this.renderConversationList()
-    } else {
-      // If no conversation exists, create one
-      this.createNewConversation()
-      // Retry saving the message
-      const newConversation = this.conversations.find(
-        (c) => c.id === this.currentConversationId
-      )
-      if (newConversation) {
-        newConversation.messages.push({
-          content,
-          role,
-          timestamp: new Date().toISOString()
-        })
-        if (role === 'user') {
-          newConversation.title =
-            content.substring(0, 50) + (content.length > 50 ? '...' : '')
-        }
-        this.saveConversations()
-        this.renderConversationList()
+    }
+  }
+
+  findCurrentConversation() {
+    return this.conversations.find((c) => c.id === this.currentConversationId)
+  }
+
+  createMessage(content, role, fileInfo) {
+    const message = {
+      content,
+      role,
+      timestamp: new Date().toISOString()
+    }
+
+    if (fileInfo) {
+      message.attachment = {
+        filename: fileInfo.filename,
+        uploadId: fileInfo.uploadId || fileInfo.fileId,
+        s3Location: fileInfo.s3Location,
+        size: fileInfo.size,
+        contentType: fileInfo.contentType
+      }
+    }
+
+    return message
+  }
+
+  updateConversationTitle(conversation, content, role, fileInfo) {
+    const isFirstUserMessage =
+      role === 'user' &&
+      conversation.messages.filter((m) => m.role === 'user').length === 1
+
+    if (isFirstUserMessage) {
+      if (fileInfo && !content) {
+        // File only, no text content
+      } else {
+        conversation.title =
+          content.substring(0, this.CONVERSATION_TITLE_MAX_LENGTH) +
+          (content.length > this.CONVERSATION_TITLE_MAX_LENGTH ? '...' : '')
       }
     }
   }
@@ -403,7 +351,7 @@ class ConversationManager {
 
         // Redirect to polling page if we have a reviewId
         if (fileInfo.reviewId) {
-          window.location.href = `/review/status-poller/${fileInfo.reviewId}`
+          globalThis.location.href = `/review/status-poller/${fileInfo.reviewId}`
           return
         }
 
@@ -432,7 +380,7 @@ class ConversationManager {
 
         if (reviewId) {
           // Redirect to polling page to track review progress
-          window.location.href = `/review/status-poller/${reviewId}`
+          globalThis.location.href = `/review/status-poller/${reviewId}`
         } else {
           // No reviewId - fallback to placeholder
           this.showTypingIndicator()
@@ -459,7 +407,7 @@ class ConversationManager {
 
     // Get backend URL from global config
     const backendUrl =
-      window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001'
+      globalThis.APP_CONFIG?.backendApiUrl || 'http://localhost:3001'
 
     const response = await fetch(`${backendUrl}/api/upload`, {
       method: 'POST',
@@ -489,7 +437,7 @@ class ConversationManager {
   async submitTextReview(textContent) {
     // Get backend URL from global config
     const backendUrl =
-      window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001'
+      globalThis.APP_CONFIG?.backendApiUrl || 'http://localhost:3001'
 
     try {
       const response = await fetch(`${backendUrl}/api/review/text`, {
@@ -512,8 +460,8 @@ class ConversationManager {
       }
 
       const result = await response.json()
-      if (window.logger && typeof window.logger.info === 'function') {
-        window.logger.info('Text review submitted successfully', {
+      if (globalThis.logger && typeof globalThis.logger.info === 'function') {
+        globalThis.logger.info('Text review submitted successfully', {
           length: textContent.length,
           preview:
             textContent.substring(0, 100) +
@@ -528,36 +476,27 @@ class ConversationManager {
   }
 
   async simulateAPICall(message, fileInfo) {
-    // Simulate API delay
     await new Promise((resolve) => setTimeout(resolve, 1000))
-
     this.hideTypingIndicator()
-
-    // Placeholder response
-    let response = ''
-    if (fileInfo) {
-      response = `Thank you for your message. I received a file named "${fileInfo.filename}". This is a placeholder response. The actual AI integration will be implemented in the backend.`
-    } else {
-      response = `Thank you for your message. I received: "${message}". This is a placeholder response. The actual AI integration will be implemented in the backend.`
-    }
-
+    const response = fileInfo
+      ? `Thank you for your message. I received a file named "${fileInfo.filename}". This is a placeholder response. The actual AI integration will be implemented in the backend.`
+      : `Thank you for your message. I received: "${message}". This is a placeholder response. The actual AI integration will be implemented in the backend.`
     this.addMessageToUI(response, 'bot')
     this.saveMessage(response, 'bot')
   }
 
   showTypingIndicator() {
     const chatMessages = document.getElementById('chatMessages')
-    if (!chatMessages) return
-
+    if (!chatMessages) {
+      return
+    }
     const indicator = document.createElement('div')
     indicator.className = 'message bot-message typing-indicator-message'
     indicator.id = 'typingIndicator'
     indicator.innerHTML = `
       <div class="message-content">
         <div class="typing-indicator">
-          <span></span>
-          <span></span>
-          <span></span>
+          <span></span><span></span><span></span>
         </div>
       </div>
     `
@@ -575,44 +514,32 @@ class ConversationManager {
   renderConversationList() {
     const listContainer = document.getElementById('conversationList')
     if (!listContainer) {
-      // Element not found - add visual debug
-      const newChatBtn = document.getElementById('newChatBtn')
-      if (newChatBtn) {
-        newChatBtn.textContent = '+ ERROR: List not found'
+      const debugNewChatBtn = document.getElementById('newChatBtn')
+      if (debugNewChatBtn) {
+        debugNewChatBtn.textContent = '+ ERROR: List not found'
       }
       return
     }
-
     listContainer.innerHTML = ''
-
-    // Limit to last 10 conversations
     const conversationsToShow = this.conversations.slice(0, 10)
-
     if (conversationsToShow.length === 0) {
-      // No conversations - show placeholder
       listContainer.innerHTML =
         '<p class="conversation-list-empty">No conversations yet</p>'
     }
-
     conversationsToShow.forEach((conv) => {
       const item = document.createElement('div')
       item.className = 'conversation-item'
       if (conv.id === this.currentConversationId) {
         item.classList.add('active')
       }
-
       const preview = document.createElement('p')
       preview.className = 'conversation-preview'
       preview.textContent = conv.title
-      preview.title = conv.title // Show full title on hover
-
+      preview.title = conv.title
       item.appendChild(preview)
       item.addEventListener('click', () => this.loadConversation(conv.id))
-
       listContainer.appendChild(item)
     })
-
-    // Show message if there are more than 10 conversations
     if (this.conversations.length > 10) {
       const moreItem = document.createElement('div')
       moreItem.className = 'conversation-item-info'
@@ -622,8 +549,6 @@ class ConversationManager {
       moreItem.appendChild(moreText)
       listContainer.appendChild(moreItem)
     }
-
-    // Visual debug - update button to show count
     const newChatBtn = document.getElementById('newChatBtn')
     if (newChatBtn && this.conversations.length > 0) {
       newChatBtn.textContent = `+ New chat (${this.conversations.length})`
@@ -640,8 +565,8 @@ class ConversationManager {
 // Initialize conversation manager when DOM is ready
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
-    window.conversationManager = new ConversationManager()
+    globalThis.conversationManager = new ConversationManager()
   })
 } else {
-  window.conversationManager = new ConversationManager()
+  globalThis.conversationManager = new ConversationManager()
 }
