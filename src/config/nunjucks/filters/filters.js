@@ -1,8 +1,5 @@
 import assign from 'lodash/assign.js'
 
-import { formatDate } from './format-date.js'
-import { formatCurrency } from './format-currency.js'
-
 /**
  * Return the minimum value from an array
  * @param {Array} arr - Array of values
@@ -15,4 +12,6 @@ export const min = (arr) => {
   return Math.min(...arr)
 }
 
-export { assign, formatDate, formatCurrency }
+export { assign }
+export { formatDate } from './format-date.js'
+export { formatCurrency } from './format-currency.js'
