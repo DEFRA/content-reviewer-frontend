@@ -453,28 +453,33 @@ async function handleFormSubmit(e) {
   if (elements.uploadButton) {
     elements.uploadButton.disabled = true
   }
-  const file = getFileInput()?.files?.[0],
-    textContent = elements.textContentInput?.value?.trim()
+  const file = getFileInput()?.files?.[0]
+  const textContent = elements.textContentInput?.value?.trim()
+
+  // Helper function for error handling and button state
+  function handleError(message) {
+    showError(message)
+    if (elements.uploadButton) {
+      elements.uploadButton.disabled = false
+    }
+  }
+
   try {
     if (file && !textContent) {
       await submitFileUpload(file)
-    } else if (textContent && !file) {
+      return
+    }
+    if (textContent && !file) {
       if (textContent.length > CHARACTER_LIMIT) {
-        showError(
+        handleError(
           `Text content too long. Maximum ${CHARACTER_LIMIT} characters. Your content has ${textContent.length} characters.`
         )
-        if (elements.uploadButton) {
-          elements.uploadButton.disabled = false
-        }
         return
       }
       await submitTextReview(textContent)
-    } else {
-      showError('Enter text content for review')
-      if (elements.uploadButton) {
-        elements.uploadButton.disabled = false
-      }
+      return
     }
+    handleError('Enter text content for review')
   } catch (error) {
     console.error('[UPLOAD-HANDLER] Form submission error:', error)
   }
