@@ -1,4 +1,3 @@
-// eslint-disable-next-line sonarjs/max-lines
 import {
   createAll,
   Accordion,
@@ -10,9 +9,7 @@ import {
   SkipLink
 } from 'govuk-frontend'
 
-// Import upload handler
 import './upload-handler.js'
-// Import cookie banner
 import './cookie-banner.js'
 
 createAll(Accordion)
@@ -35,29 +32,19 @@ class ConversationManager {
   }
 
   init() {
-    // Event listeners
     const newChatBtn = document.getElementById('newChatBtn')
     if (newChatBtn) {
       newChatBtn.addEventListener('click', () => this.createNewConversation())
     }
-
-    // Form submit handler
     const chatForm = document.getElementById('chatForm')
     if (chatForm) {
       chatForm.addEventListener('submit', (e) => this.handleSendMessage(e))
     }
-
-    // File upload handlers
     this.initFileUpload()
-
-    // Load existing conversations in sidebar
     this.renderConversationList()
-
-    // If no conversations exist, create a new one
     if (this.conversations.length === 0) {
       this.createNewConversation()
     } else {
-      // Load the most recent conversation
       this.loadConversation(this.conversations[0].id)
     }
   }
@@ -66,29 +53,18 @@ class ConversationManager {
     const attachButton = document.getElementById('attachButton')
     const fileInput = document.getElementById('fileInput')
     const removeFileBtn = document.getElementById('removeFile')
-
     if (!attachButton || !fileInput) {
       return
     }
-
-    // Attach button click - open file picker
-    attachButton.addEventListener('click', () => {
-      fileInput.click()
-    })
-
-    // File selected
+    attachButton.addEventListener('click', () => fileInput.click())
     fileInput.addEventListener('change', (e) => {
       const file = e.target.files[0]
       if (file) {
         this.handleFileSelected(file)
       }
     })
-
-    // Remove file button
     if (removeFileBtn) {
-      removeFileBtn.addEventListener('click', () => {
-        this.clearSelectedFile()
-      })
+      removeFileBtn.addEventListener('click', () => this.clearSelectedFile())
     }
   }
 
@@ -203,19 +179,10 @@ class ConversationManager {
   }
 
   createNewConversation() {
-    // Clear the chat window
     const chatMessages = document.getElementById('chatMessages')
     if (chatMessages) {
-      chatMessages.innerHTML = `
-        <div class="message bot-message">
-          <div class="message-content">
-            <p>Hello! I'm ready to help you review content for GOV.UK compliance. You can paste any text for me to review, or ask me about specific content standards.</p>
-          </div>
-        </div>
-      `
+      chatMessages.innerHTML = `<div class="message bot-message"><div class="message-content"><p>Hello! I'm ready to help you review content for GOV.UK compliance. You can paste any text for me to review, or ask me about specific content standards.</p></div></div>`
     }
-
-    // Create new conversation
     const id = 'conv_' + Date.now()
     const conversation = {
       id,
@@ -223,7 +190,6 @@ class ConversationManager {
       messages: [],
       createdAt: new Date().toISOString()
     }
-
     this.conversations.unshift(conversation)
     this.currentConversationId = id
     this.saveConversations()
@@ -233,31 +199,18 @@ class ConversationManager {
   loadConversation(id) {
     this.currentConversationId = id
     const conversation = this.conversations.find((c) => c.id === id)
-
     if (conversation) {
-      // Clear chat messages
       const chatMessages = document.getElementById('chatMessages')
       if (chatMessages) {
         chatMessages.innerHTML = ''
-
-        // Add welcome message if no messages
         if (conversation.messages.length === 0) {
-          chatMessages.innerHTML = `
-            <div class="message bot-message">
-              <div class="message-content">
-                <p>Hello! I'm ready to help you review content for GOV.UK compliance. You can paste any text for me to review, or ask me about specific content standards.</p>
-              </div>
-            </div>
-          `
+          chatMessages.innerHTML = `<div class="message bot-message"><div class="message-content"><p>Hello! I'm ready to help you review content for GOV.UK compliance. You can paste any text for me to review, or ask me about specific content standards.</p></div></div>`
         } else {
-          // Load conversation messages
-          conversation.messages.forEach((msg) => {
+          conversation.messages.forEach((msg) =>
             this.addMessageToUI(msg.content, msg.role)
-          })
+          )
         }
       }
-
-      // Update active state in sidebar
       this.renderConversationList()
     }
   }
@@ -523,19 +476,11 @@ class ConversationManager {
   }
 
   async simulateAPICall(message, fileInfo) {
-    // Simulate API delay
     await new Promise((resolve) => setTimeout(resolve, 1000))
-
     this.hideTypingIndicator()
-
-    // Placeholder response
-    let response = ''
-    if (fileInfo) {
-      response = `Thank you for your message. I received a file named "${fileInfo.filename}". This is a placeholder response. The actual AI integration will be implemented in the backend.`
-    } else {
-      response = `Thank you for your message. I received: "${message}". This is a placeholder response. The actual AI integration will be implemented in the backend.`
-    }
-
+    const response = fileInfo
+      ? `Thank you for your message. I received a file named "${fileInfo.filename}". This is a placeholder response. The actual AI integration will be implemented in the backend.`
+      : `Thank you for your message. I received: "${message}". This is a placeholder response. The actual AI integration will be implemented in the backend.`
     this.addMessageToUI(response, 'bot')
     this.saveMessage(response, 'bot')
   }
@@ -545,16 +490,13 @@ class ConversationManager {
     if (!chatMessages) {
       return
     }
-
     const indicator = document.createElement('div')
     indicator.className = 'message bot-message typing-indicator-message'
     indicator.id = 'typingIndicator'
     indicator.innerHTML = `
       <div class="message-content">
         <div class="typing-indicator">
-          <span></span>
-          <span></span>
-          <span></span>
+          <span></span><span></span><span></span>
         </div>
       </div>
     `
@@ -572,44 +514,32 @@ class ConversationManager {
   renderConversationList() {
     const listContainer = document.getElementById('conversationList')
     if (!listContainer) {
-      // Element not found - add visual debug
       const debugNewChatBtn = document.getElementById('newChatBtn')
       if (debugNewChatBtn) {
         debugNewChatBtn.textContent = '+ ERROR: List not found'
       }
       return
     }
-
     listContainer.innerHTML = ''
-
-    // Limit to last 10 conversations
     const conversationsToShow = this.conversations.slice(0, 10)
-
     if (conversationsToShow.length === 0) {
-      // No conversations - show placeholder
       listContainer.innerHTML =
         '<p class="conversation-list-empty">No conversations yet</p>'
     }
-
     conversationsToShow.forEach((conv) => {
       const item = document.createElement('div')
       item.className = 'conversation-item'
       if (conv.id === this.currentConversationId) {
         item.classList.add('active')
       }
-
       const preview = document.createElement('p')
       preview.className = 'conversation-preview'
       preview.textContent = conv.title
-      preview.title = conv.title // Show full title on hover
-
+      preview.title = conv.title
       item.appendChild(preview)
       item.addEventListener('click', () => this.loadConversation(conv.id))
-
       listContainer.appendChild(item)
     })
-
-    // Show message if there are more than 10 conversations
     if (this.conversations.length > 10) {
       const moreItem = document.createElement('div')
       moreItem.className = 'conversation-item-info'
@@ -619,8 +549,6 @@ class ConversationManager {
       moreItem.appendChild(moreText)
       listContainer.appendChild(moreItem)
     }
-
-    // Visual debug - update button to show count
     const newChatBtn = document.getElementById('newChatBtn')
     if (newChatBtn && this.conversations.length > 0) {
       newChatBtn.textContent = `+ New chat (${this.conversations.length})`
