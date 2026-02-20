@@ -22,6 +22,14 @@ export const resultsController = {
       const transformDuration = Math.round(performance.now() - transformStart)
       const totalDuration = Math.round(performance.now() - requestStartTime)
 
+      // 🔍 DEBUG: Log transformed data before rendering
+      request.logger.info(
+        `DEBUG [FRONTEND-CONTROLLER] Transformed reviewResults: ${JSON.stringify(reviewResults).substring(0, 1000)}`
+      )
+      request.logger.info(
+        `DEBUG [FRONTEND-CONTROLLER] reviewResults.result.reviewData exists: ${!!reviewResults.result?.reviewData}, type: ${typeof reviewResults.result?.reviewData}`
+      )
+
       logResultsPageRender(
         request,
         reviewId,
@@ -93,6 +101,26 @@ async function fetchAndParseBackendResults(request, reviewId) {
     failedAt: apiResponse.failedAt,
     reviewId: apiResponse.jobId
   }
+
+  // 🔍 DEBUG: Log what frontend received from backend
+  request.logger.info(
+    `DEBUG [FRONTEND-CONTROLLER] Raw backend response: ${JSON.stringify(statusData).substring(0, 1000)}`
+  )
+
+  // 🔍 DEBUG: Log specific nested properties
+  request.logger.info(
+    `DEBUG [FRONTEND-CONTROLLER] statusData.result exists: ${!!statusData.result}, statusData.result.reviewData exists: ${!!statusData.result?.reviewData}`
+  )
+
+  if (statusData.result) {
+    request.logger.info(
+      `DEBUG [FRONTEND-CONTROLLER] statusData.result keys: ${JSON.stringify(Object.keys(statusData.result))}`
+    )
+    request.logger.info(
+      `DEBUG [FRONTEND-CONTROLLER] statusData.result.reviewData: ${JSON.stringify(statusData.result.reviewData).substring(0, 1000)}`
+    )
+  }
+
   return { statusData, fetchDuration, parseDuration }
 }
 
@@ -162,7 +190,15 @@ function transformReviewData(statusData, reviewId) {
   // Backend returns: { result: { reviewData, rawResponse, guardrailAssessment, stopReason, completedAt } }
   const backendResult = statusData.result || {}
 
-  return {
+  // 🔍 DEBUG: Log transformation input and output
+  console.log(
+    `DEBUG [TRANSFORM] Input backendResult: ${JSON.stringify(backendResult).substring(0, 500)}`
+  )
+  console.log(
+    `DEBUG [TRANSFORM] backendResult.reviewData: ${JSON.stringify(backendResult.reviewData).substring(0, 500)}`
+  )
+
+  const transformed = {
     id: statusData.id || reviewId,
     jobId: statusData.jobId,
     status: statusData.status,
@@ -174,4 +210,10 @@ function transformReviewData(statusData, reviewId) {
     },
     completedAt: statusData.completedAt
   }
+
+  console.log(
+    `DEBUG [TRANSFORM] Output transformed.result.reviewData: ${JSON.stringify(transformed.result.reviewData).substring(0, 500)}`
+  )
+
+  return transformed
 }
