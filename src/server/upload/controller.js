@@ -54,9 +54,6 @@ const uploadController = {
       const redirectUrl = `${host}/upload/status-poller`
       const callbackUrl = `${host}/upload/callback`
 
-      // Minimal process log for visibility
-      console.log('[UPLOAD-CONTROLLER] Initiating upload')
-
       // Get metadata from form if any
       const metadata = {
         userId: request.yar?.id || 'anonymous',
@@ -164,10 +161,6 @@ const uploadController = {
   async handleSuccessfulUpload(request, h, fileDetails, backendUrl) {
     try {
       const reviewData = await this.initiateAiReview(fileDetails, backendUrl)
-      console.log(
-        '[UPLOAD-CONTROLLER] AI review initiated:',
-        reviewData.reviewId
-      )
 
       const reviewId = reviewData.reviewId
 
