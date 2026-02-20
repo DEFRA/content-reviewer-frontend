@@ -1,4 +1,5 @@
 import fetch from 'node-fetch'
+import { StatusCodes } from 'http-status-codes'
 
 /**
  * Review Status Poller Controller
@@ -40,8 +41,7 @@ export const reviewStatusPollerController = {
       }
 
       const statusData = await response.json()
-
-      return h.response(statusData).code(200)
+      return h.response(statusData).code(StatusCodes.OK)
     } catch (error) {
       request.logger.error(error, 'Failed to get review status')
       return h
@@ -49,7 +49,7 @@ export const reviewStatusPollerController = {
           error: 'Failed to get review status',
           status: 'error'
         })
-        .code(500)
+        .code(StatusCodes.INTERNAL_SERVER_ERROR)
     }
   }
 }

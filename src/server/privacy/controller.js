@@ -2,18 +2,21 @@
  * Privacy page controller
  * Displays privacy notice for the service
  */
+
+const PRIVACY_NOTICE_TEXT = 'Privacy notice'
+
 export const privacyController = {
   handler(_request, h) {
     return h.view('privacy/index', {
-      pageTitle: 'Privacy notice',
-      heading: 'Privacy notice',
+      pageTitle: PRIVACY_NOTICE_TEXT,
+      heading: PRIVACY_NOTICE_TEXT,
       breadcrumbs: [
         {
           text: 'Home',
           href: '/'
         },
         {
-          text: 'Privacy notice'
+          text: PRIVACY_NOTICE_TEXT
         }
       ]
     })

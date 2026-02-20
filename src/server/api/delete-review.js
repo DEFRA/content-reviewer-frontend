@@ -1,6 +1,7 @@
 import fetch from 'node-fetch'
 import { config } from '../../config/config.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
+import { StatusCodes } from 'http-status-codes'
 
 const logger = createLogger()
 const backendUrl = config.get('backendUrl')
@@ -72,7 +73,7 @@ export async function deleteReviewController(request, h) {
         message: data.message || 'Review deleted successfully',
         reviewId
       })
-      .code(200)
+      .code(StatusCodes.OK)
   } catch (error) {
     const totalProcessingTime = (Date.now() - startTime) / 1000
 
@@ -94,7 +95,7 @@ export async function deleteReviewController(request, h) {
         error: 'Internal server error',
         message: error.message
       })
-      .code(500)
+      .code(StatusCodes.INTERNAL_SERVER_ERROR)
   }
 }
 

@@ -210,6 +210,9 @@ async function processSuccessfulUpload(
 export const uploadApiController = {
   /**
    * Handle file upload from frontend form
+   * @param {object} request - Hapi request object
+   * @param {object} h - Hapi response toolkit
+   * @returns {Promise<object>} Response object
    */
   async uploadFile(request, h) {
     const startTime = Date.now()
