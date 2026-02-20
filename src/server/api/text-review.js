@@ -4,154 +4,160 @@ import { createLogger } from '../common/helpers/logging/logger.js'
 
 const logger = createLogger()
 
+const HTTP_STATUS = {
+  OK: 200,
+  BAD_REQUEST: 400,
+  INTERNAL_SERVER_ERROR: 500
+}
+
+const TITLE_MAX_LENGTH = 50
+const TITLE_WORD_COUNT = 3
+
 /**
- * API controller for handling text content reviews
+ * Validate text content
  */
-export const textReviewApiController = {
-  /**
-   * Handle text content submission for review
-   */
-  async reviewText(request, h) {
-    const startTime = Date.now()
-
-    try {
-      const { textContent, title } = request.payload
-
-      if (!textContent || typeof textContent !== 'string') {
-        logger.warn(
-          'Text review request failed: No valid text content provided'
-        )
-        return h
-          .response({
-            success: false,
-            message: 'No text content provided'
-          })
-          .code(400)
-      }
-
-      const textInfo = {
-        length: textContent.length,
-        lengthKB: (textContent.length / 1024).toFixed(2),
-        preview:
-          textContent.substring(0, 50) + (textContent.length > 50 ? '...' : ''),
-        wordCount: textContent.split(/\s+/).filter((word) => word.length > 0)
-          .length
-      }
-
-      // Validate text content length
-      const maxLength = config.get('contentReview.maxCharLength')
-      if (textContent.length > maxLength) {
-        logger.warn('Text review validation failed: Content too long', {
-          length: textInfo.length,
-          maxLength,
-          preview: textInfo.preview
-        })
-        return h
-          .response({
-            success: false,
-            message: `Text content too long. Maximum ${maxLength} characters. Your content has ${textContent.length} characters.`
-          })
-          .code(400)
-      }
-
-      // Minimum content check
-      if (textContent.trim().length < 10) {
-        logger.warn('Text review validation failed: Content too short', {
-          trimmedLength: textContent.trim().length,
-          originalLength: textInfo.length
-        })
-        return h
-          .response({
-            success: false,
-            message:
-              'Text content too short. Please provide at least 10 characters.'
-          })
-          .code(400)
-      }
-
-      // Forward to backend
-      const backendUrl = config.get('backendUrl')
-      logger.info(
-        `Requesting text review from backend: ${backendUrl}/api/review/text`
-      )
-
-      const backendRequestStart = Date.now()
-
-      // Generate title from first 3 words if not provided
-      let finalTitle = title
-      if (!finalTitle) {
-        const words = textContent
-          .trim()
-          .split(/\s+/)
-          .filter((w) => w.length > 0)
-        finalTitle =
-          words.length > 0
-            ? words.slice(0, 3).join(' ').substring(0, 50) + '...'
-            : 'Text Content'
-      }
-
-      const response = await fetch(`${backendUrl}/api/review/text`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          content: textContent,
-          title: finalTitle,
-          userId: request.headers['x-user-id'] || 'anonymous',
-          sessionId: request.headers['x-session-id'] || null
-        })
+function validateTextContent(textContent, h) {
+  if (!textContent || textContent.trim().length < 10) {
+    return h
+      .response({
+        success: false,
+        message: 'Text content too short. Enter at least 10 characters'
       })
+      .code(HTTP_STATUS.BAD_REQUEST)
+  }
+  return null
+}
 
-      const backendRequestEnd = Date.now()
-      const backendRequestTime =
-        (backendRequestEnd - backendRequestStart) / 1000
+/**
+ * Generate title from text content
+ */
+function generateTitle(textContent, title) {
+  if (title) {
+    return title
+  }
+  const words = textContent
+    .trim()
+    .split(/\s+/)
+    .filter((word) => word.length > 0)
+  return words.length > 0
+    ? words
+        .slice(0, TITLE_WORD_COUNT)
+        .join(' ')
+        .substring(0, TITLE_MAX_LENGTH) + '...'
+    : 'Text Content'
+}
 
-      if (!response.ok) {
-        const error = await response.text()
-        logger.error(
-          `Backend text review request failed - contentLength: ${textInfo.length}, status: ${response.status}, statusText: ${response.statusText}, errorResponse: ${error}, requestTime: ${backendRequestTime}s`
-        )
-        request.logger.error(`Backend text review failed: ${error}`)
-        return h
-          .response({
-            success: false,
-            message: 'Failed to submit text content to backend'
-          })
-          .code(500)
-      }
+/**
+ * Submit to backend
+ */
+async function submitToBackend(textContent, finalTitle, request) {
+  const backendUrl = config.get('backendUrl')
+  logger.info(
+    `Requesting text review from backend: ${backendUrl}/api/review/text`
+  )
 
-      const result = await response.json()
-      const totalProcessingTime = (Date.now() - startTime) / 1000
+  const backendRequestStart = Date.now()
 
-      logger.info(
-        `Text review completed successfully - contentLength: ${textInfo.length}, wordCount: ${textInfo.wordCount}, reviewId: ${result.reviewId}, totalProcessingTime: ${totalProcessingTime}s, backendRequestTime: ${backendRequestTime}s`
-      )
+  const response = await fetch(`${backendUrl}/api/review/text`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      content: textContent,
+      title: finalTitle,
+      userId: request.headers['x-user-id'] || 'anonymous',
+      sessionId: request.headers['x-session-id'] || null
+    })
+  })
 
-      return h
-        .response({
-          success: true,
-          message: 'Text content submitted successfully',
-          reviewId: result.reviewId
-        })
-        .code(200)
-    } catch (error) {
-      const totalProcessingTime = (Date.now() - startTime) / 1000
+  const backendRequestEnd = Date.now()
+  const backendRequestTime = (backendRequestEnd - backendRequestStart) / 1000
 
-      logger.error(
-        `Text review API request failed with error - error: ${error.message}, totalProcessingTime: ${totalProcessingTime}s`,
-        {
-          stack: error.stack
-        }
-      )
+  return { response, backendRequestTime }
+}
 
-      request.logger.error(error, 'Error handling text content submission')
+/**
+ * Handle text content submission for review
+ */
+async function reviewText(request, h) {
+  const startTime = Date.now()
+
+  try {
+    const { textContent, title } = request.payload
+
+    // Validate text content
+    const validationError = validateTextContent(textContent, h)
+    if (validationError) {
+      return validationError
+    }
+
+    const finalTitle = generateTitle(textContent, title)
+
+    const textInfo = {
+      length: textContent.length,
+      lengthKB: (textContent.length / 1024).toFixed(2),
+      wordCount: textContent
+        .trim()
+        .split(/\s+/)
+        .filter((word) => word.length > 0).length
+    }
+
+    const { response, backendRequestTime } = await submitToBackend(
+      textContent,
+      finalTitle,
+      request
+    )
+
+    if (!response.ok) {
+      logger.error('Backend text review request failed', {
+        status: response.status,
+        statusText: response.statusText,
+        backendRequestTime
+      })
       return h
         .response({
           success: false,
-          message: error.message || 'Internal server error'
+          message: 'Failed to submit text content to backend'
         })
-        .code(500)
+        .code(HTTP_STATUS.INTERNAL_SERVER_ERROR)
     }
+
+    const result = await response.json()
+
+    const totalProcessingTime = (Date.now() - startTime) / 1000
+
+    logger.info('Text review request successful', {
+      reviewId: result.reviewId,
+      textLength: textInfo.length,
+      wordCount: textInfo.wordCount,
+      backendRequestTime,
+      totalProcessingTime
+    })
+
+    return h
+      .response({
+        success: true,
+        message: 'Text content submitted successfully',
+        reviewId: result.reviewId
+      })
+      .code(HTTP_STATUS.OK)
+  } catch (error) {
+    const totalProcessingTime = (Date.now() - startTime) / 1000
+
+    logger.error(
+      `Text review API request failed with error - error: ${error.message}, totalProcessingTime: ${totalProcessingTime}s`
+    )
+
+    return h
+      .response({
+        success: false,
+        message: error.message || 'Internal server error'
+      })
+      .code(HTTP_STATUS.INTERNAL_SERVER_ERROR)
   }
+}
+
+export const textReviewApiController = {
+  reviewText
 }
