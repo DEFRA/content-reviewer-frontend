@@ -5,66 +5,70 @@ import { createLogger } from '../common/helpers/logging/logger.js'
 
 const logger = createLogger()
 
-// HTTP Status Codes
-const HTTP_STATUS_OK = 200
+const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500
 const HTTP_STATUS_BAD_REQUEST = 400
-const HTTP_STATUS_SERVER_ERROR = 500
-
-// File validation constants
+const HTTP_STATUS_OK = 200
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024
 const MAX_FILE_SIZE_MB = 10
-const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
-const BYTES_PER_MB = 1024 * 1024
-
 const ALLOWED_MIME_TYPES = [
   'application/pdf',
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 ]
-
 const ALLOWED_EXTENSIONS = ['pdf', 'doc', 'docx']
 
 /**
- * Extract file information from upload
- * @param {object} file - File object from request payload
- * @returns {object} File information
+ * Extract file information for logging and validation
  */
 function extractFileInfo (file) {
   return {
     filename: file.hapi.filename,
     size: file.bytes,
-    sizeMB: (file.bytes / BYTES_PER_MB).toFixed(2),
+    sizeMB: (file.bytes / 1024 / 1024).toFixed(2),
     contentType: file.hapi.headers['content-type']
   }
 }
 
 /**
- * Validate file size
- * @param {object} file - File object
- * @param {object} fileInfo - File information
- * @returns {object|null} Error response or null if valid
+ * Validate file is present in request
  */
-function validateFileSize (file, fileInfo) {
-  if (file.bytes > MAX_FILE_SIZE_BYTES) {
-    logger.warn('Upload validation failed: File too large', {
-      filename: fileInfo.filename,
-      size: fileInfo.sizeMB + 'MB',
-      maxSize: `${MAX_FILE_SIZE_MB}MB`
-    })
-    return {
-      success: false,
-      message: `File too large. Maximum size is ${MAX_FILE_SIZE_MB}MB. Your file is ${fileInfo.sizeMB}MB.`
-    }
+function validateFilePresent(file, h) {
+  if (!file) {
+    logger.warn('Upload request failed: No file provided')
+    return h
+      .response({
+        success: false,
+        message: 'No file provided'
+      })
+      .code(HTTP_STATUS_BAD_REQUEST)
   }
   return null
 }
 
 /**
- * Validate file type
- * @param {object} file - File object
- * @param {object} fileInfo - File information
- * @returns {object|null} Error response or null if valid
+ * Validate file size does not exceed maximum
  */
-function validateFileType (file, fileInfo) {
+function validateFileSize(file, fileInfo, h) {
+  if (file.bytes > MAX_FILE_SIZE_BYTES) {
+    logger.warn('Upload validation failed: File too large', {
+      filename: fileInfo.filename,
+      size: fileInfo.sizeMB + 'MB',
+      maxSize: MAX_FILE_SIZE_MB + 'MB'
+    })
+    return h
+      .response({
+        success: false,
+        message: `File too large. Maximum size is ${MAX_FILE_SIZE_MB}MB. Your file is ${fileInfo.sizeMB}MB.`
+      })
+      .code(HTTP_STATUS_BAD_REQUEST)
+  }
+  return null
+}
+
+/**
+ * Validate file type is allowed
+ */
+function validateFileType(file, fileInfo, h) {
   const extension = file.hapi.filename.split('.').pop().toLowerCase()
   const contentType = file.hapi.headers['content-type']
 
@@ -79,36 +83,42 @@ function validateFileType (file, fileInfo) {
       allowedMimeTypes: ALLOWED_MIME_TYPES,
       allowedExtensions: ALLOWED_EXTENSIONS
     })
-    return {
-      success: false,
-      message:
-        'Invalid file type. Please upload a PDF or Word document (.pdf, .doc, .docx).'
-    }
+    return h
+      .response({
+        success: false,
+        message:
+          'Invalid file type. Please upload a PDF or Word document (.pdf, .doc, .docx).'
+      })
+      .code(HTTP_STATUS_BAD_REQUEST)
   }
   return null
 }
 
 /**
- * Upload file to backend
- * @param {object} file - File object
- * @param {object} fileInfo - File information
- * @param {object} request - Hapi request object
- * @returns {Promise<object>} Backend response
+ * Create FormData for backend upload
  */
-async function uploadToBackend (file, fileInfo, request) {
+function createUploadFormData(file) {
+  const formData = new FormData()
+  formData.append('file', file, {
+    filename: file.hapi.filename,
+    contentType: file.hapi.headers['content-type']
+  })
+  return formData
+}
+
+/**
+ * Send file to backend service
+ */
+async function sendFileToBackend(file, fileInfo, request) {
   const backendUrl = config.get('backendUrl')
   logger.info('Preparing to forward file to backend', {
     backendUrl,
     filename: fileInfo.filename
   })
 
-  const formData = new FormData()
-  formData.append('file', file, {
-    filename: file.hapi.filename,
-    contentType: file.hapi.headers['content-type']
-  })
-
+  const formData = createUploadFormData(file)
   const backendRequestStart = Date.now()
+
   logger.info('Initiating backend upload request', {
     filename: fileInfo.filename,
     size: fileInfo.sizeMB + 'MB',
@@ -140,21 +150,9 @@ async function uploadToBackend (file, fileInfo, request) {
 }
 
 /**
- * Handle backend upload error
- * @param {object} response - Backend response
- * @param {number} backendRequestTime - Request time in seconds
- * @param {object} fileInfo - File information
- * @param {object} request - Hapi request object
- * @param {object} h - Hapi response toolkit
- * @returns {Promise<object>} Error response
+ * Handle backend upload failure
  */
-async function handleBackendError (
-  response,
-  backendRequestTime,
-  fileInfo,
-  request,
-  h
-) {
+async function handleBackendFailure(response, fileInfo, backendRequestTime, h) {
   const error = await response.text()
   logger.error('Backend upload request failed', {
     filename: fileInfo.filename,
@@ -163,30 +161,22 @@ async function handleBackendError (
     errorResponse: error,
     requestTime: `${backendRequestTime}s`
   })
-  request.logger.error(`Backend upload failed: ${error}`)
   return h
     .response({
       success: false,
       message: 'Failed to upload file to backend'
     })
-    .code(HTTP_STATUS_SERVER_ERROR)
+    .code(HTTP_STATUS_INTERNAL_SERVER_ERROR)
 }
 
 /**
- * Handle successful upload
- * @param {object} response - Backend response
- * @param {number} backendRequestTime - Backend request time in seconds
- * @param {number} startTime - Total process start time
- * @param {object} fileInfo - File information
- * @param {object} request - Hapi request object
- * @param {object} h - Hapi response toolkit
- * @returns {Promise<object>} Success response
+ * Process successful backend response
  */
-async function handleUploadSuccess (
+async function processSuccessfulUpload(
   response,
+  fileInfo,
   backendRequestTime,
   startTime,
-  fileInfo,
   request,
   h
 ) {
@@ -232,7 +222,7 @@ export const uploadApiController = {
     })
 
     try {
-      const { file } = request.payload
+      const file = request.payload.file
 
       logger.info('Processing upload request', {
         hasFile: !!file,
@@ -240,14 +230,10 @@ export const uploadApiController = {
         clientIP: request.info.remoteAddress
       })
 
-      if (!file) {
-        logger.warn('Upload request failed: No file provided')
-        return h
-          .response({
-            success: false,
-            message: 'No file provided'
-          })
-          .code(HTTP_STATUS_BAD_REQUEST)
+      // Validate file is present
+      const fileNotPresentError = validateFilePresent(file, h)
+      if (fileNotPresentError) {
+        return fileNotPresentError
       }
 
       const fileInfo = extractFileInfo(file)
@@ -260,15 +246,15 @@ export const uploadApiController = {
       })
 
       // Validate file size
-      const sizeError = validateFileSize(file, fileInfo)
-      if (sizeError) {
-        return h.response(sizeError).code(HTTP_STATUS_BAD_REQUEST)
+      const fileSizeError = validateFileSize(file, fileInfo, h)
+      if (fileSizeError) {
+        return fileSizeError
       }
 
       // Validate file type
-      const typeError = validateFileType(file, fileInfo)
-      if (typeError) {
-        return h.response(typeError).code(HTTP_STATUS_BAD_REQUEST)
+      const fileTypeError = validateFileType(file, fileInfo, h)
+      if (fileTypeError) {
+        return fileTypeError
       }
 
       logger.info('File validation passed successfully', {
@@ -277,28 +263,26 @@ export const uploadApiController = {
         contentType: fileInfo.contentType
       })
 
-      // Upload file to backend
-      const { response, backendRequestTime } = await uploadToBackend(
-        file,
-        fileInfo,
-        request
-      )
+      // Send file to backend
+      const backendResult = await sendFileToBackend(file, fileInfo, request)
+      const response = backendResult.response
+      const backendRequestTime = backendResult.backendRequestTime
 
+      // Handle backend response
       if (!response.ok) {
-        return await handleBackendError(
+        return await handleBackendFailure(
           response,
-          backendRequestTime,
           fileInfo,
-          request,
+          backendRequestTime,
           h
         )
       }
 
-      return await handleUploadSuccess(
+      return await processSuccessfulUpload(
         response,
+        fileInfo,
         backendRequestTime,
         startTime,
-        fileInfo,
         request,
         h
       )
@@ -310,14 +294,12 @@ export const uploadApiController = {
         stack: error.stack,
         totalProcessingTime: `${totalProcessingTime}s`
       })
-
-      request.logger.error(error, 'Error handling file upload')
       return h
         .response({
           success: false,
           message: error.message || 'Internal server error'
         })
-        .code(HTTP_STATUS_SERVER_ERROR)
+        .code(HTTP_STATUS_INTERNAL_SERVER_ERROR)
     }
   }
 }

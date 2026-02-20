@@ -1,6 +1,7 @@
-// Upload form handler - Refactored to address SonarQube issues
-// Constants
-const CHARACTER_LIMIT = globalThis.contentReviewMaxCharLength || 100000
+// Upload form handler
+const DEFAULT_CHARACTER_LIMIT = 50000
+const CHARACTER_LIMIT =
+  globalThis.contentReviewMaxCharLength || DEFAULT_CHARACTER_LIMIT
 const GOVUK_ERROR_MESSAGE_CLASS = 'govuk-error-message'
 const STYLE_DISPLAY_NONE = 'none'
 const STYLE_DISPLAY_DEFAULT = ''
@@ -8,16 +9,16 @@ const APP_DISABLED_CLASS = 'app-disabled'
 const APP_HIGHLIGHT_CLASS = 'app-highlight'
 const ARIA_DISABLED_ATTR = 'aria-disabled'
 const FORM_GROUP_SELECTOR = '.govuk-form-group'
-
-// Progress percentages
+const GOVUK_TABLE_CELL_CLASS = 'govuk-table__cell'
 const PROGRESS_INITIAL = 30
 const PROGRESS_PROCESSING = 70
 const RELOAD_DELAY = 1500
+const REDIRECT_DELAY = 500
+const HISTORY_UPDATE_DELAY = 500
 const PREVIEW_WORDS_LIMIT = 3
 const PREVIEW_CHARS_LIMIT = 50
-
-// DOM element cache
 const elements = {}
+let fileClearBtn, textClearBtn
 
 function initializeElements () {
   elements.textContentInput = document.getElementById('text-content')
@@ -44,17 +45,13 @@ function updateCharacterCount () {
   if (!elements.textContentInput || !elements.characterCountMessage) {
     return
   }
-
   const currentLength = elements.textContentInput.value.length
-
   if (currentLength === 0) {
     clearCharacterCount()
     return
   }
-
   elements.characterCountMessage.style.display = STYLE_DISPLAY_DEFAULT
   const remaining = CHARACTER_LIMIT - currentLength
-
   if (remaining >= 0) {
     showRemainingCharacters(remaining)
   } else {
@@ -98,9 +95,7 @@ function initializeFileInput () {
   if (!fileInput) {
     return
   }
-
   fileClearBtn?.remove()
-
   fileClearBtn = addClearButton(fileInput, 'Clear File', () => {
     const currentFileInput = getFileInput()
     if (currentFileInput) {
@@ -109,7 +104,6 @@ function initializeFileInput () {
     }
     updateMutualExclusion()
   })
-
   fileInput.addEventListener('change', updateMutualExclusion)
   updateMutualExclusion()
 }
@@ -118,16 +112,13 @@ function initializeTextInput () {
   if (!elements.textContentInput) {
     return
   }
-
   textClearBtn?.remove()
-
   textClearBtn = addClearButton(elements.textContentInput, 'Clear text', () => {
     elements.textContentInput.value = ''
     elements.textContentInput.disabled = false
     updateMutualExclusion()
     updateCharacterCount()
   })
-
   if (
     elements.characterCountMessage &&
     textClearBtn &&
@@ -139,7 +130,6 @@ function initializeTextInput () {
       elements.characterCountMessage.nextSibling
     )
   }
-
   if (textClearBtn) {
     textClearBtn.disabled = false
   }
@@ -213,16 +203,18 @@ function disableTextInput () {
   if (!elements.textContentInput) {
     return
   }
-  elements.textContentInput.disabled = true
-  elements.textContentInput.setAttribute(ARIA_DISABLED_ATTR, 'true')
-
-  const textFormGroup = elements.textContentInput.closest(FORM_GROUP_SELECTOR)
-  if (textFormGroup) {
-    textFormGroup.classList.add(APP_DISABLED_CLASS)
+  input.disabled = isDisabled
+  input.setAttribute(ARIA_DISABLED_ATTR, isDisabled.toString())
+  const group = input.closest(FORM_GROUP_SELECTOR)
+  if (group) {
+    if (isDisabled) {
+      group.classList.add(groupClass)
+    } else {
+      group.classList.remove(groupClass)
+    }
   }
-
-  if (textClearBtn) {
-    textClearBtn.disabled = true
+  if (clearBtn) {
+    clearBtn.disabled = isDisabled
   }
 }
 
@@ -260,40 +252,44 @@ function removeTextHighlight () {
 function updateMutualExclusion () {
   const hasFile = hasFileSelected()
   const hasText = hasTextEntered()
-
+  const fileInput = getFileInput()
   if (hasFile && !hasText) {
-    disableTextInput()
-    highlightFileInput()
-    removeTextHighlight()
+    toggleInput(
+      elements.textContentInput,
+      true,
+      APP_DISABLED_CLASS,
+      textClearBtn
+    )
+    highlightInput(fileInput, true)
+    highlightInput(elements.textContentInput, false)
   } else if (hasText && !hasFile) {
-    disableFileInput()
-    highlightTextInput()
-    removeFileHighlight()
-  } else if (!hasFile && !hasText) {
-    enableFileInput()
-    enableTextInput()
-    removeFileHighlight()
-    removeTextHighlight()
+    toggleInput(fileInput, true, APP_DISABLED_CLASS, fileClearBtn)
+    highlightInput(elements.textContentInput, true)
+    highlightInput(fileInput, false)
   } else {
-    // Both file and text have values — keep current state.
-    // No action required, but include this else to satisfy the linter/compile rule.
+    // Neither file nor text present, or both present - enable both inputs
+    toggleInput(fileInput, false, APP_DISABLED_CLASS, fileClearBtn)
+    toggleInput(
+      elements.textContentInput,
+      false,
+      APP_DISABLED_CLASS,
+      textClearBtn
+    )
+    highlightInput(fileInput, false)
+    highlightInput(elements.textContentInput, false)
   }
-  // If both have values (shouldn't happen), keep current state
 }
 
 // UI feedback functions
 function showError (message) {
   hideSuccess()
   hideProgress()
-
   if (elements.uploadError) {
     elements.uploadError.hidden = false
   }
-
   if (elements.errorMessage) {
     elements.errorMessage.textContent = message
   }
-
   if (elements.uploadButton) {
     elements.uploadButton.disabled = false
   }
@@ -315,16 +311,12 @@ function showProgress (statusText, percentage) {
   if (elements.uploadStatusText) {
     elements.uploadStatusText.textContent = statusText
   }
-
   if (elements.uploadProgressText) {
     elements.uploadProgressText.textContent = `${percentage}%`
   }
-
   if (elements.progressBar) {
-    const roundedPercentage = Math.round(percentage)
-    elements.progressBar.dataset.progress = roundedPercentage.toString()
+    elements.progressBar.dataset.progress = Math.round(percentage).toString()
   }
-
   if (elements.uploadProgress) {
     elements.uploadProgress.hidden = false
   }
@@ -334,7 +326,6 @@ function hideProgress () {
   if (elements.uploadProgress) {
     elements.uploadProgress.hidden = true
   }
-
   if (elements.progressBar) {
     elements.progressBar.dataset.progress = '0'
   }
@@ -346,9 +337,7 @@ function addReviewToHistory (review) {
   if (!tbody) {
     return
   }
-
-  const reviewRow = createReviewRow(review)
-  tbody.prepend(reviewRow)
+  tbody.prepend(createReviewRow(review))
   enforceTableLimit()
 }
 
@@ -358,48 +347,46 @@ function createReviewRow (review) {
 
   const cells = [
     createTextCell(review.fileName || review.filename || 'N/A'),
-    createTextCell(new Date(review.timestamp || Date.now()).toLocaleString()),
-    createTextCell(review.status || 'processing'),
+    createStatusCell(review),
+    createTimestampCell(review),
+    createResultCell(review),
     createActionCell(review)
-  ]
-
-  cells.forEach((cell) => reviewRow.appendChild(cell))
-  return reviewRow
+  ].forEach((cell) => row.appendChild(cell))
+  return row
 }
 
 function createTextCell (text) {
   const cell = document.createElement('td')
-  cell.className = 'govuk-table__cell'
+  cell.className = GOVUK_TABLE_CELL_CLASS
   cell.textContent = text
   return cell
 }
 
 function createActionCell (review) {
   const cell = document.createElement('td')
-  cell.className = 'govuk-table__cell'
-
-  const link = document.createElement('a')
-  link.href = `/review/${review.id || review.reviewId}`
-  link.textContent = 'View'
-  link.className = 'govuk-link'
-  cell.appendChild(link)
-
+  const btn = document.createElement('button')
+  cell.className = GOVUK_TABLE_CELL_CLASS
+  btn.type = 'button'
+  btn.className = 'govuk-link delete-review-btn'
+  btn.textContent = 'Delete'
+  btn.dataset.reviewId = review.id || review.reviewId
+  btn.dataset.filename = review.fileName || review.filename || 'N/A'
+  cell.appendChild(btn)
   return cell
 }
 
 function enforceTableLimit () {
   const limitSelect = document.getElementById('historyLimit')
-  const tbody = document.querySelector('#reviewHistory tbody')
+  const tbody = document.querySelector('#reviewHistoryBody')
   if (!tbody) {
     return
   }
-
   const currentLimit = Number.parseInt(limitSelect?.value || '5', 10)
   const rows = tbody.querySelectorAll('tr')
-
   if (rows.length > currentLimit) {
-    const rowsToRemove = Array.from(rows).slice(currentLimit)
-    rowsToRemove.forEach((rowElement) => rowElement.remove())
+    Array.from(rows)
+      .slice(currentLimit)
+      .forEach((row) => row.remove())
   }
 }
 
@@ -409,58 +396,48 @@ async function submitTextReview (textContent) {
     if (elements.textContentInput) {
       elements.textContentInput.disabled = true
     }
-
     showProgress('Submitting content for review...', PROGRESS_INITIAL)
-
     const words = textContent.trim().split(/\s+/)
     const previewText =
       words.length > 0
         ? `${words.slice(0, PREVIEW_WORDS_LIMIT).join(' ').substring(0, PREVIEW_CHARS_LIMIT)}...`
         : 'Text content'
-
     const response = await fetch('/api/review/text', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ textContent })
     })
-
     if (!response.ok) {
       const errorData = await response.json()
       throw new Error(errorData.message || 'Text review submission failed')
     }
-
     showProgress('Processing review...', PROGRESS_PROCESSING)
-
     const data = await response.json()
     console.log('[UPLOAD-HANDLER] Text review submitted successfully:', data)
-
-    addReviewToHistory({
-      id: data.reviewId || data.id,
-      fileName: previewText,
-      timestamp: Date.now(),
-      status: 'processing'
-    })
-
     hideProgress()
     elements.textContentInput.value = ''
     updateMutualExclusion()
     updateCharacterCount()
-
     if (elements.uploadButton) {
       elements.uploadButton.disabled = false
     }
-
+    if (typeof globalThis.updateReviewHistory === 'function') {
+      setTimeout(() => globalThis.updateReviewHistory(), HISTORY_UPDATE_DELAY)
+    } else {
+      addReviewToHistory({
+        id: data.reviewId || data.id,
+        fileName: previewText,
+        timestamp: Date.now(),
+        status: 'pending'
+      })
+    }
     return data
   } catch (error) {
     console.error('[UPLOAD-HANDLER] Text review error:', error)
-    showError(`Text review failed: ${error.message}`)
-
+    showError(error.message)
     if (elements.textContentInput) {
       elements.textContentInput.disabled = false
     }
-
     throw error
   }
 }
@@ -469,53 +446,45 @@ async function submitTextReview (textContent) {
 async function submitFileUpload (file) {
   try {
     showProgress('Uploading to server...', PROGRESS_INITIAL)
-
     const formData = new FormData()
     formData.append('file', file)
-
     const response = await fetch('/api/upload', {
       method: 'POST',
       body: formData
     })
-
     showProgress('Processing upload...', PROGRESS_PROCESSING)
-
     if (!response.ok) {
       const errorData = await response.json()
       throw new Error(errorData.message || 'Upload failed')
     }
-
     const data = await response.json()
     console.log('[UPLOAD-HANDLER] File uploaded successfully:', data)
-
-    addReviewToHistory({
-      id: data.reviewId || data.id,
-      fileName: file.name,
-      timestamp: Date.now(),
-      status: 'processing'
-    })
-
     hideProgress()
     const fileInputEl = getFileInput()
     if (fileInputEl) {
       fileInputEl.value = ''
     }
-
     updateMutualExclusion()
-
+    if (typeof globalThis.updateReviewHistory === 'function') {
+      setTimeout(() => globalThis.updateReviewHistory(), REDIRECT_DELAY)
+    } else {
+      addReviewToHistory({
+        id: data.reviewId || data.id,
+        fileName: file.name,
+        timestamp: Date.now(),
+        status: 'pending'
+      })
+    }
     setTimeout(() => {
       globalThis.location.reload()
     }, RELOAD_DELAY)
-
     return data
   } catch (error) {
     console.error('[UPLOAD-HANDLER] Upload error:', error)
     showError(`Upload failed: ${error.message}`)
-
     if (elements.textContentInput) {
       elements.textContentInput.disabled = false
     }
-
     throw error
   }
 }
@@ -525,25 +494,36 @@ async function handleFormSubmit (e) {
   e.preventDefault()
   hideError()
   hideSuccess()
-
   if (elements.uploadButton) {
     elements.uploadButton.disabled = true
   }
-
   const file = getFileInput()?.files?.[0]
   const textContent = elements.textContentInput?.value?.trim()
+
+  // Helper function for error handling and button state
+  function handleError(message) {
+    showError(message)
+    if (elements.uploadButton) {
+      elements.uploadButton.disabled = false
+    }
+  }
 
   try {
     if (file && !textContent) {
       await submitFileUpload(file)
-    } else if (textContent && !file) {
-      await submitTextReview(textContent)
-    } else {
-      showError('Please provide either a file or text content, not both.')
-      if (elements.uploadButton) {
-        elements.uploadButton.disabled = false
-      }
+      return
     }
+    if (textContent && !file) {
+      if (textContent.length > CHARACTER_LIMIT) {
+        handleError(
+          `Text content too long. Maximum ${CHARACTER_LIMIT} characters. Your content has ${textContent.length} characters.`
+        )
+        return
+      }
+      await submitTextReview(textContent)
+      return
+    }
+    handleError('Enter text content for review')
   } catch (error) {
     console.error('[UPLOAD-HANDLER] Form submission error:', error)
   }
@@ -552,32 +532,20 @@ async function handleFormSubmit (e) {
 // Initialize everything
 function initialize () {
   initializeElements()
-
   if (!elements.form) {
     return
   }
-
-  // Set up character count
   if (elements.textContentInput) {
     elements.textContentInput.addEventListener('input', updateCharacterCount)
     updateCharacterCount()
   }
-
-  // Hide error/progress/success on load
   hideError()
   hideProgress()
   hideSuccess()
   updateCharacterCount()
-
-  // Initialize inputs
   initializeFileInput()
   initializeTextInput()
-
-  // Form submission
   elements.form.addEventListener('submit', handleFormSubmit)
-
   console.log('[UPLOAD-HANDLER] Upload handler initialized')
 }
-
-// Start when DOM is ready
 document.addEventListener('DOMContentLoaded', initialize)
