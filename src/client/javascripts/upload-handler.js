@@ -2,21 +2,21 @@
 const DEFAULT_CHARACTER_LIMIT = 50000
 const CHARACTER_LIMIT =
   globalThis.contentReviewMaxCharLength || DEFAULT_CHARACTER_LIMIT
-const GOVUK_ERROR_MESSAGE_CLASS = 'govuk-error-message',
-  STYLE_DISPLAY_NONE = 'none',
-  STYLE_DISPLAY_DEFAULT = ''
-const APP_DISABLED_CLASS = 'app-disabled',
-  APP_HIGHLIGHT_CLASS = 'app-highlight',
-  ARIA_DISABLED_ATTR = 'aria-disabled'
-const FORM_GROUP_SELECTOR = '.govuk-form-group',
-  GOVUK_TABLE_CELL_CLASS = 'govuk-table__cell'
-const PROGRESS_INITIAL = 30,
-  PROGRESS_PROCESSING = 70,
-  RELOAD_DELAY = 1500,
-  REDIRECT_DELAY = 500,
-  HISTORY_UPDATE_DELAY = 500
-const PREVIEW_WORDS_LIMIT = 3,
-  PREVIEW_CHARS_LIMIT = 50
+const GOVUK_ERROR_MESSAGE_CLASS = 'govuk-error-message'
+const STYLE_DISPLAY_NONE = 'none'
+const STYLE_DISPLAY_DEFAULT = ''
+const APP_DISABLED_CLASS = 'app-disabled'
+const APP_HIGHLIGHT_CLASS = 'app-highlight'
+const ARIA_DISABLED_ATTR = 'aria-disabled'
+const FORM_GROUP_SELECTOR = '.govuk-form-group'
+const GOVUK_TABLE_CELL_CLASS = 'govuk-table__cell'
+const PROGRESS_INITIAL = 30
+const PROGRESS_PROCESSING = 70
+const RELOAD_DELAY = 1500
+const REDIRECT_DELAY = 500
+const HISTORY_UPDATE_DELAY = 500
+const PREVIEW_WORDS_LIMIT = 3
+const PREVIEW_CHARS_LIMIT = 50
 const elements = {}
 let fileClearBtn, textClearBtn
 
@@ -163,8 +163,8 @@ function highlightInput(input, shouldHighlight) {
   }
 }
 function updateMutualExclusion() {
-  const hasFile = hasFileSelected(),
-    hasText = hasTextEntered()
+  const hasFile = hasFileSelected()
+  const hasText = hasTextEntered()
   const fileInput = getFileInput()
   if (hasFile && !hasText) {
     toggleInput(
@@ -264,8 +264,8 @@ function createTextCell(text) {
   return cell
 }
 function createStatusCell(review) {
-  const cell = document.createElement('td'),
-    tag = document.createElement('strong')
+  const cell = document.createElement('td')
+  const tag = document.createElement('strong')
   cell.className = GOVUK_TABLE_CELL_CLASS
   tag.className = 'govuk-tag'
   const status = (review.status || 'pending').toLowerCase()
@@ -326,8 +326,8 @@ function createResultCell(review) {
   return cell
 }
 function createActionCell(review) {
-  const cell = document.createElement('td'),
-    btn = document.createElement('button')
+  const cell = document.createElement('td')
+  const btn = document.createElement('button')
   cell.className = GOVUK_TABLE_CELL_CLASS
   btn.type = 'button'
   btn.className = 'govuk-link delete-review-btn'
@@ -338,13 +338,13 @@ function createActionCell(review) {
   return cell
 }
 function enforceTableLimit() {
-  const limitSelect = document.getElementById('historyLimit'),
-    tbody = document.querySelector('#reviewHistoryBody')
+  const limitSelect = document.getElementById('historyLimit')
+  const tbody = document.querySelector('#reviewHistoryBody')
   if (!tbody) {
     return
   }
-  const currentLimit = Number.parseInt(limitSelect?.value || '5', 10),
-    rows = tbody.querySelectorAll('tr')
+  const currentLimit = Number.parseInt(limitSelect?.value || '5', 10)
+  const rows = tbody.querySelectorAll('tr')
   if (rows.length > currentLimit) {
     Array.from(rows)
       .slice(currentLimit)
