@@ -11,7 +11,7 @@ export const textReviewApiController = {
   /**
    * Handle text content submission for review
    */
-  async reviewText(request, h) {
+  async reviewText (request, h) {
     const startTime = Date.now()
 
     try {

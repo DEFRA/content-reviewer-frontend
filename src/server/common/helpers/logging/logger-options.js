@@ -46,7 +46,7 @@ export const loggerOptions = {
     return 'info'
   },
   nesting: true,
-  mixin() {
+  mixin () {
     const mixinValues = {}
     const traceId = getTraceId()
     if (traceId) {

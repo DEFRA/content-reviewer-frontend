@@ -7,7 +7,7 @@ import { cookiesGetController, cookiesPostController } from './controller.js'
 export const cookies = {
   plugin: {
     name: 'cookies',
-    register(server) {
+    register (server) {
       server.route([
         {
           method: 'GET',

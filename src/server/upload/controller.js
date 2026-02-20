@@ -19,7 +19,7 @@ const FILE_STATUS_PENDING = 'Uploaded (Review pending)'
  * @param {object} fileDetails - Raw file details
  * @returns {object} Formatted file details
  */
-function createFileDetailsForView(fileDetails) {
+function createFileDetailsForView (fileDetails) {
   return {
     filename: fileDetails.filename,
     contentLength: fileDetails.contentLength,
@@ -38,7 +38,7 @@ const uploadController = {
    * @param {object} h - Hapi response toolkit
    * @returns {object} View response
    */
-  async showUploadForm(_request, h) {
+  async showUploadForm (_request, h) {
     return h.view('upload/index', {
       pageTitle: 'Upload Document',
       heading: 'Upload PDF or Word Document'
@@ -48,7 +48,7 @@ const uploadController = {
   /**
    * Initiate upload and redirect to CDP uploader
    */
-  async initiateUpload(request, h) {
+  async initiateUpload (request, h) {
     try {
       const host = `${request.server.info.protocol}://${request.info.host}`
       const redirectUrl = `${host}/upload/status-poller`
@@ -88,7 +88,7 @@ const uploadController = {
   /**
    * Handle redirect from CDP uploader and poll for status
    */
-  async statusPoller(request, h) {
+  async statusPoller (request, h) {
     const uploadId = request.yar.get('currentUploadId')
 
     if (!uploadId) {
@@ -108,7 +108,7 @@ const uploadController = {
    * @param {object} h - Hapi response toolkit
    * @returns {object} Response with status
    */
-  async getStatus(request, h) {
+  async getStatus (request, h) {
     try {
       const { uploadId } = request.params
 
@@ -129,7 +129,7 @@ const uploadController = {
    * @param {string} backendUrl - Backend API URL
    * @returns {Promise<object>} Review response data
    */
-  async initiateAiReview(fileDetails, backendUrl) {
+  async initiateAiReview (fileDetails, backendUrl) {
     const reviewPayload = {
       bucket: fileDetails.s3Bucket,
       key: fileDetails.s3Key,
@@ -161,7 +161,7 @@ const uploadController = {
    * @param {string} backendUrl - Backend API URL
    * @returns {Promise<object>} Redirect or view response
    */
-  async handleSuccessfulUpload(request, h, fileDetails, backendUrl) {
+  async handleSuccessfulUpload (request, h, fileDetails, backendUrl) {
     try {
       const reviewData = await this.initiateAiReview(fileDetails, backendUrl)
       console.log(
@@ -202,7 +202,7 @@ const uploadController = {
    * @param {object} fileDetails - File details from upload
    * @returns {object} View response
    */
-  renderUploadSuccessView(h, fileDetails) {
+  renderUploadSuccessView (h, fileDetails) {
     return h.view('upload/success', {
       pageTitle: 'Upload Successful',
       heading: 'Upload Successful',
@@ -216,7 +216,7 @@ const uploadController = {
    * @param {object} h - Hapi response toolkit
    * @returns {object} Redirect or view response
    */
-  async uploadComplete(request, h) {
+  async uploadComplete (request, h) {
     const uploadId = request.yar.get('currentUploadId')
     console.log('[UPLOAD-CONTROLLER] Upload complete for:', uploadId)
 
@@ -275,7 +275,7 @@ const uploadController = {
    * @param {object} h - Hapi response toolkit
    * @returns {object} Response
    */
-  async handleCallback(request, h) {
+  async handleCallback (request, h) {
     try {
       const payload = request.payload
       request.logger.info({ payload }, 'Received upload callback')

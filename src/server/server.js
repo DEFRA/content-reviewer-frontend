@@ -15,7 +15,7 @@ import { getCacheEngine } from './common/helpers/session-cache/cache-engine.js'
 import { secureContext } from '@defra/hapi-secure-context'
 import { contentSecurityPolicy } from './common/helpers/content-security-policy.js'
 
-export async function createServer() {
+export async function createServer () {
   setupProxy()
   const server = hapi.server({
     host: config.get('host'),

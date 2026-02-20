@@ -12,7 +12,7 @@ const backendUrl = config.get('backendUrl')
  * @param {import('@hapi/hapi').ResponseToolkit} h
  * @returns {Promise<import('@hapi/hapi').ResponseObject>}
  */
-export async function deleteReviewController(request, h) {
+export async function deleteReviewController (request, h) {
   const startTime = Date.now()
   const requestLogger = request.logger
   const reviewId = request.params.reviewId

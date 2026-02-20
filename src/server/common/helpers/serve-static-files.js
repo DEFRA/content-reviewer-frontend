@@ -5,7 +5,7 @@ import path from 'node:path'
 export const serveStaticFiles = {
   plugin: {
     name: 'staticFiles',
-    register(server) {
+    register (server) {
       const publicPath = path.join(config.get('root'), '.public')
 
       server.route([
@@ -19,7 +19,7 @@ export const serveStaticFiles = {
           },
           method: 'GET',
           path: '/favicon.ico',
-          handler(_request, h) {
+          handler (_request, h) {
             return h.response().code(statusCodes.noContent).type('image/x-icon')
           }
         },

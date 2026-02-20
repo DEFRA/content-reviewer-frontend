@@ -4,7 +4,7 @@ import { config } from '../../../config/config.js'
 const SEPARATOR_LINE = '========================================='
 const NOT_SET_VALUE = 'NOT SET'
 
-async function startServer() {
+async function startServer () {
   const server = await createServer()
   await server.start()
 

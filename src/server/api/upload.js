@@ -28,7 +28,7 @@ const ALLOWED_EXTENSIONS = ['pdf', 'doc', 'docx']
  * @param {object} file - File object from request payload
  * @returns {object} File information
  */
-function extractFileInfo(file) {
+function extractFileInfo (file) {
   return {
     filename: file.hapi.filename,
     size: file.bytes,
@@ -43,7 +43,7 @@ function extractFileInfo(file) {
  * @param {object} fileInfo - File information
  * @returns {object|null} Error response or null if valid
  */
-function validateFileSize(file, fileInfo) {
+function validateFileSize (file, fileInfo) {
   if (file.bytes > MAX_FILE_SIZE_BYTES) {
     logger.warn('Upload validation failed: File too large', {
       filename: fileInfo.filename,
@@ -64,7 +64,7 @@ function validateFileSize(file, fileInfo) {
  * @param {object} fileInfo - File information
  * @returns {object|null} Error response or null if valid
  */
-function validateFileType(file, fileInfo) {
+function validateFileType (file, fileInfo) {
   const extension = file.hapi.filename.split('.').pop().toLowerCase()
   const contentType = file.hapi.headers['content-type']
 
@@ -95,7 +95,7 @@ function validateFileType(file, fileInfo) {
  * @param {object} request - Hapi request object
  * @returns {Promise<object>} Backend response
  */
-async function uploadToBackend(file, fileInfo, request) {
+async function uploadToBackend (file, fileInfo, request) {
   const backendUrl = config.get('backendUrl')
   logger.info('Preparing to forward file to backend', {
     backendUrl,
@@ -148,7 +148,7 @@ async function uploadToBackend(file, fileInfo, request) {
  * @param {object} h - Hapi response toolkit
  * @returns {Promise<object>} Error response
  */
-async function handleBackendError(
+async function handleBackendError (
   response,
   backendRequestTime,
   fileInfo,
@@ -182,7 +182,7 @@ async function handleBackendError(
  * @param {object} h - Hapi response toolkit
  * @returns {Promise<object>} Success response
  */
-async function handleUploadSuccess(
+async function handleUploadSuccess (
   response,
   backendRequestTime,
   startTime,
@@ -224,7 +224,7 @@ export const uploadApiController = {
    * @param {object} h - Hapi response toolkit
    * @returns {Promise<object>} Response object
    */
-  async uploadFile(request, h) {
+  async uploadFile (request, h) {
     const startTime = Date.now()
     logger.info('Upload API request started', {
       userAgent: request.headers['user-agent'],

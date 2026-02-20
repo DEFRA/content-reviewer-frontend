@@ -19,7 +19,7 @@ const PREVIEW_CHARS_LIMIT = 50
 // DOM element cache
 const elements = {}
 
-function initializeElements() {
+function initializeElements () {
   elements.textContentInput = document.getElementById('text-content')
   elements.characterCountMessage = document.getElementById(
     'characterCountMessage'
@@ -35,12 +35,12 @@ function initializeElements() {
   elements.form = document.getElementById('uploadForm')
 }
 
-function getFileInput() {
+function getFileInput () {
   return document.getElementById('file-upload')
 }
 
 // Character count functionality
-function updateCharacterCount() {
+function updateCharacterCount () {
   if (!elements.textContentInput || !elements.characterCountMessage) {
     return
   }
@@ -62,25 +62,25 @@ function updateCharacterCount() {
   }
 }
 
-function clearCharacterCount() {
+function clearCharacterCount () {
   elements.characterCountMessage.textContent = ''
   elements.characterCountMessage.style.display = STYLE_DISPLAY_NONE
   elements.characterCountMessage.classList.remove(GOVUK_ERROR_MESSAGE_CLASS)
 }
 
-function showRemainingCharacters(remaining) {
+function showRemainingCharacters (remaining) {
   elements.characterCountMessage.textContent = `${remaining} characters remaining`
   elements.characterCountMessage.classList.remove(GOVUK_ERROR_MESSAGE_CLASS)
 }
 
-function showExcessCharacters(remaining) {
+function showExcessCharacters (remaining) {
   const excess = Math.abs(remaining)
   elements.characterCountMessage.textContent = `You have ${excess} characters too many`
   elements.characterCountMessage.classList.add(GOVUK_ERROR_MESSAGE_CLASS)
 }
 
 // Clear button functionality
-function addClearButton(input, label, onClear) {
+function addClearButton (input, label, onClear) {
   const btn = document.createElement('button')
   btn.type = 'button'
   btn.textContent = label
@@ -93,7 +93,7 @@ function addClearButton(input, label, onClear) {
 
 let fileClearBtn, textClearBtn
 
-function initializeFileInput() {
+function initializeFileInput () {
   const fileInput = getFileInput()
   if (!fileInput) {
     return
@@ -114,7 +114,7 @@ function initializeFileInput() {
   updateMutualExclusion()
 }
 
-function initializeTextInput() {
+function initializeTextInput () {
   if (!elements.textContentInput) {
     return
   }
@@ -146,18 +146,18 @@ function initializeTextInput() {
 }
 
 // Mutual exclusion logic - broken down into smaller functions
-function hasFileSelected() {
+function hasFileSelected () {
   const fileInput = getFileInput()
   return fileInput?.files?.length > 0
 }
 
-function hasTextEntered() {
+function hasTextEntered () {
   return (
     elements.textContentInput && elements.textContentInput.value.trim() !== ''
   )
 }
 
-function disableFileInput() {
+function disableFileInput () {
   const fileInput = getFileInput()
   if (!fileInput) {
     return
@@ -175,7 +175,7 @@ function disableFileInput() {
   }
 }
 
-function enableFileInput() {
+function enableFileInput () {
   const fileInput = getFileInput()
   if (!fileInput) {
     return
@@ -193,7 +193,7 @@ function enableFileInput() {
   }
 }
 
-function highlightFileInput() {
+function highlightFileInput () {
   const fileInput = getFileInput()
   const fileUploadGroup = fileInput?.closest(FORM_GROUP_SELECTOR)
   if (fileUploadGroup) {
@@ -201,7 +201,7 @@ function highlightFileInput() {
   }
 }
 
-function removeFileHighlight() {
+function removeFileHighlight () {
   const fileInput = getFileInput()
   const fileUploadGroup = fileInput?.closest(FORM_GROUP_SELECTOR)
   if (fileUploadGroup) {
@@ -209,7 +209,7 @@ function removeFileHighlight() {
   }
 }
 
-function disableTextInput() {
+function disableTextInput () {
   if (!elements.textContentInput) {
     return
   }
@@ -226,7 +226,7 @@ function disableTextInput() {
   }
 }
 
-function enableTextInput() {
+function enableTextInput () {
   if (!elements.textContentInput) {
     return
   }
@@ -243,21 +243,21 @@ function enableTextInput() {
   }
 }
 
-function highlightTextInput() {
+function highlightTextInput () {
   const textFormGroup = elements.textContentInput?.closest(FORM_GROUP_SELECTOR)
   if (textFormGroup) {
     textFormGroup.classList.add(APP_HIGHLIGHT_CLASS)
   }
 }
 
-function removeTextHighlight() {
+function removeTextHighlight () {
   const textFormGroup = elements.textContentInput?.closest(FORM_GROUP_SELECTOR)
   if (textFormGroup) {
     textFormGroup.classList.remove(APP_HIGHLIGHT_CLASS)
   }
 }
 
-function updateMutualExclusion() {
+function updateMutualExclusion () {
   const hasFile = hasFileSelected()
   const hasText = hasTextEntered()
 
@@ -282,7 +282,7 @@ function updateMutualExclusion() {
 }
 
 // UI feedback functions
-function showError(message) {
+function showError (message) {
   hideSuccess()
   hideProgress()
 
@@ -299,19 +299,19 @@ function showError(message) {
   }
 }
 
-function hideError() {
+function hideError () {
   if (elements.uploadError) {
     elements.uploadError.hidden = true
   }
 }
 
-function hideSuccess() {
+function hideSuccess () {
   if (elements.uploadSuccess) {
     elements.uploadSuccess.hidden = true
   }
 }
 
-function showProgress(statusText, percentage) {
+function showProgress (statusText, percentage) {
   if (elements.uploadStatusText) {
     elements.uploadStatusText.textContent = statusText
   }
@@ -330,7 +330,7 @@ function showProgress(statusText, percentage) {
   }
 }
 
-function hideProgress() {
+function hideProgress () {
   if (elements.uploadProgress) {
     elements.uploadProgress.hidden = true
   }
@@ -341,7 +341,7 @@ function hideProgress() {
 }
 
 // Review history table functions
-function addReviewToHistory(review) {
+function addReviewToHistory (review) {
   const tbody = document.querySelector('#reviewHistory tbody')
   if (!tbody) {
     return
@@ -352,7 +352,7 @@ function addReviewToHistory(review) {
   enforceTableLimit()
 }
 
-function createReviewRow(review) {
+function createReviewRow (review) {
   const reviewRow = document.createElement('tr')
   reviewRow.dataset.reviewId = review.id || review.reviewId
 
@@ -367,14 +367,14 @@ function createReviewRow(review) {
   return reviewRow
 }
 
-function createTextCell(text) {
+function createTextCell (text) {
   const cell = document.createElement('td')
   cell.className = 'govuk-table__cell'
   cell.textContent = text
   return cell
 }
 
-function createActionCell(review) {
+function createActionCell (review) {
   const cell = document.createElement('td')
   cell.className = 'govuk-table__cell'
 
@@ -387,7 +387,7 @@ function createActionCell(review) {
   return cell
 }
 
-function enforceTableLimit() {
+function enforceTableLimit () {
   const limitSelect = document.getElementById('historyLimit')
   const tbody = document.querySelector('#reviewHistory tbody')
   if (!tbody) {
@@ -404,7 +404,7 @@ function enforceTableLimit() {
 }
 
 // Text review submission
-async function submitTextReview(textContent) {
+async function submitTextReview (textContent) {
   try {
     if (elements.textContentInput) {
       elements.textContentInput.disabled = true
@@ -466,7 +466,7 @@ async function submitTextReview(textContent) {
 }
 
 // File upload submission
-async function submitFileUpload(file) {
+async function submitFileUpload (file) {
   try {
     showProgress('Uploading to server...', PROGRESS_INITIAL)
 
@@ -521,7 +521,7 @@ async function submitFileUpload(file) {
 }
 
 // Form submission handler
-async function handleFormSubmit(e) {
+async function handleFormSubmit (e) {
   e.preventDefault()
   hideError()
   hideSuccess()
@@ -550,7 +550,7 @@ async function handleFormSubmit(e) {
 }
 
 // Initialize everything
-function initialize() {
+function initialize () {
   initializeElements()
 
   if (!elements.form) {

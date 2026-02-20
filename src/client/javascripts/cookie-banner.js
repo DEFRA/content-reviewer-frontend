@@ -8,11 +8,11 @@ class CookieBanner {
   COOKIE_DURATION = 90 // days (Defra standard for essential cookies)
   BANNER_ID = 'cookie-banner'
 
-  constructor() {
+  constructor () {
     this.init()
   }
 
-  init() {
+  init () {
     // Check if user has already made a choice
     const cookiePreferences = this.getCookiePreferences()
     if (!cookiePreferences) {
@@ -24,7 +24,7 @@ class CookieBanner {
     this.setupEventListeners()
   }
 
-  setupEventListeners() {
+  setupEventListeners () {
     const acceptButton = document.getElementById('cookie-accept')
     const rejectButton = document.getElementById('cookie-reject')
     const hideAcceptedButton = document.getElementById('cookie-hide-accepted')
@@ -51,34 +51,34 @@ class CookieBanner {
     }
   }
 
-  acceptCookies() {
+  acceptCookies () {
     this.setCookiePreferences({ analytics: true })
     this.hideBanner(this.BANNER_ID)
     this.showBanner('cookie-banner-accepted')
     // Here you would initialize analytics if you had them
   }
 
-  rejectCookies() {
+  rejectCookies () {
     this.setCookiePreferences({ analytics: false })
     this.hideBanner(this.BANNER_ID)
     this.showBanner('cookie-banner-rejected')
   }
 
-  showBanner(bannerId) {
+  showBanner (bannerId) {
     const banner = document.getElementById(bannerId)
     if (banner) {
       banner.style.display = 'block'
     }
   }
 
-  hideBanner(bannerId) {
+  hideBanner (bannerId) {
     const banner = document.getElementById(bannerId)
     if (banner) {
       banner.style.display = 'none'
     }
   }
 
-  setCookiePreferences(preferences) {
+  setCookiePreferences (preferences) {
     const value = JSON.stringify(preferences)
     const expiryDate = new Date()
     expiryDate.setDate(expiryDate.getDate() + this.COOKIE_DURATION)
@@ -90,7 +90,7 @@ class CookieBanner {
     document.cookie = `${this.COOKIE_NAME}=${value}; expires=${expiryDate.toUTCString()}; path=/; SameSite=Strict${secureFlag}`
   }
 
-  getCookiePreferences() {
+  getCookiePreferences () {
     const nameEQ = this.COOKIE_NAME + '='
     const cookies = document.cookie.split(';')
 
@@ -113,7 +113,7 @@ class CookieBanner {
 }
 
 // Initialize cookie banner
-function initCookieBanner() {
+function initCookieBanner () {
   const banner = new CookieBanner()
   return banner
 }

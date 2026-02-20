@@ -3,7 +3,7 @@
  * Displays information about the Content Review Tool
  */
 export const aboutController = {
-  handler(_request, h) {
+  handler (_request, h) {
     return h.view('about/index', {
       pageTitle: 'About',
       heading: 'About',

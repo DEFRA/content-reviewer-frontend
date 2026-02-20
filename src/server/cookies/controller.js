@@ -7,7 +7,7 @@
  * GET handler - Display cookies page
  */
 export const cookiesGetController = {
-  handler(request, h) {
+  handler (request, h) {
     // Check if user has analytics cookie preference set
     const cookiePreferences = request.state.cookie_preferences || {}
     const showConfirmation = request.query.saved === 'true'
@@ -36,7 +36,7 @@ export const cookiesGetController = {
 const COOKIE_EXPIRY_DAYS = 90 // Defra standard for essential cookies
 
 export const cookiesPostController = {
-  handler(request, h) {
+  handler (request, h) {
     const analytics = request.payload?.analytics === 'yes'
 
     // Save cookie preferences

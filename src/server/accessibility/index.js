@@ -7,7 +7,7 @@ import { accessibilityController } from './controller.js'
 export const accessibility = {
   plugin: {
     name: 'accessibility',
-    register(server) {
+    register (server) {
       server.route([
         {
           method: 'GET',

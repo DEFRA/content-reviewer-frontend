@@ -17,7 +17,7 @@ const NOT_SET_VALUE = 'NOT SET'
  * @param {Object} options.metadata - Additional metadata
  * @returns {Promise<Object>} Upload session details
  */
-async function initiateUpload({ redirect, callback, metadata = {} }) {
+async function initiateUpload ({ redirect, callback, metadata = {} }) {
   const s3Bucket = config.get('cdpUploader.s3Bucket')
   const s3Path = config.get('cdpUploader.s3Path')
   const maxFileSize = config.get('cdpUploader.maxFileSize')
@@ -83,7 +83,7 @@ async function initiateUpload({ redirect, callback, metadata = {} }) {
  * @param {boolean} debug - Include debug information
  * @returns {Promise<Object>} Upload status
  */
-async function getUploadStatus(uploadId, debug = false) {
+async function getUploadStatus (uploadId, debug = false) {
   console.log(`CHECKING UPLOAD STATUS for ID: ${uploadId}`)
 
   const url = new URL(`${uploaderUrl}/status/${uploadId}`)
@@ -142,7 +142,7 @@ async function getUploadStatus(uploadId, debug = false) {
  * @param {number} interval - Interval between polls in ms
  * @returns {Promise<Object>} Final upload status
  */
-async function pollUploadStatus(uploadId, maxAttempts = 30, interval = 2000) {
+async function pollUploadStatus (uploadId, maxAttempts = 30, interval = 2000) {
   let attempts = 0
 
   while (attempts < maxAttempts) {

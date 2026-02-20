@@ -12,7 +12,7 @@ const backendUrl = config.get('backendUrl')
  * @param {File} file - File object from file input
  * @returns {Promise<Object>} Upload result
  */
-async function uploadFile(file) {
+async function uploadFile (file) {
   const formData = new FormData()
   formData.append('file', file)
 
@@ -34,7 +34,7 @@ async function uploadFile(file) {
  * Check upload service health
  * @returns {Promise<Object>} Health status
  */
-async function checkUploadHealth() {
+async function checkUploadHealth () {
   const response = await fetch(`${backendUrl}/api/upload/health`, {
     method: 'GET',
     credentials: 'include'

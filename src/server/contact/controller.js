@@ -3,7 +3,7 @@
  * Displays contact information for the service
  */
 export const contactController = {
-  handler(_request, h) {
+  handler (_request, h) {
     return h.view('contact/index', {
       pageTitle: 'Contact',
       heading: 'Contact',

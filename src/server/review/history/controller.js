@@ -11,7 +11,7 @@ export const reviewHistoryController = {
   /**
    * Show review history page
    */
-  async showHistory(request, h) {
+  async showHistory (request, h) {
     const startTime = Date.now()
     logger.info('Review history page request started')
 
@@ -94,7 +94,7 @@ export const reviewHistoryController = {
   /**
    * Delete a review from history
    */
-  async deleteReview(request, h) {
+  async deleteReview (request, h) {
     const startTime = Date.now()
     logger.info('Delete review request started')
 

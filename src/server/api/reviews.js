@@ -12,7 +12,7 @@ const OK = 200
  * @param {Object} query - Query parameters
  * @returns {Object} Pagination parameters
  */
-function calculatePagination(query) {
+function calculatePagination (query) {
   const page = Number.parseInt(query.page) || 1
   const limit = Number.parseInt(query.limit) || PAGE_SIZE
   const skip = (page - 1) * limit
@@ -24,7 +24,7 @@ function calculatePagination(query) {
  * @param {Array} reviews - Reviews array
  * @returns {Array} Normalized reviews
  */
-function normalizeReviews(reviews) {
+function normalizeReviews (reviews) {
   return Array.isArray(reviews) ? reviews : []
 }
 
@@ -36,7 +36,7 @@ function normalizeReviews(reviews) {
  * @param {number} _skip - Skip parameter
  * @returns {import('@hapi/hapi').ResponseObject}
  */
-function createErrorResponse(h, message, _limit, _skip) {
+function createErrorResponse (h, message, _limit, _skip) {
   return h
     .response({
       success: false,
@@ -65,7 +65,7 @@ function createErrorResponse(h, message, _limit, _skip) {
  * @param {number} _page - Page number
  * @returns {Promise<Object>}
  */
-async function fetchReviewsFromBackend(limit, skip, _page) {
+async function fetchReviewsFromBackend (limit, skip, _page) {
   const endpoint = `${backendUrl}/api/reviews?limit=${limit}&skip=${skip}`
   const startTime = Date.now()
   const response = await fetch(endpoint)
@@ -88,7 +88,7 @@ async function fetchReviewsFromBackend(limit, skip, _page) {
  * @param {import('@hapi/hapi').ResponseToolkit} h
  * @returns {Promise<import('@hapi/hapi').ResponseObject>}
  */
-export async function getReviewsController(request, h) {
+export async function getReviewsController (request, h) {
   const startTime = Date.now()
   const requestLogger = request.logger
   const { limit, page, skip } = calculatePagination(request.query)

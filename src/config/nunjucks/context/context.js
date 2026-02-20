@@ -14,7 +14,7 @@ const manifestPath = path.join(
 
 let webpackManifest
 
-export function context(request) {
+export function context (request) {
   if (!webpackManifest) {
     try {
       webpackManifest = JSON.parse(readFileSync(manifestPath, 'utf-8'))
@@ -34,7 +34,7 @@ export function context(request) {
     navigation: buildNavigation(request),
     cspNonce: request.plugins?.blankie?.nonces?.script || '',
     backendUrl: config.get('backendUrl'),
-    getAssetPath(asset) {
+    getAssetPath (asset) {
       const webpackAssetPath = webpackManifest?.[asset]
       return `${assetPath}/${webpackAssetPath ?? asset}`
     }

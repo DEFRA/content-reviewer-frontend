@@ -38,7 +38,7 @@ export const resultsController = {
   }
 }
 
-function handleMissingReviewId(request, h) {
+function handleMissingReviewId (request, h) {
   request.logger.warn('Missing review id for results route')
   return h
     .response({
@@ -48,13 +48,13 @@ function handleMissingReviewId(request, h) {
     .code(HTTP_STATUS_BAD_REQUEST)
 }
 
-async function fetchAndParseBackendResults(request, reviewId) {
+async function fetchAndParseBackendResults (request, reviewId) {
   const config = request.server.app.config
   const backendUrl = config.get('backendUrl')
 
   request.logger.info(
     { reviewId },
-    `[FRONTEND] Requesting review results from backend - START`
+    '[FRONTEND] Requesting review results from backend - START'
   )
 
   const fetchStart = performance.now()
@@ -96,7 +96,7 @@ async function fetchAndParseBackendResults(request, reviewId) {
   return { statusData, fetchDuration, parseDuration }
 }
 
-function renderPendingView(h, statusData) {
+function renderPendingView (h, statusData) {
   return h.view('review/results/pending', {
     pageTitle: 'Review In Progress',
     heading: 'Review In Progress',
@@ -106,7 +106,7 @@ function renderPendingView(h, statusData) {
   })
 }
 
-function renderResultsView(h, reviewId, reviewResults) {
+function renderResultsView (h, reviewId, reviewResults) {
   return h.view('review/results/index', {
     pageTitle: 'Review Results',
     heading: 'AI Content Review Results',
@@ -115,7 +115,7 @@ function renderResultsView(h, reviewId, reviewResults) {
   })
 }
 
-function logResultsPageRender(
+function logResultsPageRender (
   request,
   reviewId,
   totalDuration,
@@ -135,7 +135,7 @@ function logResultsPageRender(
   )
 }
 
-function handleResultsError(request, h, error, reviewId) {
+function handleResultsError (request, h, error, reviewId) {
   request.logger.error(
     {
       error: error.message,
@@ -158,7 +158,7 @@ function handleResultsError(request, h, error, reviewId) {
 /**
  * Transform backend status data to frontend display format
  */
-function transformReviewData(statusData, reviewId) {
+function transformReviewData (statusData, reviewId) {
   // Backend returns: { result: { reviewData, rawResponse, guardrailAssessment, stopReason, completedAt } }
   const backendResult = statusData.result || {}
 

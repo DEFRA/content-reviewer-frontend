@@ -22,7 +22,7 @@ createAll(SkipLink)
 
 // Conversation management
 class ConversationManager {
-  constructor() {
+  constructor () {
     this.conversations = this.loadConversations()
     this.currentConversationId = null
     this.selectedFile = null // Track selected file for upload
@@ -31,7 +31,7 @@ class ConversationManager {
     this.init()
   }
 
-  init() {
+  init () {
     const newChatBtn = document.getElementById('newChatBtn')
     if (newChatBtn) {
       newChatBtn.addEventListener('click', () => this.createNewConversation())
@@ -49,7 +49,7 @@ class ConversationManager {
     }
   }
 
-  initFileUpload() {
+  initFileUpload () {
     const attachButton = document.getElementById('attachButton')
     const fileInput = document.getElementById('fileInput')
     const removeFileBtn = document.getElementById('removeFile')
@@ -68,7 +68,7 @@ class ConversationManager {
     }
   }
 
-  handleFileSelected(file) {
+  handleFileSelected (file) {
     // Validate file size (10MB)
     const maxSize = 10 * 1024 * 1024
     if (file.size > maxSize) {
@@ -107,7 +107,7 @@ class ConversationManager {
     this.showFilePreview(file)
   }
 
-  showFilePreview(file) {
+  showFilePreview (file) {
     const filePreview = document.getElementById('filePreview')
     const fileName = document.getElementById('fileName')
     const fileSize = document.getElementById('fileSize')
@@ -119,7 +119,7 @@ class ConversationManager {
     }
   }
 
-  clearSelectedFile() {
+  clearSelectedFile () {
     this.selectedFile = null
     const fileInput = document.getElementById('fileInput')
     const filePreview = document.getElementById('filePreview')
@@ -132,7 +132,7 @@ class ConversationManager {
     }
   }
 
-  showErrorNotification(title, message) {
+  showErrorNotification (title, message) {
     // Remove any existing error notification
     const existingError = document.getElementById('fileErrorNotification')
     if (existingError) {
@@ -167,21 +167,22 @@ class ConversationManager {
     }
   }
 
-  loadConversations() {
+  loadConversations () {
     // eslint-disable-next-line no-undef
     const stored = localStorage.getItem('conversations')
     return stored ? JSON.parse(stored) : []
   }
 
-  saveConversations() {
+  saveConversations () {
     // eslint-disable-next-line no-undef
     localStorage.setItem('conversations', JSON.stringify(this.conversations))
   }
 
-  createNewConversation() {
+  createNewConversation () {
     const chatMessages = document.getElementById('chatMessages')
     if (chatMessages) {
-      chatMessages.innerHTML = `<div class="message bot-message"><div class="message-content"><p>Hello! I'm ready to help you review content for GOV.UK compliance. You can paste any text for me to review, or ask me about specific content standards.</p></div></div>`
+      chatMessages.innerHTML =
+        '<div class="message bot-message"><div class="message-content"><p>Hello! I\'m ready to help you review content for GOV.UK compliance. You can paste any text for me to review, or ask me about specific content standards.</p></div></div>'
     }
     const id = 'conv_' + Date.now()
     const conversation = {
@@ -196,7 +197,7 @@ class ConversationManager {
     this.renderConversationList()
   }
 
-  loadConversation(id) {
+  loadConversation (id) {
     this.currentConversationId = id
     const conversation = this.conversations.find((c) => c.id === id)
     if (conversation) {
@@ -204,7 +205,8 @@ class ConversationManager {
       if (chatMessages) {
         chatMessages.innerHTML = ''
         if (conversation.messages.length === 0) {
-          chatMessages.innerHTML = `<div class="message bot-message"><div class="message-content"><p>Hello! I'm ready to help you review content for GOV.UK compliance. You can paste any text for me to review, or ask me about specific content standards.</p></div></div>`
+          chatMessages.innerHTML =
+            '<div class="message bot-message"><div class="message-content"><p>Hello! I\'m ready to help you review content for GOV.UK compliance. You can paste any text for me to review, or ask me about specific content standards.</p></div></div>'
         } else {
           conversation.messages.forEach((msg) =>
             this.addMessageToUI(msg.content, msg.role)
@@ -215,7 +217,7 @@ class ConversationManager {
     }
   }
 
-  addMessageToUI(content, role, fileInfo) {
+  addMessageToUI (content, role, fileInfo) {
     const chatMessages = document.getElementById('chatMessages')
     if (!chatMessages) {
       return
@@ -261,7 +263,7 @@ class ConversationManager {
     chatMessages.scrollTop = chatMessages.scrollHeight
   }
 
-  saveMessage(content, role, fileInfo) {
+  saveMessage (content, role, fileInfo) {
     let conversation = this.findCurrentConversation()
 
     if (!conversation) {
@@ -278,11 +280,11 @@ class ConversationManager {
     }
   }
 
-  findCurrentConversation() {
+  findCurrentConversation () {
     return this.conversations.find((c) => c.id === this.currentConversationId)
   }
 
-  createMessage(content, role, fileInfo) {
+  createMessage (content, role, fileInfo) {
     const message = {
       content,
       role,
@@ -302,7 +304,7 @@ class ConversationManager {
     return message
   }
 
-  updateConversationTitle(conversation, content, role, fileInfo) {
+  updateConversationTitle (conversation, content, role, fileInfo) {
     const isFirstUserMessage =
       role === 'user' &&
       conversation.messages.filter((m) => m.role === 'user').length === 1
@@ -318,7 +320,7 @@ class ConversationManager {
     }
   }
 
-  async handleSendMessage(e) {
+  async handleSendMessage (e) {
     e.preventDefault()
 
     const userInput = document.getElementById('userInput')
@@ -401,7 +403,7 @@ class ConversationManager {
     }
   }
 
-  async uploadFile(file) {
+  async uploadFile (file) {
     const formData = new FormData()
     formData.append('file', file)
 
@@ -434,7 +436,7 @@ class ConversationManager {
     }
   }
 
-  async submitTextReview(textContent) {
+  async submitTextReview (textContent) {
     // Get backend URL from global config
     const backendUrl =
       globalThis.APP_CONFIG?.backendApiUrl || 'http://localhost:3001'
@@ -475,7 +477,7 @@ class ConversationManager {
     }
   }
 
-  async simulateAPICall(message, fileInfo) {
+  async simulateAPICall (message, fileInfo) {
     await new Promise((resolve) => setTimeout(resolve, 1000))
     this.hideTypingIndicator()
     const response = fileInfo
@@ -485,7 +487,7 @@ class ConversationManager {
     this.saveMessage(response, 'bot')
   }
 
-  showTypingIndicator() {
+  showTypingIndicator () {
     const chatMessages = document.getElementById('chatMessages')
     if (!chatMessages) {
       return
@@ -504,14 +506,14 @@ class ConversationManager {
     chatMessages.scrollTop = chatMessages.scrollHeight
   }
 
-  hideTypingIndicator() {
+  hideTypingIndicator () {
     const indicator = document.getElementById('typingIndicator')
     if (indicator) {
       indicator.remove()
     }
   }
 
-  renderConversationList() {
+  renderConversationList () {
     const listContainer = document.getElementById('conversationList')
     if (!listContainer) {
       const debugNewChatBtn = document.getElementById('newChatBtn')
@@ -555,7 +557,7 @@ class ConversationManager {
     }
   }
 
-  escapeHtml(text) {
+  escapeHtml (text) {
     const div = document.createElement('div')
     div.textContent = text
     return div.innerHTML

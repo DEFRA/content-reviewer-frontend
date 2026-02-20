@@ -7,7 +7,7 @@ import { contactController } from './controller.js'
 export const contact = {
   plugin: {
     name: 'contact',
-    register(server) {
+    register (server) {
       server.route([
         {
           method: 'GET',

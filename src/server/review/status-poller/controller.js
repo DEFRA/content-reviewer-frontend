@@ -10,7 +10,7 @@ export const reviewStatusPollerController = {
   /**
    * Show review status polling page
    */
-  async showStatusPoller(request, h) {
+  async showStatusPoller (request, h) {
     const { reviewId } = request.params
 
     if (!reviewId) {
@@ -27,7 +27,7 @@ export const reviewStatusPollerController = {
   /**
    * API endpoint to get review status
    */
-  async getReviewStatus(request, h) {
+  async getReviewStatus (request, h) {
     try {
       const { reviewId } = request.params
       const config = request.server.app.config

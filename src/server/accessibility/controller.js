@@ -5,7 +5,7 @@
 const ACCESSIBILITY_STATEMENT = 'Accessibility statement'
 
 export const accessibilityController = {
-  handler(_request, h) {
+  handler (_request, h) {
     return h.view('accessibility/index', {
       pageTitle: ACCESSIBILITY_STATEMENT,
       heading: ACCESSIBILITY_STATEMENT,
