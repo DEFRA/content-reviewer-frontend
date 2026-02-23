@@ -22,26 +22,6 @@
       </div>
 
       <!-- AI Review Content -->
-      <!-- 🔍 DEBUG: Show data structure for debugging -->
-      <details class="govuk-details" data-module="govuk-details">
-        <summary class="govuk-details__summary">
-          <span class="govuk-details__summary-text">
-            🔍 DEBUG: Review Data Structure
-          </span>
-        </summary>
-        <div class="govuk-details__text">
-          <pre style="background: #f3f2f1; padding: 10px; overflow: auto; max-height: 300px;">
-results exists: {{ 'true' if results else 'false' }}
-results.result exists: {{ 'true' if results.result else 'false' }}
-results.result.reviewData exists: {{ 'true' if results.result.reviewData else 'false' }}
-results.result.reviewData type: {{ results.result.reviewData.__class__.__name__ if results.result.reviewData else 'N/A' }}
-
-Full results object:
-{{ results | dump(2) }}
-          </pre>
-        </div>
-      </details>
-
       {% if results.result and results.result.reviewData %}
         <div class="review-results-container">
           {% set reviewData = results.result.reviewData %}
