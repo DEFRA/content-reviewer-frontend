@@ -2,7 +2,7 @@
 
 {% block head %}
   {{ super() }}
-  <style>
+  <style nonce="{{ cspNonce }}">
     /* Animated loading dots */
     .loading-dots {
       display: inline-block;
@@ -29,11 +29,6 @@
       transition: width 0.3s ease;
       width: 0%;
     }
-    .text-align-right { text-align: right; }
-    .margin-bottom-0 { margin-bottom: 0; }
-    .inline-block { display: inline-block; }
-    .margin-right-10 { margin-right: 10px; }
-    .width-auto { width: auto; }
   </style>
 {% endblock %}
 
@@ -66,16 +61,20 @@
       {% if uploadError %}
       <div class="govuk-error-summary" aria-labelledby="error-summary-title" role="alert" tabindex="-1" data-module="govuk-error-summary">
         <h2 class="govuk-error-summary__title" id="error-summary-title">
-          Upload failed
+          There is a problem
         </h2>
         <div class="govuk-error-summary__body">
-          <p class="govuk-body">{{ uploadError }}</p>
+          <ul class="govuk-list govuk-error-summary__list">
+            <li>
+              <a href="#text-content">{{ errorMessage }}</a>
+            </li>
+          </ul>
         </div>
       </div>
       {% endif %}
 
       <p class="govuk-body">
-        Upload a document or paste content below for review. The content will be analyzed for clarity, formatting and compliance with GOV.UK standards.
+        Type or paste content below for review. The content will be analyzed for clarity, formatting and compliance with GOV.UK standards.
       </p>
 
       <!-- Content Review Form -->
@@ -83,14 +82,7 @@
         <form id="uploadForm" enctype="multipart/form-data">
           
           <!-- Upload Error Message (Dynamic) -->
-          <div id="uploadError" class="govuk-error-summary" hidden aria-labelledby="error-summary-title" role="alert" tabindex="-1">
-            <h2 class="govuk-error-summary__title" id="error-summary-title">
-              Upload failed
-            </h2>
-            <div class="govuk-error-summary__body">
-              <p class="govuk-body" id="errorMessage"></p>
-            </div>
-          </div>
+
 
           <!-- Upload Success Message (Dynamic) -->
           <div id="uploadSuccess" class="govuk-notification-banner govuk-notification-banner--success" role="alert" hidden>
@@ -117,18 +109,30 @@
           </div> -->
 
           <!-- Text Content Option -->
-          <div class="govuk-form-group" id="textFormGroup">
+          <div class="govuk-form-group{% if errorMessage %} govuk-form-group--error{% endif %}" id="textFormGroup">
             <label class="govuk-label govuk-label--s" for="text-content">
-              Or type/paste your content directly
+              Type or paste your content for review
             </label>
+            <div class="govuk-hint" id="more-detail-int">
+              Do not include personal or financial information, like your National Insurance number or credit card details
+            </div>
+            <div class="govuk-error-summary__body" id="uploadError" hidden>
+              <p class="govuk-error-message" id="errorMessage" style="font-weight:bold; color:#d4351c;"></p>
+            </div>
+            {% if errorMessage %}
+              <p id="text-content-error" class="govuk-error-message" style="font-weight:bold; color:#d4351c;">
+                <span class="govuk-visually-hidden">Error:</span> {{ errorMessage }}
+              </p>
+            {% endif %}
             <textarea 
-              class="govuk-textarea" 
+              class="govuk-textarea{% if errorMessage %} govuk-textarea--error{% endif %}" 
               id="text-content" 
               name="textContent" 
               rows="8" 
               placeholder="Type or paste content here..."
-              aria-describedby="text-content-hint"
-            ></textarea>
+              aria-describedby="more-detail-int{% if errorMessage %} text-content-error{% endif %}"
+            >{{ textContent }}</textarea>
+            <div id="characterCountMessage" class="govuk-hint govuk-!-margin-top-2" aria-live="polite"></div>
           </div>
           
           <button 
@@ -137,7 +141,7 @@
             data-module="govuk-button"
             id="uploadButton"
           >
-            Review Content
+            Review content
           </button>
 
           <!-- Upload Progress Indicator -->
@@ -154,50 +158,51 @@
       </div>
 
       <!-- Document Review History Table -->
-      <div class="govuk-grid-row govuk-!-margin-top-8">
-        <div class="govuk-grid-column-one-half">
-          <h2 class="govuk-heading-m">Review History</h2>
+      <div class="govuk-!-margin-top-8">
+        <div class="govuk-grid-row">
+          <div class="govuk-grid-column-one-half">
+            <h2 class="govuk-heading-m">Review History</h2>
+          </div>
+          <div class="govuk-grid-column-one-half" style="text-align: right;">
+            <form id="reviewLimitForm" method="get" class="govuk-form-group" style="display: inline-block; text-align: left; margin-bottom: 0;">
+              <label class="govuk-label govuk-!-margin-bottom-1" for="reviewLimit">
+                Show latest
+              </label>
+              <select class="govuk-select" id="reviewLimit" name="limit" style="width: auto;">
+                <option value="5" {% if (currentLimit == 5) %}selected{% endif %}>5 reviews</option>
+                <option value="10" {% if (currentLimit == 10) %}selected{% endif %}>10 reviews</option>
+                <option value="50" {% if (currentLimit == 50) %}selected{% endif %}>50 reviews</option>
+                <option value="100" {% if (currentLimit == 100) %}selected{% endif %}>100 reviews</option>
+              </select>
+            </form>
+          </div>
         </div>
-        <div class="govuk-grid-column-one-half text-align-right">
-          <form id="reviewLimitForm" method="get" style="display:inline">
-            <label class="govuk-label inline-block margin-right-10" for="reviewLimit">
-              Show:
-            </label>
-            <select class="govuk-select width-auto inline-block" id="reviewLimit" name="limit" onchange="document.getElementById('reviewLimitForm').submit()">
-              <option value="5" {% if (query.limit|default(5) == 5) %}selected{% endif %}>5 reviews</option>
-              <option value="10" {% if (query.limit|default(5) == 10) %}selected{% endif %}>10 reviews</option>
-              <option value="50" {% if (query.limit|default(5) == 50) %}selected{% endif %}>50 reviews</option>
-              <option value="100" {% if (query.limit|default(5) == 100) %}selected{% endif %}>100 reviews</option>
-            </select>
-          </form>
-        </div>
+        <div class="govuk-!-margin-bottom-6"></div>
       </div>
         
       <table class="govuk-table" id="reviewHistoryTable">
+        <caption class="govuk-visually-hidden">Review History</caption>
         <thead class="govuk-table__head">
           <tr class="govuk-table__row">
-            <th scope="col" class="govuk-table__header">Uploaded Document</th>
-            <th scope="col" class="govuk-table__header">Method</th>
+            <th scope="col" class="govuk-table__header">Uploaded Content</th>
             <th scope="col" class="govuk-table__header">Status</th>
             <th scope="col" class="govuk-table__header">Timestamp</th>
             <th scope="col" class="govuk-table__header">Result</th>
+            <th scope="col" class="govuk-table__header">Actions</th>
           </tr>
         </thead>
         <tbody class="govuk-table__body" id="reviewHistoryBody">
           {% if reviewHistory and reviewHistory.length > 0 %}
             {% for review in reviewHistory %}
-            <tr class="govuk-table__row">
+            <tr class="govuk-table__row" data-review-id="{{ review.reviewId or review.id }}">
               <td class="govuk-table__cell">{{ review.filename }}</td>
-              <td class="govuk-table__cell">Review Content</td>
               <td class="govuk-table__cell">
                 {% if review.status === 'completed' %}
                   <strong class="govuk-tag govuk-tag--green">Completed</strong>
-                {% elif review.status === 'processing' or review.status === 'analyzing' or review.status === 'reviewing' %}
-                  <strong class="govuk-tag govuk-tag--blue">{{ review.status | title }}<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></strong>
-                {% elif review.status === 'queued' %}
-                  <strong class="govuk-tag govuk-tag--yellow">Queued<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></strong>
-                {% elif review.status === 'uploading' or review.status === 'uploaded' %}
-                  <strong class="govuk-tag govuk-tag--grey">{{ review.status | title }}<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></strong>
+                {% elif review.status === 'processing' %}
+                  <strong class="govuk-tag govuk-tag--blue">Processing...</strong>
+                {% elif review.status === 'pending' %}
+                  <strong class="govuk-tag govuk-tag--yellow">Pending...</strong>
                 {% elif review.status === 'failed' %}
                   <strong class="govuk-tag govuk-tag--red">Failed</strong>
                 {% else %}
@@ -219,16 +224,28 @@
                     <span class="govuk-hint">Missing review ID</span>
                   {% endif %}
                 {% elif review.status === 'failed' %}
-                  <span class="govuk-error-message">Review failed</span>
-                {% elif review.status === 'processing' or review.status === 'analyzing' or review.status === 'reviewing' %}
-                  <span class="govuk-body">{{ review.status | title }}<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></span>
-                {% elif review.status === 'queued' %}
-                  <span class="govuk-body">Queued<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></span>
-                {% elif review.status === 'uploading' or review.status === 'uploaded' %}
-                  <span class="govuk-body">{{ review.status | title }}<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></span>
+                  {% if review.errorMessage %}
+                    <span class="govuk-error-message">Review Failed ({{ review.errorMessage }})</span>
+                  {% else %}
+                    <span class="govuk-error-message">Review Failed</span>
+                  {% endif %}
+                {% elif review.status === 'processing' %}
+                  <span class="govuk-body">Processing...</span>
+                {% elif review.status === 'pending' %}
+                  <span class="govuk-body">Pending...</span>
                 {% else %}
                   <span class="govuk-body">{{ review.status }}</span>
                 {% endif %}
+              </td>
+              <td class="govuk-table__cell">
+                <button 
+                  class="govuk-button govuk-button--warning delete-review-btn" 
+                  data-review-id="{{ review.reviewId or review.id }}"
+                  data-filename="{{ review.filename }}"
+                  data-module="govuk-button"
+                  type="button">
+                  Delete
+                </button>
               </td>
             </tr>
             {% endfor %}
@@ -242,6 +259,81 @@
         </tbody>
       </table>
 
+      <!-- Pagination Controls -->
+      {% if currentLimit > 25 and pagination and pagination.totalReviews > 25 %}
+      <nav class="govuk-pagination" role="navigation" aria-label="Pagination">
+        <ul class="govuk-pagination__list">
+          <!-- Previous -->
+          <li class="govuk-pagination__item govuk-pagination__item--prev">
+            {% if pagination.hasPreviousPage %}
+              <a class="govuk-link govuk-pagination__link" href="?limit={{ currentLimit }}&page={{ pagination.currentPage - 1 }}" rel="prev">
+                <svg class="govuk-pagination__icon govuk-pagination__icon--prev" xmlns="http://www.w3.org/2000/svg" height="13" width="15" aria-hidden="true" focusable="false" viewBox="0 0 15 13">
+                  <path d="m6.5938-0.0078125-6.7266 6.7266 6.7441 6.4062 1.377-1.449-4.1856-3.9768h12.896v-2h-12.984l4.2931-4.293-1.414-1.414z"></path>
+                </svg>
+                <span class="govuk-pagination__link-title">
+                  Previous<span class="govuk-visually-hidden"> page</span>
+                </span>
+              </a>
+            {% else %}
+              <span class="govuk-pagination__link govuk-pagination__link--disabled">
+                <svg class="govuk-pagination__icon govuk-pagination__icon--prev" xmlns="http://www.w3.org/2000/svg" height="13" width="15" aria-hidden="true" focusable="false" viewBox="0 0 15 13">
+                  <path d="m6.5938-0.0078125-6.7266 6.7266 6.7441 6.4062 1.377-1.449-4.1856-3.9768h12.896v-2h-12.984l4.2931-4.293-1.414-1.414z"></path>
+                </svg>
+                <span class="govuk-pagination__link-title">
+                  Previous<span class="govuk-visually-hidden"> page</span>
+                </span>
+              </span>
+            {% endif %}
+          </li>
+          <!-- Page Numbers -->
+          {% for page in range(1, pagination.totalPages + 1) %}
+            <li class="govuk-pagination__item{% if page == pagination.currentPage %} govuk-pagination__item--current{% endif %}">
+              {% if page == pagination.currentPage %}
+                <a class="govuk-link govuk-pagination__link" href="?limit={{ currentLimit }}&page={{ page }}" aria-current="page">{{ page }}</a>
+              {% else %}
+                <a class="govuk-link govuk-pagination__link" href="?limit={{ currentLimit }}&page={{ page }}">{{ page }}</a>
+              {% endif %}
+            </li>
+          {% endfor %}
+          <!-- Next -->
+          <li class="govuk-pagination__item govuk-pagination__item--next">
+            {% if pagination.hasNextPage %}
+              <a class="govuk-link govuk-pagination__link" href="?limit={{ currentLimit }}&page={{ pagination.currentPage + 1 }}" rel="next">
+                <span class="govuk-pagination__link-title">
+                  Next<span class="govuk-visually-hidden"> page</span>
+                </span>
+                <svg class="govuk-pagination__icon govuk-pagination__icon--next" xmlns="http://www.w3.org/2000/svg" height="13" width="15" aria-hidden="true" focusable="false" viewBox="0 0 15 13">
+                  <path d="m8.107-0.0078125-1.4136 1.414 4.2926 4.293h-12.986v2h12.896l-4.1855 3.9766 1.377 1.4492 6.7441-6.4062-6.7246-6.7266z"></path>
+                </svg>
+              </a>
+            {% else %}
+              <span class="govuk-pagination__link govuk-pagination__link--disabled">
+                <span class="govuk-pagination__link-title">
+                  Next<span class="govuk-visually-hidden"> page</span>
+                </span>
+                <svg class="govuk-pagination__icon govuk-pagination__icon--next" xmlns="http://www.w3.org/2000/svg" height="13" width="15" aria-hidden="true" focusable="false" viewBox="0 0 15 13">
+                  <path d="m8.107-0.0078125-1.4136 1.414 4.2926 4.293h-12.986v2h12.896l-4.1855 3.9766 1.377 1.4492 6.7441-6.4062-6.7246-6.7266z"></path>
+                </svg>
+              </span>
+            {% endif %}
+          </li>
+        </ul>
+      </nav>
+      {% endif %}
+      
+      <!-- Pagination Info Message -->
+      {% if pagination %}
+      <p class="govuk-body govuk-!-font-size-19 govuk-!-margin-top-3">
+        {% if currentLimit <= 25 %}
+          Showing {{ reviewHistory.length }} of {{ pagination.totalReviews }} reviews
+        {% else %}
+          Showing {{ (pagination.currentPage - 1) * pagination.pageSize + 1 }} to 
+          {{ [pagination.currentPage * pagination.pageSize, pagination.totalReviews] | min }} 
+          of {{ pagination.totalReviews }} reviews
+        {% endif %}
+      </p>
+      {% endif %}
+
     </div>
   </div>
 
@@ -252,107 +344,192 @@
   <script nonce="{{ cspNonce }}" src="{{ getAssetPath('upload-handler.js') }}"></script>
   <!--
   <script nonce="{{ cspNonce }}">
-    console.log('[HOME] Page loaded at', new Date().toISOString());
-    console.log('[HOME] Backend URL:', window.APP_CONFIG?.backendApiUrl);
-    console.log('[HOME] Cache buster:', '{{ cacheBuster }}');
+    // Make content review max character length available to upload-handler.js
+    window.contentReviewMaxCharLength = {{ contentReviewMaxCharLength }};
+    
+    console.log('[HOME] Page loaded with data:', {
+      currentLimit: {{ currentLimit }},
+      currentPage: {{ pagination.currentPage }},
+      pageSize: {{ pagination.pageSize }},
+      totalReviews: {{ pagination.totalReviews }},
+      totalPages: {{ pagination.totalPages }},
+      reviewHistoryLength: {{ reviewHistory | length }},
+      hasPreviousPage: {{ pagination.hasPreviousPage | dump }},
+      hasNextPage: {{ pagination.hasNextPage | dump }},
+      contentReviewMaxCharLength: {{ contentReviewMaxCharLength }}
+    });
+    
+    console.log('[HOME] Review history items on initial load:');
+    {% for review in reviewHistory %}
+    console.log('  - {{ review.filename | safe }} ({{ review.status }})');
+    {% endfor %}
+    
+    console.log('[HOME] Page loaded');
     // ============ AUTO-REFRESH LOGIC ============
     // Note: Upload form handling is now in upload-handler.js
     // Auto-refresh state
     let autoRefreshInterval = null;
     let isRefreshing = false;
+    let currentAbortController = null;
+    let isPageUnloading = false;
     
     // Get the current limit from dropdown
     function getCurrentLimit() {
       const limitSelect = document.getElementById('reviewLimit');
-      return parseInt(limitSelect?.value, 20);
+      return parseInt(limitSelect?.value, 5);
     }
     
     // Add event listener to dropdown
     const limitSelect = document.getElementById('reviewLimit');
     if (limitSelect) {
-      limitSelect.addEventListener('change', async function() {
-        console.log('Review limit changed to:', this.value);
-        await updateReviewHistory();
+      limitSelect.addEventListener('change', function() {
+        this.form.submit();
       });
     }
     
     // Function to update review history without page reload
     async function updateReviewHistory() {
-      if (isRefreshing) return; // Prevent concurrent requests
+      // Prevent fetches during page unload/navigation
+      // Auto-refresh continues even when page is hidden/navigated away
+      if (isRefreshing || isPageUnloading) {
+        return;
+      }
       
       isRefreshing = true;
+      
+      // Cancel any existing request
+      if (currentAbortController) {
+        currentAbortController.abort();
+      }
+      
+      // Create new abort controller for this request
+      currentAbortController = new AbortController();
+      
       try {
-        const backendUrl = window.APP_CONFIG?.backendApiUrl || 'http://localhost:3001';
         const limit = document.getElementById('reviewLimit')?.value || 5;
-        const response = await fetch(`${backendUrl}/api/reviews?limit=${limit}`, {
+        // Get current page from URL or default to 1
+        const urlParams = new URLSearchParams(window.location.search);
+        const currentPage = parseInt(urlParams.get('page')) || 1;
+        
+        // Build API URL with page parameter for proper pagination
+        let apiUrl = `/api/reviews?limit=${limit}`;
+        
+        // Include page parameter for paginated views (limit > 25)
+        if (limit > 25 && currentPage > 1) {
+          apiUrl += `&page=${currentPage}`;
+        }
+        
+        console.log('[HOME] Auto-refresh fetching:', { limit, currentPage, apiUrl });
+        
+        // Call frontend proxy route instead of backend directly to avoid CORS issues
+        const response = await fetch(apiUrl, {
           method: 'GET',
           headers: {
             'Accept': 'application/json'
-          }
+          },
+          signal: currentAbortController.signal
         })
         
         if (!response.ok) {
-          console.error('Failed to fetch review history: HTTP', response.status);
+          console.error('[HOME] Failed to fetch review history:', response.status);
           // Stop auto-refresh on error to prevent spam
           if (autoRefreshInterval) {
             clearInterval(autoRefreshInterval);
             autoRefreshInterval = null;
-            console.log('Auto-refresh stopped due to fetch error');
           }
           return;
         }
         
         const data = await response.json();
-        console.log('Review history updated:', data.reviews ? data.reviews.length : 0, 'items');
+        
         // Normalize review data for client-side rendering
-        const normalized = (data.reviews || []).map(r => ({
-          ...r,
-          filename: r.fileName || r.filename || 'Text Content',
-          uploadedAt: r.createdAt || r.updatedAt || r.uploadedAt || null
-        }));
+        const normalized = (data.reviews || []).map(r => {
+          // Determine filename - preserve the original if it exists
+          let displayFilename = r.fileName || r.filename;
+          
+          // If fileName/filename is missing or empty for text content, use first 10 chars
+          if (!displayFilename || displayFilename === 'Text Content') {
+            // Try to get from content if available, otherwise keep 'Text Content'
+            displayFilename = r.fileName || r.filename || 'Text Content';
+          }
+          
+          return {
+            ...r,
+            filename: displayFilename,
+            // Use lastModified (S3 LastModified) for most accurate timestamp
+            uploadedAt: r.lastModified || r.updatedAt || r.createdAt || null
+          };
+        });
 
-        // Update the table
-        updateReviewTable(normalized);
-        // Check if there are still active reviews
-        const hasActiveReviews = normalized.some(r => 
-          ['processing', 'analyzing', 'queued', 'reviewing', 'downloading', 'finalizing', 'uploaded', 'uploading'].includes(r.status)
-        );
+        // For paginated views (limit > 25), backend already returns the correct page
+        // For non-paginated views (limit <= 25), show all items
+        let pagedReviews;
+        
+        if (limit > 25) {
+          // Backend pagination: API already returned the correct page's data
+          pagedReviews = normalized;
+          console.log('[HOME] Using backend-paginated data:', {
+            currentPage,
+            receivedItems: normalized.length,
+            expectedPageSize: 25
+          });
+        } else {
+          // No pagination needed: show all returned items
+          pagedReviews = normalized;
+        }
+
+        // Update the table with the review data
+        updateReviewTable(pagedReviews);
+        
+        // Check if there are still active reviews (pending or processing, not completed or failed)
+        const activeReviews = normalized.filter(r => {
+          const status = (r.status || '').toLowerCase();
+          return status === 'pending' || status === 'processing';
+        });
+        
+        const hasActiveReviews = activeReviews.length > 0;
+        
+        // Log status check results for debugging
+        console.log('[HOME] Status check:', {
+          totalReviews: normalized.length,
+          activeCount: activeReviews.length,
+          statuses: normalized.map(r => ({ id: r.id || r.reviewId, status: r.status })),
+          hasActiveReviews
+        });
+        
         // Hide success message if no active reviews (all completed)
         if (!hasActiveReviews && uploadSuccess) {
           uploadSuccess.hidden = true;
         }
+        
         // Stop auto-refresh if no active reviews
         if (!hasActiveReviews && autoRefreshInterval) {
-          console.log('No more active reviews - doing one final refresh in 3 seconds before stopping auto-refresh');
+          console.log('[HOME] Auto-refresh stopped - all reviews completed or failed');
           clearInterval(autoRefreshInterval);
           autoRefreshInterval = null;
-          setTimeout(async () => {
-            await updateReviewHistory();
-            // After final refresh, check again for active reviews
-            const stillActive = (window.lastReviewData || []).some(r => 
-              ['processing', 'analyzing', 'queued', 'reviewing', 'downloading', 'finalizing', 'uploaded', 'uploading'].includes(r.status)
-            );
-            if (stillActive) {
-              // If still active, restart auto-refresh
-              startAutoRefresh();
-            } else {
-              console.log('Final refresh done, auto-refresh stopped.');
-            }
-          }, 3000);
+        } else if (hasActiveReviews && !autoRefreshInterval) {
+          // Restart auto-refresh if new active reviews appeared
+          console.log('[HOME] Active reviews detected, restarting auto-refresh');
+          startAutoRefresh();
         }
-        // Store last review data for re-check
+        
+        // Store last review data for reference
         window.lastReviewData = normalized;
         
       } catch (error) {
-        console.error('Error updating review history:', error);
-        // Stop auto-refresh on network error to prevent continuous failed requests
-        if (autoRefreshInterval) {
-          clearInterval(autoRefreshInterval);
-          autoRefreshInterval = null;
-          console.log('Auto-refresh stopped due to network error');
+        // Only log error if it's not an abort (which happens during navigation)
+        if (error.name !== 'AbortError') {
+          console.error('[HOME] Error updating review history:', error);
+          // Stop auto-refresh on network error to prevent continuous failed requests
+          if (autoRefreshInterval) {
+            clearInterval(autoRefreshInterval);
+            autoRefreshInterval = null;
+          }
         }
+        // Silently ignore AbortError - it's expected during page navigation
       } finally {
         isRefreshing = false;
+        currentAbortController = null;
       }
     }
     
@@ -380,17 +557,29 @@
         cell.removeChild(cell.firstChild);
       }
       
-      if (statusLower === 'processing' || statusLower === 'analyzing' || statusLower === 'reviewing') {
-        cell.appendChild(createLoadingDots());
+      // Map status to display text with three dots
+      let displayText = '';
+      if (statusLower === 'processing') {
+        displayText = 'Processing...';
+      } else if (statusLower === 'analyzing') {
+        displayText = 'Analyzing...';
+      } else if (statusLower === 'reviewing') {
+        displayText = 'Reviewing...';
+      } else if (statusLower === 'downloading') {
+        displayText = 'Downloading...';
+      } else if (statusLower === 'finalizing') {
+        displayText = 'Finalizing...';
       } else if (statusLower === 'queued') {
-        cell.textContent = 'Queued';
-        cell.appendChild(createLoadingDots());
-      } else if (statusLower === 'uploading' || statusLower === 'uploaded') {
-        cell.textContent = 'Uploading';
-        cell.appendChild(createLoadingDots());
+        displayText = 'Queued...';
+      } else if (statusLower === 'uploading') {
+        displayText = 'Uploading...';
+      } else if (statusLower === 'uploaded') {
+        displayText = 'Uploaded...';
       } else {
-        cell.textContent = status;
+        displayText = status;
       }
+      
+      cell.textContent = displayText;
     }
     
     // Update the review table with new data
@@ -398,153 +587,481 @@
       const tbody = document.getElementById('reviewHistoryBody');
       
       if (!reviews || reviews.length === 0) {
-        tbody.innerHTML = '<tr class="govuk-table__row"><td class="govuk-table__cell" colspan="5"><p class="govuk-body">No review history available.</p></td></tr>';
+        tbody.innerHTML = '<tr class="govuk-table__row"><td class="govuk-table__cell" colspan="4"><p class="govuk-body">No review history available.</p></td></tr>';
         return;
       }
       
-      tbody.innerHTML = '';
+      // Build a Map of existing rows for quick lookup, keyed by reviewId
+      const existingRows = new Map();
+      Array.from(tbody.querySelectorAll('tr[data-review-id]')).forEach(row => {
+        const reviewId = row.getAttribute('data-review-id');
+        if (reviewId) {
+          existingRows.set(reviewId, row);
+        }
+      });
       
-      reviews.forEach(review => {
-        const row = document.createElement('tr');
-        row.className = 'govuk-table__row';
+      // Process all reviews from the server response
+      reviews.forEach((review, index) => {
+        const reviewId = review.reviewId || review.id;
+        const existingRow = existingRows.get(reviewId);
         
-        // Filename
-        const filenameCell = document.createElement('td');
-        filenameCell.className = 'govuk-table__cell';
-        filenameCell.textContent = review.filename || 'N/A';
-        row.appendChild(filenameCell);
-        
-        // Method
-        const methodCell = document.createElement('td');
-        methodCell.className = 'govuk-table__cell';
-        methodCell.textContent = 'Review Content';
-        row.appendChild(methodCell);
-        
-        // Status
-        const statusCell = document.createElement('td');
-        statusCell.className = 'govuk-table__cell';
-        const statusTag = document.createElement('strong');
-        statusTag.className = 'govuk-tag';
-        
-        const status = (review.status || '').toLowerCase();
-        if (status === 'completed') {
-          statusTag.classList.add('govuk-tag--green');
-          statusTag.textContent = 'Completed';
-        } else if (['processing', 'analyzing', 'reviewing'].includes(status)) {
-          statusTag.classList.add('govuk-tag--blue');
-          createStatusContent(statusTag, review.status);
-        } else if (status === 'queued') {
-          statusTag.classList.add('govuk-tag--yellow');
-          createStatusContent(statusTag, 'Queued');
-        } else if (['uploading', 'uploaded'].includes(status)) {
-          statusTag.classList.add('govuk-tag--grey');
-          createStatusContent(statusTag, review.status);
-        } else if (status === 'failed') {
-          statusTag.classList.add('govuk-tag--red');
-          statusTag.textContent = 'Failed';
-        } else {
-          statusTag.classList.add('govuk-tag--grey');
-          statusTag.textContent = review.status ? review.status.charAt(0).toUpperCase() + review.status.slice(1) : 'Unknown';
-        }
-        
-        statusCell.appendChild(statusTag);
-        row.appendChild(statusCell);
-        
-        // Timestamp
-        const timestampCell = document.createElement('td');
-        timestampCell.className = 'govuk-table__cell';
-        if (review.uploadedAt) {
-          const date = new Date(review.uploadedAt);
-          timestampCell.textContent = date.toLocaleString('en-GB', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-          });
-        } else {
-          timestampCell.textContent = 'N/A';
-        }
-        row.appendChild(timestampCell);
-        
-        // Result
-        const resultCell = document.createElement('td');
-        resultCell.className = 'govuk-table__cell';
-        
-        if (status === 'completed') {
-          const link = document.createElement('a');
-          const reviewIdentifier = review.reviewId || review.id;
-          if (!reviewIdentifier) {
-            link.textContent = 'Missing ID';
-            link.removeAttribute('href');
-          } else {
-            link.href = `/review/results/${reviewIdentifier}`;
+        if (existingRow) {
+          // Row already exists - just update the dynamic cells (Status, Timestamp, Result)
+          const cells = existingRow.querySelectorAll('td');
+          // cells[0] = Document Name (keep unchanged)
+          // cells[1] = Status (update)
+          // cells[2] = Timestamp (update to S3 LastModified)
+          // cells[3] = Result (update)
+          // cells[4] = Actions (keep unchanged)
+          
+          if (cells[1]) {
+            updateStatusCell(cells[1], review);
           }
+          
+          // Update timestamp to S3 LastModified for accuracy
+          if (cells[2] && review.uploadedAt) {
+            const date = new Date(review.uploadedAt);
+            cells[2].textContent = date.toLocaleString('en-GB', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            });
+          }
+          
+          if (cells[3]) {
+            updateResultCell(cells[3], review);
+          }
+          
+          // Mark this row as processed
+          existingRows.delete(reviewId);
+        } else {
+          // New review - create a complete new row and add it to the table
+          const row = createReviewRow(review);
+          tbody.appendChild(row);
+          
+          // Attach delete handler immediately for the new row
+          const deleteBtn = row.querySelector('.delete-review-btn');
+          if (deleteBtn) {
+            deleteBtn.addEventListener('click', async function() {
+              const reviewId = this.getAttribute('data-review-id');
+              const filename = this.getAttribute('data-filename');
+              
+              // Disable button during deletion
+              this.disabled = true;
+              const originalText = this.textContent;
+              this.textContent = 'Deleting...';
+              
+              await deleteReview(reviewId, filename);
+              
+              // Re-enable button (if row still exists)
+              if (document.contains(this)) {
+                this.disabled = false;
+                this.textContent = originalText;
+              }
+            });
+          }
+        }
+      });
+      
+      // Attach delete handlers after updating table (for any existing buttons)
+      attachDeleteHandlers();
+      
+      // Remove rows that are no longer in the response, BUT keep active reviews
+      // that were just added client-side (they may not be in backend yet due to S3 delay)
+      existingRows.forEach((row, reviewId) => {
+        const statusCell = row.querySelector('.govuk-tag');
+        const isPending = statusCell && statusCell.classList.contains('govuk-tag--yellow');
+        const isProcessing = statusCell && statusCell.classList.contains('govuk-tag--blue');
+        
+        // Keep pending/processing reviews that might not be in backend yet
+        // Remove only completed/failed reviews that disappeared from the limit
+        if (!isPending && !isProcessing) {
+          row.remove();
+        }
+      });
+      
+      // Enforce strict limit: Sort all rows by timestamp and keep only the most recent {limit}
+      const currentLimit = parseInt(document.getElementById('reviewLimit')?.value || '5', 10);
+      const allRows = Array.from(tbody.querySelectorAll('tr[data-review-id]'));
+      
+      // Sort rows by timestamp (extract from 3rd cell)
+      allRows.sort((a, b) => {
+        const aTimestamp = a.cells[2]?.textContent.trim();
+        const bTimestamp = b.cells[2]?.textContent.trim();
+        
+        // Parse UK format: "DD/MM/YYYY, HH:MM"
+        const parseUKDate = (str) => {
+          if (!str || str === 'N/A') return new Date(0);
+          const [datePart, timePart] = str.split(', ');
+          const [day, month, year] = datePart.split('/');
+          return new Date(`${year}-${month}-${day}T${timePart}:00`);
+        };
+        
+        const aDate = parseUKDate(aTimestamp);
+        const bDate = parseUKDate(bTimestamp);
+        
+        return bDate - aDate; // Most recent first
+      });
+      
+      // Reorder rows in the DOM (most recent first)
+      allRows.forEach((row, index) => {
+        tbody.appendChild(row); // This moves the row to the end, maintaining sorted order
+      });
+      
+      // Keep only the top {limit} rows, remove the rest (oldest ones)
+      if (allRows.length > currentLimit) {
+        allRows.slice(currentLimit).forEach(row => row.remove());
+      }
+    }
+    
+    // Helper function to create a complete review row (for new reviews)
+    function createReviewRow(review) {
+      const row = document.createElement('tr');
+      row.className = 'govuk-table__row';
+      const reviewId = review.reviewId || review.id;
+      row.setAttribute('data-review-id', reviewId);
+      
+      // Document Name (cell 0)
+      const filenameCell = document.createElement('td');
+      filenameCell.className = 'govuk-table__cell';
+      filenameCell.textContent = review.filename || 'N/A';
+      row.appendChild(filenameCell);
+      
+      // Status (cell 1)
+      const statusCell = document.createElement('td');
+      statusCell.className = 'govuk-table__cell';
+      updateStatusCell(statusCell, review);
+      row.appendChild(statusCell);
+      
+      // Timestamp (cell 2)
+      const timestampCell = document.createElement('td');
+      timestampCell.className = 'govuk-table__cell';
+      const timestamp = review.uploadedAt || review.createdAt || review.updatedAt;
+      
+      if (timestamp) {
+        const date = new Date(timestamp);
+        timestampCell.textContent = date.toLocaleString('en-GB', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      } else {
+        timestampCell.textContent = 'N/A';
+      }
+      row.appendChild(timestampCell);
+      
+      // Result (cell 3)
+      const resultCell = document.createElement('td');
+      resultCell.className = 'govuk-table__cell';
+      updateResultCell(resultCell, review);
+      row.appendChild(resultCell);
+      
+      // Actions (cell 4) - Delete button
+      const actionsCell = document.createElement('td');
+      actionsCell.className = 'govuk-table__cell';
+      
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'govuk-button govuk-button--warning delete-review-btn';
+      deleteBtn.setAttribute('data-review-id', reviewId);
+      deleteBtn.setAttribute('data-filename', review.filename || 'Unknown');
+      deleteBtn.setAttribute('data-module', 'govuk-button');
+      deleteBtn.setAttribute('type', 'button');
+      deleteBtn.textContent = 'Delete';
+      actionsCell.appendChild(deleteBtn);
+      row.appendChild(actionsCell);
+      
+      return row;
+    }
+    
+    // Helper function to update the Status cell
+    function updateStatusCell(cell, review) {
+      // Clear existing content
+      cell.innerHTML = '';
+      
+      const statusTag = document.createElement('strong');
+      statusTag.className = 'govuk-tag';
+      
+      const status = (review.status || '').toLowerCase();
+      if (status === 'completed') {
+        statusTag.classList.add('govuk-tag--green');
+        statusTag.textContent = 'Completed';
+      } else if (status === 'processing') {
+        statusTag.classList.add('govuk-tag--blue');
+        createStatusContent(statusTag, 'Processing');
+      } else if (status === 'pending') {
+        statusTag.classList.add('govuk-tag--yellow');
+        createStatusContent(statusTag, 'Pending');
+      } else if (status === 'failed') {
+        statusTag.classList.add('govuk-tag--red');
+        statusTag.textContent = 'Failed';
+      } else {
+        statusTag.classList.add('govuk-tag--grey');
+        statusTag.textContent = review.status ? review.status.charAt(0).toUpperCase() + review.status.slice(1) : 'Unknown';
+      }
+      
+      cell.appendChild(statusTag);
+    }
+    
+    // Helper function to update the Result cell
+    function updateResultCell(cell, review) {
+      // Clear existing content
+      cell.innerHTML = '';
+      
+      const status = (review.status || '').toLowerCase();
+      
+      if (status === 'completed') {
+        const link = document.createElement('a');
+        const reviewIdentifier = review.reviewId || review.id;
+        if (!reviewIdentifier) {
+          const span = document.createElement('span');
+          span.className = 'govuk-hint';
+          span.textContent = 'Missing review ID';
+          cell.appendChild(span);
+        } else {
+          link.href = `/review/results/${reviewIdentifier}`;
           link.className = 'govuk-link';
           link.textContent = 'View results';
-          resultCell.appendChild(link);
-        } else if (status === 'failed') {
-          const errorSpan = document.createElement('span');
-          errorSpan.className = 'govuk-error-message';
-          errorSpan.textContent = 'Review failed';
-          resultCell.appendChild(errorSpan);
-        } else if (['processing', 'analyzing', 'reviewing'].includes(status)) {
-          const span = document.createElement('span');
-          span.className = 'govuk-body';
-          createStatusContent(span, review.status);
-          resultCell.appendChild(span);
-        } else if (status === 'queued') {
-          const span = document.createElement('span');
-          span.className = 'govuk-body';
-          createStatusContent(span, 'Queued');
-          resultCell.appendChild(span);
-        } else if (['uploading', 'uploaded'].includes(status)) {
-          const span = document.createElement('span');
-          span.className = 'govuk-body';
-          createStatusContent(span, review.status);
-          resultCell.appendChild(span);
+          cell.appendChild(link);
+        }
+      } else if (status === 'failed') {
+        const errorSpan = document.createElement('span');
+        errorSpan.className = 'govuk-error-message';
+        if (review.errorMessage) {
+          errorSpan.textContent = `Review Failed (${review.errorMessage})`;
         } else {
-          resultCell.textContent = review.status || 'Unknown';
+          errorSpan.textContent = 'Review Failed';
+        }
+        cell.appendChild(errorSpan);
+      } else if (status === 'processing') {
+        const span = document.createElement('span');
+        span.className = 'govuk-body';
+        createStatusContent(span, 'Processing');
+        cell.appendChild(span);
+      } else if (status === 'pending') {
+        const span = document.createElement('span');
+        span.className = 'govuk-body';
+        createStatusContent(span, 'Pending');
+        cell.appendChild(span);
+      } else {
+        const span = document.createElement('span');
+        span.className = 'govuk-body';
+        span.textContent = review.status || 'Unknown';
+        cell.appendChild(span);
+      }
+    }
+    
+    // Delete review functionality
+    async function deleteReview(reviewId, filename) {
+      if (!reviewId) {
+        console.error('[HOME] Cannot delete review - missing ID');
+        showErrorNotification('Error: Missing review ID');
+        return;
+      }
+      
+      // Show confirmation using GOV.UK pattern
+      const confirmDelete = confirm(`Are you sure you want to delete the review for "${filename}"?\n\nThis action cannot be undone.`);
+      
+      if (!confirmDelete) {
+        console.log('[HOME] Delete cancelled by user');
+        return;
+      }
+      
+      console.log('[HOME] Deleting review:', reviewId);
+      
+      try {
+        // Call delete API endpoint
+        const response = await fetch(`/api/reviews/${reviewId}`, {
+          method: 'DELETE',
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `Failed to delete review: ${response.status}`);
         }
         
-        row.appendChild(resultCell);
-        tbody.appendChild(row);
+        const result = await response.json();
+        console.log('[HOME] Review deleted successfully:', result);
+        
+        // Immediately remove the row from the table for instant feedback
+        const rowToDelete = document.querySelector(`tr[data-review-id="${reviewId}"]`);
+        if (rowToDelete) {
+          rowToDelete.remove();
+          console.log('[HOME] Review row removed from table:', reviewId);
+        }
+        
+        // Show success notification
+        showSuccessNotification(`Review "${filename}" has been deleted successfully.`);
+        
+        // Refresh the review history to update the table with fresh data from server
+        await updateReviewHistory();
+        
+      } catch (error) {
+        console.error('[HOME] Error deleting review:', error);
+        showErrorNotification(`Failed to delete review: ${error.message}`);
+      }
+    }
+    
+    // Helper function to show success notification
+    function showSuccessNotification(message) {
+      const notification = document.createElement('div');
+      notification.className = 'govuk-notification-banner govuk-notification-banner--success';
+      notification.setAttribute('role', 'alert');
+      notification.setAttribute('aria-labelledby', 'notification-title');
+      notification.setAttribute('data-module', 'govuk-notification-banner');
+      notification.innerHTML = `
+        <div class="govuk-notification-banner__header">
+          <h2 class="govuk-notification-banner__title" id="notification-title">Success</h2>
+        </div>
+        <div class="govuk-notification-banner__content">
+          <p class="govuk-notification-banner__heading">${message}</p>
+        </div>
+      `;
+      
+      // Insert at the top of the page
+      const container = document.querySelector('.govuk-grid-column-full');
+      container.insertBefore(notification, container.firstChild);
+      
+      // Auto-remove after 5 seconds
+      setTimeout(() => {
+        notification.remove();
+      }, 5000);
+    }
+    
+    // Helper function to show error notification
+    function showErrorNotification(message) {
+      const notification = document.createElement('div');
+      notification.className = 'govuk-error-summary';
+      notification.setAttribute('role', 'alert');
+      notification.setAttribute('aria-labelledby', 'error-summary-title');
+      notification.setAttribute('data-module', 'govuk-error-summary');
+      notification.innerHTML = `
+        <h2 class="govuk-error-summary__title" id="error-summary-title">There is a problem</h2>
+        <div class="govuk-error-summary__body">
+          <p class="govuk-body">${message}</p>
+        </div>
+      `;
+      
+      // Insert at the top of the page
+      const container = document.querySelector('.govuk-grid-column-full');
+      container.insertBefore(notification, container.firstChild);
+      
+      // Auto-remove after 7 seconds
+      setTimeout(() => {
+        notification.remove();
+      }, 7000);
+    }
+    
+    // Attach delete button click handlers
+    function attachDeleteHandlers() {
+      const deleteButtons = document.querySelectorAll('.delete-review-btn');
+      deleteButtons.forEach(button => {
+        // Remove existing listeners to prevent duplicates
+        button.replaceWith(button.cloneNode(true));
+      });
+      
+      // Re-query and attach new listeners
+      const newDeleteButtons = document.querySelectorAll('.delete-review-btn');
+      newDeleteButtons.forEach(button => {
+        button.addEventListener('click', async function() {
+          const reviewId = this.getAttribute('data-review-id');
+          const filename = this.getAttribute('data-filename');
+          
+          // Disable button during deletion
+          this.disabled = true;
+          const originalText = this.textContent;
+          this.textContent = 'Deleting...';
+          
+          await deleteReview(reviewId, filename);
+          
+          // Re-enable button (if row still exists)
+          if (document.contains(this)) {
+            this.disabled = false;
+            this.textContent = originalText;
+          }
+        });
       });
     }
     
+    // Attach handlers on page load
+    attachDeleteHandlers();
+    
     // Start auto-refresh
     function startAutoRefresh() {
-      if (autoRefreshInterval) return; // Already running
+      if (autoRefreshInterval) {
+        return; // Already running
+      }
       
-      console.log('[HOME] Starting auto-refresh...');
+      console.log('[HOME] Starting auto-refresh');
       autoRefreshInterval = setInterval(updateReviewHistory, 5000);
     }
+    
+    // Make startAutoRefresh globally accessible for upload-handler.js
+    window.startAutoRefresh = startAutoRefresh;
     
     // Check if there are any active reviews on page load
     const tableRows = document.querySelectorAll('#reviewHistoryBody tr');
     let hasActiveReviews = false;
+    let activeStatuses = [];
     
     tableRows.forEach(row => {
       const statusCell = row.querySelector('.govuk-tag');
-      if (statusCell && (
-        statusCell.classList.contains('govuk-tag--blue') ||
-        statusCell.classList.contains('govuk-tag--yellow') ||
-        statusCell.classList.contains('govuk-tag--grey')
-      )) {
-        hasActiveReviews = true;
+      if (statusCell) {
+        const statusText = statusCell.textContent.trim().toLowerCase();
+        // Only check for pending or processing statuses (not grey/unknown)
+        if (statusCell.classList.contains('govuk-tag--blue') ||
+            statusCell.classList.contains('govuk-tag--yellow')) {
+          hasActiveReviews = true;
+          activeStatuses.push(statusText);
+        }
       }
     });
     
     // Start auto-refresh if there are active reviews
     if (hasActiveReviews) {
-      console.log('[HOME] Active reviews detected, starting auto-refresh');
+      console.log('[HOME] Active reviews detected on page load:', {
+        count: activeStatuses.length,
+        statuses: activeStatuses
+      });
+      // Do an immediate update first to get latest status
+      updateReviewHistory();
+      // Then start the interval
       startAutoRefresh();
+    } else {
+      console.log('[HOME] No active reviews on page load - auto-refresh not started');
     }
     
     // Clean up interval when page is unloaded
     window.addEventListener('beforeunload', () => {
+      isPageUnloading = true;
+      
       if (autoRefreshInterval) {
         clearInterval(autoRefreshInterval);
+        autoRefreshInterval = null;
+      }
+      
+      // Abort any pending fetch requests
+      if (currentAbortController) {
+        currentAbortController.abort();
+        currentAbortController = null;
+      }
+    });
+    
+    // Auto-refresh continues even when page is hidden or user navigates to another page
+    // This ensures review history stays up-to-date in the background
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && !isPageUnloading) {
+        console.log('[HOME] Page visible - triggering immediate update');
+        // Trigger an immediate update when page becomes visible again
+        if (autoRefreshInterval) {
+          updateReviewHistory();
+        }
       }
     });
   </script>

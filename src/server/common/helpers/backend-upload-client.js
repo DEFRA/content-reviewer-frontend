@@ -27,7 +27,7 @@ async function uploadFile(file) {
     throw new Error(error.error || 'Upload failed')
   }
 
-  return await response.json()
+  return response.json()
 }
 
 /**
@@ -44,7 +44,7 @@ async function checkUploadHealth() {
     throw new Error('Upload service unavailable')
   }
 
-  return await response.json()
+  return response.json()
 }
 
 export { uploadFile, checkUploadHealth }

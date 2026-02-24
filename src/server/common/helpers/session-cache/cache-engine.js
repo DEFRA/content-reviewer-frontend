@@ -10,7 +10,7 @@ export function getCacheEngine(engine) {
 
   if (engine === 'redis') {
     try {
-      logger.info('Using Redis session cache')
+      logger.info('Using Redis session cache', { engine: 'redis' })
       const redisClient = buildRedisClient(config.get('redis'))
       return new CatboxRedis({ client: redisClient })
     } catch (error) {
@@ -18,7 +18,9 @@ export function getCacheEngine(engine) {
         'Failed to connect to Redis, falling back to memory cache:',
         error.message
       )
-      logger.info('Using Catbox Memory session cache (fallback)')
+      logger.info('Using Catbox Memory session cache (fallback)', {
+        reason: 'Redis connection failed'
+      })
       return new CatboxMemory()
     }
   }
@@ -29,6 +31,6 @@ export function getCacheEngine(engine) {
     )
   }
 
-  logger.info('Using Catbox Memory session cache')
+  logger.info('Using Catbox Memory session cache', { engine: 'memory' })
   return new CatboxMemory()
 }

@@ -1,4 +1,4 @@
-import path from 'path'
+import path from 'node:path'
 import nunjucks from 'nunjucks'
 import hapiVision from '@hapi/vision'
 import { fileURLToPath } from 'node:url'
@@ -13,7 +13,8 @@ const nunjucksEnvironment = nunjucks.configure(
   [
     'node_modules/govuk-frontend/dist/',
     path.resolve(dirname, '../../server/common/templates'),
-    path.resolve(dirname, '../../server/common/components')
+    path.resolve(dirname, '../../server/common/components'),
+    path.resolve(dirname, '../../server')
   ],
   {
     autoescape: true,

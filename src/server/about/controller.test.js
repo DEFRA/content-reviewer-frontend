@@ -1,25 +1,14 @@
-import { createServer } from '../server.js'
-import { statusCodes } from '../common/constants/status-codes.js'
+import { describe, it, expect, vi } from 'vitest'
+import { aboutController } from './controller'
 
-describe('#aboutController', () => {
-  let server
-
-  beforeAll(async () => {
-    server = await createServer()
-    await server.initialize()
-  })
-
-  afterAll(async () => {
-    await server.stop({ timeout: 0 })
-  })
-
-  test('Should provide expected response', async () => {
-    const { result, statusCode } = await server.inject({
-      method: 'GET',
-      url: '/about'
+describe('aboutController', () => {
+  it('should render the about page with correct context', () => {
+    const h = { view: vi.fn() }
+    const request = {}
+    aboutController.handler(request, h)
+    expect(h.view).toHaveBeenCalledWith('about/index', {
+      pageTitle: 'Content Review Assistant',
+      heading: 'Content Review Assistant'
     })
-
-    expect(result).toEqual(expect.stringContaining('About |'))
-    expect(statusCode).toBe(statusCodes.ok)
   })
 })

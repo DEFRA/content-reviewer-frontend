@@ -1,446 +1,505 @@
 // Upload form handler
-document.addEventListener('DOMContentLoaded', function () {
-  const timestamp = new Date().toISOString()
-  console.log(
-    `[${timestamp}] [UPLOAD-HANDLER] Initializing upload form handler`
+const DEFAULT_CHARACTER_LIMIT = 50000
+const CHARACTER_LIMIT =
+  globalThis.contentReviewMaxCharLength || DEFAULT_CHARACTER_LIMIT
+const GOVUK_ERROR_MESSAGE_CLASS = 'govuk-error-message'
+const STYLE_DISPLAY_NONE = 'none'
+const STYLE_DISPLAY_DEFAULT = ''
+const APP_DISABLED_CLASS = 'app-disabled'
+const APP_HIGHLIGHT_CLASS = 'app-highlight'
+const ARIA_DISABLED_ATTR = 'aria-disabled'
+const FORM_GROUP_SELECTOR = '.govuk-form-group'
+const GOVUK_TABLE_CELL_CLASS = 'govuk-table__cell'
+const PROGRESS_INITIAL = 30
+const PROGRESS_PROCESSING = 70
+const RELOAD_DELAY = 1500
+const REDIRECT_DELAY = 500
+const HISTORY_UPDATE_DELAY = 500
+const PREVIEW_WORDS_LIMIT = 3
+const PREVIEW_CHARS_LIMIT = 50
+const elements = {}
+let fileClearBtn, textClearBtn
+
+function initializeElements() {
+  elements.textContentInput = document.getElementById('text-content')
+  elements.characterCountMessage = document.getElementById(
+    'characterCountMessage'
   )
-  console.log('[UPLOAD-HANDLER] Environment:', {
-    url: window.location.href,
-    userAgent: navigator.userAgent,
-    backendUrl: window.APP_CONFIG?.backendApiUrl || 'not configured'
-  })
-
-  const textContentInput = document.getElementById('text-content')
-  const uploadButton = document.getElementById('uploadButton')
-  const uploadProgress = document.getElementById('uploadProgress')
-  const progressBar = document.getElementById('progressBar')
-  const uploadStatusText = document.getElementById('uploadStatusText')
-  const uploadProgressText = document.getElementById('uploadProgressText')
-  const uploadError = document.getElementById('uploadError')
-  const uploadSuccess = document.getElementById('uploadSuccess')
-  const errorMessage = document.getElementById('errorMessage')
-  const form = document.getElementById('uploadForm')
-
-  // Use function to get current file input (since it may be recreated)
-  const getFileInput = () => document.getElementById('file-upload')
-
-  console.log('[UPLOAD-HANDLER] DOM elements found:', {
-    form: !!form,
-    fileInput: !!getFileInput(),
-    textContentInput: !!textContentInput,
-    uploadButton: !!uploadButton,
-    uploadProgress: !!uploadProgress
-  })
-
-  // Only run if upload form exists
-  if (!form) {
-    console.log(
-      '[UPLOAD-HANDLER] Upload form not found, handler not initialized'
-    )
+  elements.uploadButton = document.getElementById('uploadButton')
+  elements.uploadProgress = document.getElementById('uploadProgress')
+  elements.progressBar = document.getElementById('progressBar')
+  elements.uploadStatusText = document.getElementById('uploadStatusText')
+  elements.uploadProgressText = document.getElementById('uploadProgressText')
+  elements.uploadError = document.getElementById('uploadError')
+  elements.uploadSuccess = document.getElementById('uploadSuccess')
+  elements.errorMessage = document.getElementById('errorMessage')
+  elements.form = document.getElementById('uploadForm')
+}
+function getFileInput() {
+  return document.getElementById('file-upload')
+}
+function updateCharacterCount() {
+  if (!elements.textContentInput || !elements.characterCountMessage) {
     return
   }
+  const currentLength = elements.textContentInput.value.length
+  if (currentLength === 0) {
+    clearCharacterCount()
+    return
+  }
+  elements.characterCountMessage.style.display = STYLE_DISPLAY_DEFAULT
+  const remaining = CHARACTER_LIMIT - currentLength
+  if (remaining >= 0) {
+    showRemainingCharacters(remaining)
+  } else {
+    showExcessCharacters(remaining)
+  }
+}
+function clearCharacterCount() {
+  elements.characterCountMessage.textContent = ''
+  elements.characterCountMessage.style.display = STYLE_DISPLAY_NONE
+  elements.characterCountMessage.classList.remove(GOVUK_ERROR_MESSAGE_CLASS)
+}
+function showRemainingCharacters(remaining) {
+  elements.characterCountMessage.textContent = `${remaining} characters remaining`
+  elements.characterCountMessage.classList.remove(GOVUK_ERROR_MESSAGE_CLASS)
+}
+function showExcessCharacters(remaining) {
+  const excess = Math.abs(remaining)
+  elements.characterCountMessage.textContent = `You have ${excess} characters too many`
+  elements.characterCountMessage.classList.add(GOVUK_ERROR_MESSAGE_CLASS)
+}
+function addClearButton(input, label, onClear) {
+  const btn = document.createElement('button')
+  btn.type = 'button'
+  btn.textContent = label
+  btn.className =
+    'govuk-button govuk-button--secondary govuk-!-margin-left-2 app-clear-button'
+  btn.addEventListener('click', onClear)
+  input.parentNode.appendChild(btn)
+  return btn
+}
+function initializeFileInput() {
+  const fileInput = getFileInput()
+  if (!fileInput) {
+    return
+  }
+  fileClearBtn?.remove()
+  fileClearBtn = addClearButton(fileInput, 'Clear File', () => {
+    const currentFileInput = getFileInput()
+    if (currentFileInput) {
+      currentFileInput.value = ''
+      currentFileInput.disabled = false
+    }
+    updateMutualExclusion()
+  })
+  fileInput.addEventListener('change', updateMutualExclusion)
+  updateMutualExclusion()
+}
+function initializeTextInput() {
+  if (!elements.textContentInput) {
+    return
+  }
+  textClearBtn?.remove()
+  textClearBtn = addClearButton(elements.textContentInput, 'Clear text', () => {
+    elements.textContentInput.value = ''
+    elements.textContentInput.disabled = false
+    updateMutualExclusion()
+    updateCharacterCount()
+  })
+  if (
+    elements.characterCountMessage &&
+    textClearBtn &&
+    elements.characterCountMessage.parentNode ===
+      elements.textContentInput.parentNode
+  ) {
+    elements.characterCountMessage.parentNode.insertBefore(
+      textClearBtn,
+      elements.characterCountMessage.nextSibling
+    )
+  }
+  if (textClearBtn) {
+    textClearBtn.disabled = false
+  }
+}
+function hasFileSelected() {
+  const fileInput = getFileInput()
+  return fileInput?.files?.length > 0
+}
+function hasTextEntered() {
+  return (
+    elements.textContentInput && elements.textContentInput.value.trim() !== ''
+  )
+}
+function toggleInput(input, isDisabled, groupClass, clearBtn) {
+  if (!input) {
+    return
+  }
+  input.disabled = isDisabled
+  input.setAttribute(ARIA_DISABLED_ATTR, isDisabled.toString())
+  const group = input.closest(FORM_GROUP_SELECTOR)
+  if (group) {
+    if (isDisabled) {
+      group.classList.add(groupClass)
+    } else {
+      group.classList.remove(groupClass)
+    }
+  }
+  if (clearBtn) {
+    clearBtn.disabled = isDisabled
+  }
+}
+function highlightInput(input, shouldHighlight) {
+  if (!input) {
+    return
+  }
+  const group = input.closest(FORM_GROUP_SELECTOR)
+  if (group) {
+    if (shouldHighlight) {
+      group.classList.add(APP_HIGHLIGHT_CLASS)
+    } else {
+      group.classList.remove(APP_HIGHLIGHT_CLASS)
+    }
+  }
+}
+function updateMutualExclusion() {
+  const hasFile = hasFileSelected()
+  const hasText = hasTextEntered()
+  const fileInput = getFileInput()
+  if (hasFile && !hasText) {
+    toggleInput(
+      elements.textContentInput,
+      true,
+      APP_DISABLED_CLASS,
+      textClearBtn
+    )
+    highlightInput(fileInput, true)
+    highlightInput(elements.textContentInput, false)
+  } else if (hasText && !hasFile) {
+    toggleInput(fileInput, true, APP_DISABLED_CLASS, fileClearBtn)
+    highlightInput(elements.textContentInput, true)
+    highlightInput(fileInput, false)
+  } else {
+    // Neither file nor text present, or both present - enable both inputs
+    toggleInput(fileInput, false, APP_DISABLED_CLASS, fileClearBtn)
+    toggleInput(
+      elements.textContentInput,
+      false,
+      APP_DISABLED_CLASS,
+      textClearBtn
+    )
+    highlightInput(fileInput, false)
+    highlightInput(elements.textContentInput, false)
+  }
+}
+function showError(message) {
+  hideSuccess()
+  hideProgress()
+  if (elements.uploadError) {
+    elements.uploadError.hidden = false
+  }
+  if (elements.errorMessage) {
+    elements.errorMessage.textContent = message
+  }
+  if (elements.uploadButton) {
+    elements.uploadButton.disabled = false
+  }
+}
+function hideError() {
+  if (elements.uploadError) {
+    elements.uploadError.hidden = true
+  }
+}
+function hideSuccess() {
+  if (elements.uploadSuccess) {
+    elements.uploadSuccess.hidden = true
+  }
+}
+function showProgress(statusText, percentage) {
+  if (elements.uploadStatusText) {
+    elements.uploadStatusText.textContent = statusText
+  }
+  if (elements.uploadProgressText) {
+    elements.uploadProgressText.textContent = `${percentage}%`
+  }
+  if (elements.progressBar) {
+    elements.progressBar.dataset.progress = Math.round(percentage).toString()
+  }
+  if (elements.uploadProgress) {
+    elements.uploadProgress.hidden = false
+  }
+}
+function hideProgress() {
+  if (elements.uploadProgress) {
+    elements.uploadProgress.hidden = true
+  }
+  if (elements.progressBar) {
+    elements.progressBar.dataset.progress = '0'
+  }
+}
+function addReviewToHistory(review) {
+  const tbody = document.querySelector('#reviewHistoryBody')
+  if (!tbody) {
+    return
+  }
+  tbody.prepend(createReviewRow(review))
+  enforceTableLimit()
+}
+function createReviewRow(review) {
+  const row = document.createElement('tr')
+  row.dataset.reviewId = review.id || review.reviewId
+  ;[
+    createTextCell(review.fileName || review.filename || 'N/A'),
+    createStatusCell(review),
+    createTimestampCell(review),
+    createResultCell(review),
+    createActionCell(review)
+  ].forEach((cell) => row.appendChild(cell))
+  return row
+}
+function createTextCell(text) {
+  const cell = document.createElement('td')
+  cell.className = GOVUK_TABLE_CELL_CLASS
+  cell.textContent = text
+  return cell
+}
+function createStatusCell(review) {
+  const cell = document.createElement('td')
+  const tag = document.createElement('strong')
+  cell.className = GOVUK_TABLE_CELL_CLASS
+  tag.className = 'govuk-tag'
+  const status = (review.status || 'pending').toLowerCase()
+  const statusMap = {
+    completed: ['govuk-tag--green', 'Completed'],
+    processing: ['govuk-tag--blue', 'Processing...'],
+    pending: ['govuk-tag--yellow', 'Pending...'],
+    failed: ['govuk-tag--red', 'Failed']
+  }
+  if (statusMap[status]) {
+    tag.classList.add(statusMap[status][0])
+    tag.textContent = statusMap[status][1]
+  } else {
+    tag.classList.add('govuk-tag--grey')
+    tag.textContent = status.charAt(0).toUpperCase() + status.slice(1)
+  }
+  cell.appendChild(tag)
+  return cell
+}
+function createTimestampCell(review) {
+  const cell = document.createElement('td')
+  cell.className = GOVUK_TABLE_CELL_CLASS
+  const timestamp = review.uploadedAt || review.timestamp
+  if (timestamp) {
+    const date = new Date(timestamp)
+    cell.textContent = date.toLocaleString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  } else {
+    cell.textContent = 'N/A'
+  }
+  return cell
+}
+function createResultCell(review) {
+  const cell = document.createElement('td')
+  cell.className = GOVUK_TABLE_CELL_CLASS
+  const status = (review.status || 'pending').toLowerCase()
+  if (status === 'completed') {
+    const link = document.createElement('a')
+    link.href = `/review/results/${review.id || review.reviewId}`
+    link.textContent = 'View results'
+    link.className = 'govuk-link'
+    cell.appendChild(link)
+  } else if (status === 'processing' || status === 'pending') {
+    cell.textContent = '-'
+  } else if (status === 'failed') {
+    const span = document.createElement('span')
+    span.className = 'govuk-error-message'
+    span.textContent = review.errorMessage || 'Review Failed'
+    cell.appendChild(span)
+  } else {
+    cell.textContent = 'Unknown'
+  }
+  return cell
+}
+function createActionCell(review) {
+  const cell = document.createElement('td')
+  const btn = document.createElement('button')
+  cell.className = GOVUK_TABLE_CELL_CLASS
+  btn.type = 'button'
+  btn.className = 'govuk-link delete-review-btn'
+  btn.textContent = 'Delete'
+  btn.dataset.reviewId = review.id || review.reviewId
+  btn.dataset.filename = review.fileName || review.filename || 'N/A'
+  cell.appendChild(btn)
+  return cell
+}
+function enforceTableLimit() {
+  const limitSelect = document.getElementById('historyLimit')
+  const tbody = document.querySelector('#reviewHistoryBody')
+  if (!tbody) {
+    return
+  }
+  const currentLimit = Number.parseInt(limitSelect?.value || '5', 10)
+  const rows = tbody.querySelectorAll('tr')
+  if (rows.length > currentLimit) {
+    Array.from(rows)
+      .slice(currentLimit)
+      .forEach((row) => row.remove())
+  }
+}
+async function submitTextReview(textContent) {
+  try {
+    if (elements.textContentInput) {
+      elements.textContentInput.disabled = true
+    }
+    showProgress('Submitting content for review...', PROGRESS_INITIAL)
+    const words = textContent.trim().split(/\s+/)
+    const previewText =
+      words.length > 0
+        ? `${words.slice(0, PREVIEW_WORDS_LIMIT).join(' ').substring(0, PREVIEW_CHARS_LIMIT)}...`
+        : 'Text content'
+    const response = await fetch('/api/review/text', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ textContent })
+    })
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.message || 'Text review submission failed')
+    }
+    showProgress('Processing review...', PROGRESS_PROCESSING)
+    const data = await response.json()
+    console.log('[UPLOAD-HANDLER] Text review submitted successfully:', data)
+    hideProgress()
+    elements.textContentInput.value = ''
+    updateMutualExclusion()
+    updateCharacterCount()
+    if (elements.uploadButton) {
+      elements.uploadButton.disabled = false
+    }
+    if (typeof globalThis.updateReviewHistory === 'function') {
+      setTimeout(() => globalThis.updateReviewHistory(), HISTORY_UPDATE_DELAY)
+    } else {
+      addReviewToHistory({
+        id: data.reviewId || data.id,
+        fileName: previewText,
+        timestamp: Date.now(),
+        status: 'pending'
+      })
+    }
+    return data
+  } catch (error) {
+    console.error('[UPLOAD-HANDLER] Text review error:', error)
+    showError(error.message)
+    if (elements.textContentInput) {
+      elements.textContentInput.disabled = false
+    }
+    throw error
+  }
+}
+async function submitFileUpload(file) {
+  try {
+    showProgress('Uploading to server...', PROGRESS_INITIAL)
+    const formData = new FormData()
+    formData.append('file', file)
+    const response = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData
+    })
+    showProgress('Processing upload...', PROGRESS_PROCESSING)
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.message || 'Upload failed')
+    }
+    const data = await response.json()
+    console.log('[UPLOAD-HANDLER] File uploaded successfully:', data)
+    hideProgress()
+    const fileInputEl = getFileInput()
+    if (fileInputEl) {
+      fileInputEl.value = ''
+    }
+    updateMutualExclusion()
+    if (typeof globalThis.updateReviewHistory === 'function') {
+      setTimeout(() => globalThis.updateReviewHistory(), REDIRECT_DELAY)
+    } else {
+      addReviewToHistory({
+        id: data.reviewId || data.id,
+        fileName: file.name,
+        timestamp: Date.now(),
+        status: 'pending'
+      })
+    }
+    setTimeout(() => {
+      globalThis.location.reload()
+    }, RELOAD_DELAY)
+    return data
+  } catch (error) {
+    console.error('[UPLOAD-HANDLER] Upload error:', error)
+    showError(`Upload failed: ${error.message}`)
+    if (elements.textContentInput) {
+      elements.textContentInput.disabled = false
+    }
+    throw error
+  }
+}
+async function handleFormSubmit(e) {
+  e.preventDefault()
+  hideError()
+  hideSuccess()
+  if (elements.uploadButton) {
+    elements.uploadButton.disabled = true
+  }
+  const file = getFileInput()?.files?.[0]
+  const textContent = elements.textContentInput?.value?.trim()
 
-  // Ensure error and progress are hidden on page load
+  // Helper function for error handling and button state
+  function handleError(message) {
+    showError(message)
+    if (elements.uploadButton) {
+      elements.uploadButton.disabled = false
+    }
+  }
+
+  try {
+    if (file && !textContent) {
+      await submitFileUpload(file)
+      return
+    }
+    if (textContent && !file) {
+      if (textContent.length > CHARACTER_LIMIT) {
+        handleError(
+          `Text content too long. Maximum ${CHARACTER_LIMIT} characters. Your content has ${textContent.length} characters.`
+        )
+        return
+      }
+      await submitTextReview(textContent)
+      return
+    }
+    handleError('Enter text content for review')
+  } catch (error) {
+    console.error('[UPLOAD-HANDLER] Form submission error:', error)
+  }
+}
+function initialize() {
+  initializeElements()
+  if (!elements.form) {
+    return
+  }
+  if (elements.textContentInput) {
+    elements.textContentInput.addEventListener('input', updateCharacterCount)
+    updateCharacterCount()
+  }
   hideError()
   hideProgress()
   hideSuccess()
-  console.log('[UPLOAD-HANDLER] Initial UI state reset completed')
-
-  // ============ MUTUAL EXCLUSION LOGIC ============
-  console.log('[UPLOAD-HANDLER] Setting up mutual exclusion logic')
-  function ensureDisabledStyles() {
-    const existing = document.getElementById('app-disabled-styles')
-    if (existing) return
-    const style = document.createElement('style')
-    style.id = 'app-disabled-styles'
-    style.type = 'text/css'
-    style.innerHTML = `
-      .app-disabled {
-        opacity: 0.6 !important;
-        filter: grayscale(60%) !important;
-        pointer-events: none !important;
-      }
-      .app-disabled .govuk-file-upload,
-      .app-disabled .govuk-textarea {
-        opacity: 0.6 !important;
-        background: #f3f2f1 !important;
-      }
-      .app-disabled .govuk-label { color: #6f777a !important; }
-      .app-highlight {
-        border: 2px solid #1d70b8 !important;
-        padding: 15px !important;
-        background-color: #f0f4f8 !important;
-      }
-      .app-clear-button {
-        font-size: 0.8em !important;
-      }
-    `
-    document.head.appendChild(style)
-  }
-  ensureDisabledStyles()
-
-  // Add clear buttons for both inputs for better UX
-  function addClearButton(input, label, onClear) {
-    const btn = document.createElement('button')
-    btn.type = 'button'
-    btn.textContent = label
-    btn.className =
-      'govuk-button govuk-button--secondary govuk-!-margin-left-2 app-clear-button'
-    btn.addEventListener('click', onClear)
-    input.parentNode.appendChild(btn)
-    return btn
-  }
-
-  let fileClearBtn, textClearBtn
-
-  function initializeFileInput() {
-    const fileInput = getFileInput()
-    if (!fileInput) return
-
-    // Remove existing clear button if present
-    if (fileClearBtn && fileClearBtn.parentNode) {
-      fileClearBtn.parentNode.removeChild(fileClearBtn)
-    }
-
-    // Add clear button
-    fileClearBtn = addClearButton(fileInput, 'Clear File', () => {
-      const fileInput = getFileInput()
-      if (fileInput) {
-        fileInput.value = ''
-        fileInput.disabled = false
-      }
-      updateMutualExclusion()
-      console.log('[UPLOAD-HANDLER] File input cleared via button')
-    })
-
-    // Add event listeners
-    fileInput.addEventListener('change', onFileInputChange)
-    fileInput.addEventListener('input', onFileInputChange)
-
-    console.log('[UPLOAD-HANDLER] File input initialized with event listeners')
-  }
-
-  // Initialize file input
+  updateCharacterCount()
   initializeFileInput()
-
-  if (textContentInput) {
-    textClearBtn = addClearButton(textContentInput, 'Clear Text', () => {
-      textContentInput.value = ''
-      textContentInput.disabled = false
-      updateMutualExclusion()
-      console.log('[UPLOAD-HANDLER] Text input cleared via button')
-    })
-  }
-
-  function updateMutualExclusion() {
-    const fileInput = getFileInput()
-    const hasFile = fileInput && fileInput.files && fileInput.files.length > 0
-    const hasText = textContentInput && textContentInput.value.trim().length > 0
-    const fileFormGroup = document.getElementById('fileFormGroup')
-    const textFormGroup = document.getElementById('textFormGroup')
-
-    console.log('[UPLOAD-HANDLER] updateMutualExclusion', {
-      hasFile,
-      hasText,
-      fileCount: fileInput?.files?.length || 0,
-      fileName: fileInput?.files?.[0]?.name || 'none',
-      textLength: textContentInput?.value?.length || 0
-    })
-
-    if (hasFile) {
-      // File selected: clear and disable textarea
-      if (textFormGroup) {
-        textFormGroup.classList.add('app-disabled')
-        textFormGroup.setAttribute('aria-disabled', 'true')
-        textFormGroup.classList.remove('app-highlight')
-      }
-      if (textContentInput) {
-        textContentInput.value = ''
-        textContentInput.disabled = true
-        textContentInput.placeholder =
-          'File upload selected - text input disabled'
-      }
-      if (fileFormGroup) {
-        fileFormGroup.classList.remove('app-disabled')
-        fileFormGroup.classList.add('app-highlight')
-        fileFormGroup.removeAttribute('aria-disabled')
-      }
-      if (fileInput) fileInput.disabled = false
-      if (fileClearBtn) fileClearBtn.disabled = false
-      if (textClearBtn) textClearBtn.disabled = true
-    } else if (hasText) {
-      // Text entered: clear and disable file input
-      if (fileFormGroup) {
-        fileFormGroup.classList.add('app-disabled')
-        fileFormGroup.setAttribute('aria-disabled', 'true')
-        fileFormGroup.classList.remove('app-highlight')
-      }
-      if (fileInput) {
-        fileInput.value = ''
-        fileInput.disabled = true
-      }
-      if (textFormGroup) {
-        textFormGroup.classList.remove('app-disabled')
-        textFormGroup.classList.add('app-highlight')
-        textFormGroup.removeAttribute('aria-disabled')
-      }
-      if (textContentInput) {
-        textContentInput.disabled = false
-        textContentInput.placeholder = 'Type or paste content here...'
-      }
-      if (fileClearBtn) fileClearBtn.disabled = true
-      if (textClearBtn) textClearBtn.disabled = false
-    } else {
-      // Nothing selected: enable both
-      if (fileFormGroup) {
-        fileFormGroup.classList.remove('app-disabled', 'app-highlight')
-        fileFormGroup.removeAttribute('aria-disabled')
-      }
-      if (textFormGroup) {
-        textFormGroup.classList.remove('app-disabled', 'app-highlight')
-        textFormGroup.removeAttribute('aria-disabled')
-      }
-      if (fileInput) fileInput.disabled = false
-      if (textContentInput) {
-        textContentInput.disabled = false
-        textContentInput.placeholder = 'Type or paste content here...'
-      }
-      if (fileClearBtn) fileClearBtn.disabled = false
-      if (textClearBtn) textClearBtn.disabled = false
-    }
-  }
-
-  function onFileInputChange(e) {
-    console.log('[UPLOAD-HANDLER] File input changed', {
-      filesLength: e.target.files?.length || 0,
-      fileName: e.target.files?.[0]?.name || 'none'
-    })
-    // Use setTimeout to ensure browser has updated the file input state
-    setTimeout(() => {
-      updateMutualExclusion()
-    }, 10)
-  }
-
-  function onTextInputChange() {
-    console.log('[UPLOAD-HANDLER] Text input changed', {
-      textLength: textContentInput?.value?.length || 0
-    })
-    updateMutualExclusion()
-  }
-
-  // Add robust event listeners for text input
-  if (textContentInput) {
-    textContentInput.addEventListener('input', onTextInputChange)
-    textContentInput.addEventListener('change', onTextInputChange)
-    textContentInput.addEventListener('paste', () => {
-      setTimeout(onTextInputChange, 10)
-    })
-
-    // Initial state
-    updateMutualExclusion()
-  }
-
-  // Initial state
-  updateMutualExclusion()
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault()
-
-    console.log('[UPLOAD-HANDLER] Form submitted')
-
-    hideError()
-    hideSuccess()
-    hideProgress()
-
-    // Always re-check mutual exclusion before submit
-    updateMutualExclusion()
-
-    const fileInput = getFileInput()
-    const file = fileInput?.files?.[0]
-    const textContent = textContentInput?.value.trim()
-
-    console.log('[UPLOAD-HANDLER] Form submit state', {
-      hasFile: !!file,
-      fileName: file?.name || 'none',
-      fileSize: file?.size || 0,
-      hasText: !!textContent,
-      textLength: textContent?.length || 0
-    })
-
-    // Enforce: only one input can be set
-    if ((file && textContent) || (!file && !textContent)) {
-      showError('Please either upload a file or enter text content, not both.')
-      return
-    }
-
-    if (file && !textContent) {
-      const maxSize = 10 * 1024 * 1024
-      if (file.size > maxSize) {
-        const fileSizeMB = (file.size / 1024 / 1024).toFixed(2)
-        showError(
-          `File too large. Maximum size is 10MB. Your file is ${fileSizeMB}MB`
-        )
-        return
-      }
-      const allowedTypes = [
-        'application/pdf',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-      ]
-      if (
-        !allowedTypes.includes(file.type) &&
-        !file.name.match(/\.(pdf|doc|docx)$/i)
-      ) {
-        showError('Invalid file type. Please upload a PDF or Word document')
-        return
-      }
-      try {
-        uploadButton.disabled = true
-        showProgress('Preparing upload...', 0)
-
-        console.log('[UPLOAD-HANDLER] Starting file upload', {
-          fileName: file.name,
-          fileSize: file.size
-        })
-
-        const formData = new FormData()
-        formData.append('file', file)
-        showProgress('Uploading to server...', 30)
-
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-          credentials: 'include'
-        })
-
-        console.log('[UPLOAD-HANDLER] Upload response received', {
-          status: response.status,
-          ok: response.ok
-        })
-
-        showProgress('Processing upload...', 70)
-        if (!response.ok) {
-          const error = await response
-            .json()
-            .catch(() => ({ error: `Server error: ${response.status}` }))
-          throw new Error(error.error || 'Upload failed')
-        }
-        const result = await response.json()
-
-        console.log('[UPLOAD-HANDLER] Upload successful', result)
-
-        showProgress('Upload complete!', 100)
-        if (fileInput) fileInput.value = ''
-        updateMutualExclusion()
-        setTimeout(() => {
-          window.location.reload()
-        }, 1500)
-      } catch (error) {
-        console.error('[UPLOAD-HANDLER] Upload error', error)
-        showError(error.message || 'Upload failed. Please try again.')
-        uploadButton.disabled = false
-        if (textContentInput) textContentInput.disabled = false
-        updateMutualExclusion()
-        hideProgress()
-      }
-    } else if (textContent && !file) {
-      await handleTextReview(textContent)
-    } else {
-      showError('Please either upload a file or enter text content to review')
-    }
-  })
-
-  function showError(message) {
-    if (errorMessage) errorMessage.textContent = message
-    if (uploadError) {
-      uploadError.hidden = false
-      uploadError.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-    }
-  }
-  function hideError() {
-    if (uploadError) uploadError.hidden = true
-  }
-  function hideSuccess() {
-    if (uploadSuccess) uploadSuccess.hidden = true
-  }
-  function showProgress(statusText, percentage) {
-    if (uploadStatusText) uploadStatusText.textContent = statusText
-    if (uploadProgressText) uploadProgressText.textContent = percentage + '%'
-    const roundedPercentage = Math.round(percentage / 10) * 10
-    if (progressBar) {
-      progressBar.setAttribute('data-progress', roundedPercentage.toString())
-    }
-    if (uploadProgress) uploadProgress.hidden = false
-  }
-  function hideProgress() {
-    if (uploadProgress) uploadProgress.hidden = true
-    if (progressBar) progressBar.setAttribute('data-progress', '0')
-  }
-
-  async function handleTextReview(textContent) {
-    try {
-      uploadButton.disabled = true
-      showProgress('Preparing review...', 0)
-
-      console.log('[UPLOAD-HANDLER] Starting text review', {
-        textLength: textContent.length
-      })
-
-      const maxLength = 50000
-      if (textContent.length > maxLength) {
-        throw new Error(
-          `Text content too long. Maximum ${maxLength} characters. Your content has ${textContent.length} characters.`
-        )
-      }
-      if (textContent.length < 10) {
-        throw new Error(
-          'Text content too short. Please provide at least 10 characters.'
-        )
-      }
-      showProgress('Submitting for review...', 30)
-      const title =
-        textContent.substring(0, 10).trim() +
-        (textContent.length > 10 ? '...' : '')
-      const response = await fetch('/api/review/text', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ textContent, title }),
-        credentials: 'include'
-      })
-
-      console.log('[UPLOAD-HANDLER] Text review response received', {
-        status: response.status,
-        ok: response.ok
-      })
-
-      showProgress('Processing review...', 70)
-      if (!response.ok) {
-        const error = await response
-          .json()
-          .catch(() => ({ error: `Server error: ${response.status}` }))
-        throw new Error(error.error || 'Text review failed')
-      }
-      const result = await response.json()
-      if (!result.success) {
-        throw new Error(result.error || 'Text review failed')
-      }
-
-      console.log('[UPLOAD-HANDLER] Text review successful', result)
-
-      showProgress('Review submitted!', 100)
-      textContentInput.value = ''
-      updateMutualExclusion()
-      setTimeout(() => {
-        window.location.reload()
-      }, 1500)
-    } catch (error) {
-      console.error('[UPLOAD-HANDLER] Text review error', error)
-      showError(error.message || 'Text review failed. Please try again.')
-      uploadButton.disabled = false
-      const fileInput = getFileInput()
-      if (fileInput) fileInput.disabled = false
-      updateMutualExclusion()
-      hideProgress()
-    }
-  }
-})
+  initializeTextInput()
+  elements.form.addEventListener('submit', handleFormSubmit)
+  console.log('[UPLOAD-HANDLER] Upload handler initialized')
+}
+document.addEventListener('DOMContentLoaded', initialize)
