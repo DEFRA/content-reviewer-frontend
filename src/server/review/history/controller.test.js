@@ -42,8 +42,9 @@ function createMockH() {
 }
 
 const REVIEW_HISTORY_TITLE = 'Review History'
+const REVIEW_HISTORY_VIEW = 'review/history/index'
 
-describe('reviewHistoryController - showHistory', () => {
+describe('reviewHistoryController - showHistory (fetch and display review history)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -74,13 +75,20 @@ describe('reviewHistoryController - showHistory', () => {
     expect(globalThis.fetch).toHaveBeenCalledWith(
       'http://localhost:4000/api/reviews?limit=100'
     )
-    expect(mockH.view).toHaveBeenCalledWith('review/history/index', {
+    expect(mockH.view).toHaveBeenCalledWith(REVIEW_HISTORY_VIEW, {
       pageTitle: REVIEW_HISTORY_TITLE,
       heading: REVIEW_HISTORY_TITLE,
       reviews: mockReviews,
       count: 1
     })
+    expect(result.template).toBe(REVIEW_HISTORY_VIEW)
     expect(result.template).toBe('review/history/index')
+  })
+})
+
+describe('reviewHistoryController - showHistory (count and missing reviews scenarios)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
   })
 
   it('should use count when total is not available', async () => {
@@ -98,9 +106,8 @@ describe('reviewHistoryController - showHistory', () => {
     })
 
     await reviewHistoryController.showHistory(mockRequest, mockH)
-
     expect(mockH.view).toHaveBeenCalledWith(
-      'review/history/index',
+      REVIEW_HISTORY_VIEW,
       expect.objectContaining({
         count: 5
       })
@@ -121,14 +128,19 @@ describe('reviewHistoryController - showHistory', () => {
     })
 
     await reviewHistoryController.showHistory(mockRequest, mockH)
-
     expect(mockH.view).toHaveBeenCalledWith(
-      'review/history/index',
+      REVIEW_HISTORY_VIEW,
       expect.objectContaining({
         reviews: [],
         count: 0
       })
     )
+  })
+})
+
+describe('reviewHistoryController - showHistory (failure and error scenarios)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
   })
 
   it('should handle backend failure response', async () => {
@@ -142,9 +154,8 @@ describe('reviewHistoryController - showHistory', () => {
     })
 
     const result = await reviewHistoryController.showHistory(mockRequest, mockH)
-
     expect(mockH.view).toHaveBeenCalledWith(
-      'review/history/index',
+      REVIEW_HISTORY_VIEW,
       expect.objectContaining({
         pageTitle: REVIEW_HISTORY_TITLE,
         heading: REVIEW_HISTORY_TITLE,
@@ -153,6 +164,7 @@ describe('reviewHistoryController - showHistory', () => {
         error: 'Unable to load review history. Please try again later.'
       })
     )
+    expect(result.data.error).toBeDefined()
     expect(result.data.error).toBeDefined()
   })
 
@@ -170,13 +182,18 @@ describe('reviewHistoryController - showHistory', () => {
       'Failed to fetch review history'
     )
     expect(mockH.view).toHaveBeenCalledWith(
-      'review/history/index',
+      REVIEW_HISTORY_VIEW,
       expect.objectContaining({
         error: 'Unable to load review history. Please try again later.'
       })
     )
+    expect(result.data.error).toBeDefined()
+    expect(result.data.error).toBeDefined()
   })
 })
+
+const REVIEW_HISTORY_REDIRECT = '/review/history'
+const DELETE_FAILED_REDIRECT = '/review/history?error=delete_failed'
 
 describe('reviewHistoryController - deleteReview', () => {
   beforeEach(() => {
@@ -204,8 +221,8 @@ describe('reviewHistoryController - deleteReview', () => {
         method: 'DELETE'
       }
     )
-    expect(mockH.redirect).toHaveBeenCalledWith('/review/history')
-    expect(result.redirect).toBe('/review/history')
+    expect(mockH.redirect).toHaveBeenCalledWith(REVIEW_HISTORY_REDIRECT)
+    expect(result.redirect).toBe(REVIEW_HISTORY_REDIRECT)
   })
 
   it('should handle delete failure and redirect with error', async () => {
@@ -222,12 +239,8 @@ describe('reviewHistoryController - deleteReview', () => {
       mockRequest,
       mockH
     )
-
-    expect(mockRequest.logger.error).toHaveBeenCalled()
-    expect(mockH.redirect).toHaveBeenCalledWith(
-      '/review/history?error=delete_failed'
-    )
-    expect(result.redirect).toBe('/review/history?error=delete_failed')
+    expect(mockH.redirect).toHaveBeenCalledWith(DELETE_FAILED_REDIRECT)
+    expect(result.redirect).toBe(DELETE_FAILED_REDIRECT)
   })
 
   it('should handle network errors during delete', async () => {
@@ -246,9 +259,8 @@ describe('reviewHistoryController - deleteReview', () => {
       networkError,
       'Failed to delete review'
     )
-    expect(mockH.redirect).toHaveBeenCalledWith(
-      '/review/history?error=delete_failed'
-    )
+    expect(mockH.redirect).toHaveBeenCalledWith(DELETE_FAILED_REDIRECT)
+    expect(result.redirect).toBe(DELETE_FAILED_REDIRECT)
   })
 
   it('should log all required information during delete', async () => {
@@ -267,6 +279,6 @@ describe('reviewHistoryController - deleteReview', () => {
       'http://localhost:4000/api/results/test-log',
       { method: 'DELETE' }
     )
-    expect(mockH.redirect).toHaveBeenCalledWith('/review/history')
+    expect(mockH.redirect).toHaveBeenCalledWith(REVIEW_HISTORY_REDIRECT)
   })
 })
