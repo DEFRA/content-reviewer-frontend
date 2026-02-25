@@ -14,6 +14,7 @@ import { textReviewApiController } from './api/text-review.js'
 import { getReviewsController } from './api/reviews.js'
 import { deleteReviewRoute } from './api/delete-review.js'
 import { serveStaticFiles } from './common/helpers/serve-static-files.js'
+import { loginController } from './auth/login/controller.js'
 
 export const router = {
   plugin: {
@@ -23,6 +24,14 @@ export const router = {
 
       // Health-check route. Used by platform to check if service is running, do not remove!
       await server.register([health])
+
+      // Unprotected login landing page (shows Login UI before SSO redirect)
+      server.route({
+        method: 'GET',
+        path: '/auth/login-page',
+        options: { auth: false },
+        ...loginController
+      })
 
       // API routes
       server.route({
