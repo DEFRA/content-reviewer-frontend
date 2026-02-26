@@ -1,6 +1,5 @@
 import path from 'node:path'
 import hapi from '@hapi/hapi'
-import Scooter from '@hapi/scooter'
 import hapiCookie from '@hapi/cookie'
 
 import { router } from './router.js'
@@ -118,7 +117,6 @@ export async function createServer() {
     pulse,
     sessionCache,
     nunjucksConfig,
-    Scooter,
     contentSecurityPolicy,
     azureAuth,
     router
