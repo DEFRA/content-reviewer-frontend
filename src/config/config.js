@@ -6,7 +6,7 @@ import convictFormatWithValidator from 'convict-format-with-validator'
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
 
-const fourHoursMs = 14400000
+const tenHoursMs = 36000000 // GDS standard: one working day
 const oneWeekMs = 604800000
 
 const isProduction = process.env.NODE_ENV === 'production'
@@ -134,17 +134,17 @@ export const config = convict({
         env: 'SESSION_CACHE_NAME'
       },
       ttl: {
-        doc: 'server side session cache ttl',
+        doc: 'Server-side session cache TTL in ms. GDS standard is 10 hours (one working day). Matches SESSION_COOKIE_TTL.',
         format: Number,
-        default: fourHoursMs,
+        default: tenHoursMs,
         env: 'SESSION_CACHE_TTL'
       }
     },
     cookie: {
       ttl: {
-        doc: 'Session cookie ttl',
+        doc: 'Session cookie TTL in ms. GDS standard: 10 hours (one working day). The cookie is persistent (survives browser close) – keepAlive resets the clock on every request so active users are not interrupted.',
         format: Number,
-        default: fourHoursMs,
+        default: tenHoursMs,
         env: 'SESSION_COOKIE_TTL'
       },
       password: {
@@ -269,6 +269,39 @@ export const config = convict({
       format: Number,
       default: 50000,
       env: 'CONTENT_REVIEW_MAX_CHAR_LEN'
+    }
+  },
+  azure: {
+    clientId: {
+      doc: 'Azure AD Application Client ID',
+      format: String,
+      default: '',
+      env: 'AZURE_CLIENT_ID'
+    },
+    clientSecret: {
+      doc: 'Azure AD Application Client Secret',
+      format: String,
+      sensitive: true,
+      default: '',
+      env: 'AZURE_CLIENT_SECRET'
+    },
+    tenantId: {
+      doc: 'Azure AD Tenant ID',
+      format: String,
+      default: '',
+      env: 'AZURE_TENANT_ID'
+    },
+    redirectUri: {
+      doc: 'Application redirect URI after login (CDP: /auth/callback, local: http://localhost:3000/auth/callback)',
+      format: String,
+      default: 'http://localhost:3000/auth/callback',
+      env: 'AZURE_REDIRECT_URI'
+    },
+    postLogoutRedirectUri: {
+      doc: 'URI Microsoft redirects to after completing sign-out. Must match the registered Redirect URI in Azure App Registration. CDP: https://content-reviewer-frontend.dev.cdp-int.defra.cloud/auth/logout  Local: http://localhost:3000/auth/logout',
+      format: String,
+      default: 'http://localhost:3000/auth/logout',
+      env: 'AZURE_POST_LOGOUT_REDIRECT_URI'
     }
   }
 })

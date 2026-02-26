@@ -1,0 +1,70 @@
+{% extends "govuk/template.njk" %}
+
+{% from "govuk/components/button/macro.njk" import govukButton %}
+
+{% block pageTitle %}You have been successfully logged out – Content Review Tool – GOV.UK{% endblock %}
+
+{% block head %}
+  <link href="/public/stylesheets/application.css" rel="stylesheet">
+{% endblock %}
+
+{% block header %}
+  {{ govukHeader({
+    homepageUrl: "https://www.gov.uk/",
+    classes: "app-header",
+    containerClasses: "govuk-width-container",
+    useTudorCrown: true,
+    serviceName: "Content Review Tool",
+    serviceUrl: "/auth/login-page"
+  }) }}
+{% endblock %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {# GOV.UK green confirmation panel – standard pattern for completed actions #}
+      <div class="govuk-panel govuk-panel--confirmation">
+        <h1 class="govuk-panel__title">
+          You have been successfully logged out
+        </h1>
+        <div class="govuk-panel__body">
+          Content Review Tool
+        </div>
+      </div>
+
+      <p class="govuk-body govuk-!-margin-top-6">
+        Your session has ended and your Defra credentials have been cleared securely.
+      </p>
+
+      <h2 class="govuk-heading-m">What you can do next</h2>
+
+      <ul class="govuk-list govuk-list--bullet">
+        <li>Close this browser tab if you have finished</li>
+        <li>
+          <a href="/auth/login-page" class="govuk-link">Sign in again</a>
+          if you need to continue using the Content Review Tool
+        </li>
+      </ul>
+
+      {{ govukButton({
+        text: "Sign in again",
+        href: "/auth/login-page",
+        classes: "govuk-!-margin-top-4"
+      }) }}
+
+    </div>
+  </div>
+{% endblock %}
+
+{% block footer %}
+  {{ govukFooter({
+    meta: {
+      items: [
+        { href: "/privacy", text: "Privacy" },
+        { href: "/cookies", text: "Cookies" },
+        { href: "/accessibility", text: "Accessibility statement" }
+      ]
+    }
+  }) }}
+{% endblock %}
