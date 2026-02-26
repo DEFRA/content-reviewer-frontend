@@ -1,6 +1,5 @@
-import path from 'path'
+import path from 'node:path'
 import hapi from '@hapi/hapi'
-import Scooter from '@hapi/scooter'
 
 import { router } from './router.js'
 import { config } from '../config/config.js'
@@ -64,7 +63,6 @@ export async function createServer() {
     pulse,
     sessionCache,
     nunjucksConfig,
-    Scooter,
     contentSecurityPolicy,
     router // Register all the controllers/routes defined in src/server/router.js
   ])

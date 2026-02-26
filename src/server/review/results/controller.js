@@ -1,197 +1,180 @@
+const HTTP_STATUS_BAD_REQUEST = 400
+
 export const resultsController = {
   handler: async (request, h) => {
-    const { id } = request.params
+    const { id: reviewId } = request.params
 
+    if (!reviewId) {
+      return handleMissingReviewId(request, h)
+    }
+
+    const requestStartTime = performance.now()
     try {
-      const config = request.server.app.config
-      const backendUrl = config.get('backendUrl')
+      const { statusData, fetchDuration, parseDuration } =
+        await fetchAndParseBackendResults(request, reviewId)
 
-      request.logger.info({ reviewId: id }, 'Fetching review results')
-
-      // Fetch review status and results from backend
-      const response = await fetch(`${backendUrl}/api/review/${id}`)
-
-      if (!response.ok) {
-        request.logger.error(
-          { reviewId: id, status: response.status },
-          'Backend returned error status'
-        )
-        throw new Error(`Failed to fetch review results: ${response.status}`)
-      }
-
-      const apiResponse = await response.json()
-      request.logger.info(
-        { reviewId: id, hasData: !!apiResponse.data },
-        'Received API response'
-      )
-
-      if (!apiResponse.success || !apiResponse.data) {
-        request.logger.error(
-          { reviewId: id, apiResponse },
-          'Invalid API response'
-        )
-        throw new Error('Invalid response from backend')
-      }
-
-      const statusData = apiResponse.data
-
-      // Check if review is completed
       if (statusData.status !== 'completed') {
-        request.logger.info(
-          { reviewId: id, status: statusData.status },
-          'Review not completed yet'
-        )
-        return h.view('review/results/pending', {
-          pageTitle: 'Review In Progress',
-          heading: 'Review In Progress',
-          reviewId: id,
-          currentStatus: statusData.status,
-          progress: statusData.progress || 0
-        })
+        return renderPendingView(h, statusData)
       }
 
-      request.logger.info({ reviewId: id }, 'Transforming review data')
-      // Transform backend data to frontend format
-      const reviewResults = transformReviewData(statusData)
+      const transformStart = performance.now()
+      const reviewResults = transformReviewData(statusData, reviewId)
+      const transformDuration = Math.round(performance.now() - transformStart)
+      const totalDuration = Math.round(performance.now() - requestStartTime)
 
-      request.logger.info(
-        {
-          reviewId: id,
-          documentName: reviewResults.documentName,
-          hasS3Location: !!reviewResults.s3Location,
-          hasSections: !!reviewResults.sections,
-          sectionKeys: reviewResults.sections
-            ? Object.keys(reviewResults.sections)
-            : []
-        },
-        'Rendering results view'
+      logResultsPageRender(
+        request,
+        reviewId,
+        totalDuration,
+        fetchDuration,
+        parseDuration,
+        transformDuration
       )
 
-      return h.view('review/results/index', {
-        pageTitle: 'Review Results',
-        heading: 'AI Content Review Results',
-        reviewId: id,
-        results: reviewResults
-      })
+      return renderResultsView(h, reviewId, reviewResults)
     } catch (error) {
-      request.logger.error(
-        { error: error.message, stack: error.stack, reviewId: id },
-        'Failed to fetch review results'
-      )
-
-      return h.view('review/results/error', {
-        pageTitle: 'Error',
-        heading: 'Error Loading Results',
-        error: 'Unable to load review results. Please try again later.'
-      })
+      return handleResultsError(request, h, error, reviewId)
     }
   }
+}
+
+function handleMissingReviewId(request, h) {
+  request.logger.warn('Missing review id for results route')
+  return h
+    .response({
+      success: false,
+      error: 'Review id is required in the URL'
+    })
+    .code(HTTP_STATUS_BAD_REQUEST)
+}
+
+async function fetchAndParseBackendResults(request, reviewId) {
+  const config = request.server.app.config
+  const backendUrl = config.get('backendUrl')
+
+  request.logger.info(
+    { reviewId },
+    `[FRONTEND] Requesting review results from backend - START`
+  )
+
+  const fetchStart = performance.now()
+  const response = await fetch(`${backendUrl}/api/results/${reviewId}`)
+  const fetchDuration = Math.round(performance.now() - fetchStart)
+
+  const parseStart = performance.now()
+  const apiResponse = await response.json()
+  const parseDuration = Math.round(performance.now() - parseStart)
+
+  request.logger.info(
+    {
+      reviewId,
+      fetchDurationMs: fetchDuration,
+      parseDurationMs: parseDuration,
+      status: response.status
+    },
+    `[FRONTEND] Backend response received in ${fetchDuration}ms (parse: ${parseDuration}ms)`
+  )
+
+  if (!response.ok) {
+    request.logger.error(
+      { reviewId, status: response.status },
+      'Backend returned error status'
+    )
+    throw new Error(`Failed to fetch review results: ${response.status}`)
+  }
+  if (!apiResponse.success) {
+    request.logger.error({ reviewId, apiResponse }, 'Invalid API response')
+    throw new Error('Invalid response from backend')
+  }
+  const statusData = apiResponse.data || {
+    status: apiResponse.status,
+    result: apiResponse.result,
+    completedAt: apiResponse.completedAt,
+    failedAt: apiResponse.failedAt,
+    reviewId: apiResponse.jobId
+  }
+
+  return { statusData, fetchDuration, parseDuration }
+}
+
+function renderPendingView(h, statusData) {
+  return h.view('review/results/pending', {
+    pageTitle: 'Review In Progress',
+    heading: 'Review In Progress',
+    reviewId: statusData.reviewId,
+    currentStatus: statusData.status,
+    progress: statusData.progress || 0
+  })
+}
+
+function renderResultsView(h, reviewId, reviewResults) {
+  return h.view('review/results/index', {
+    pageTitle: 'Review Results',
+    heading: 'AI Content Review Results',
+    reviewId,
+    results: reviewResults
+  })
+}
+
+function logResultsPageRender(
+  request,
+  reviewId,
+  totalDuration,
+  fetchDuration,
+  parseDuration,
+  transformDuration
+) {
+  request.logger.info(
+    {
+      reviewId,
+      totalDurationMs: totalDuration,
+      fetchMs: fetchDuration,
+      parseMs: parseDuration,
+      transformMs: transformDuration
+    },
+    `[FRONTEND] Results page rendered - TOTAL: ${totalDuration}ms (Fetch: ${fetchDuration}ms, Parse: ${parseDuration}ms, Transform: ${transformDuration}ms)`
+  )
+}
+
+function handleResultsError(request, h, error, reviewId) {
+  request.logger.error(
+    {
+      error: error.message,
+      errorName: error.name,
+      errorCode: error.code,
+      stack: error.stack,
+      reviewId
+    },
+    'Failed to fetch review results'
+  )
+
+  return h.view('review/results/error', {
+    pageTitle: 'Error',
+    heading: 'Error Loading Results',
+    error:
+      'Unable to load review results. The backend service may be unavailable. Please try again later.'
+  })
 }
 
 /**
  * Transform backend status data to frontend display format
  */
-function transformReviewData(statusData) {
-  // Extract review result from the backend response
-  const reviewResult = statusData.result || {}
-  const metadata = statusData.metadata || {}
+function transformReviewData(statusData, reviewId) {
+  // Backend returns: { result: { reviewData, rawResponse, guardrailAssessment, stopReason, completedAt } }
+  const backendResult = statusData.result || {}
 
-  // Extract sections from the review result
-  const sections = reviewResult.sections || {}
-  const metrics = reviewResult.metrics || {}
-  const aiMetadata = reviewResult.aiMetadata || {}
-
-  return {
-    documentName: statusData.filename || 'Unknown Document',
-    reviewDate:
-      statusData.completedAt ||
-      statusData.updatedAt ||
-      new Date().toISOString(),
-    status: reviewResult.overallStatus || 'completed',
-    s3Location: metadata.s3Key
-      ? `${metadata.bucket}/${metadata.s3Key}`
-      : statusData.s3ResultLocation || 'N/A',
-    s3ResultLocation: statusData.s3ResultLocation || 'N/A',
-    llmModel: aiMetadata.model || 'Claude 3.7 Sonnet',
-    inferenceProfile: aiMetadata.inferenceProfile || 'N/A',
-    processingTime: calculateProcessingTime(
-      statusData.createdAt,
-      statusData.completedAt
-    ),
-
-    // Summary metrics
-    summary: {
-      overallScore: calculateOverallScore(reviewResult.overallStatus),
-      overallStatus: reviewResult.overallStatus || 'unknown',
-      issuesFound: metrics.totalIssues || 0,
-      wordsToAvoid: metrics.wordsToAvoidCount || 0,
-      passiveSentences: metrics.passiveSentencesCount || 0,
-      wordCount: metrics.wordCount || metadata.wordCount || 0
+  const transformed = {
+    id: statusData.id || reviewId,
+    jobId: statusData.jobId,
+    status: statusData.status,
+    result: {
+      reviewData: backendResult.reviewData || null,
+      reviewContent: backendResult.rawResponse || null,
+      guardrailAssessment: backendResult.guardrailAssessment || null,
+      stopReason: backendResult.stopReason || null
     },
-
-    // AI usage metrics
-    aiUsage: {
-      inputTokens: aiMetadata.inputTokens || 0,
-      outputTokens: aiMetadata.outputTokens || 0,
-      totalTokens:
-        (aiMetadata.inputTokens || 0) + (aiMetadata.outputTokens || 0)
-    },
-
-    // Review sections from Bedrock AI response
-    sections: {
-      overallAssessment:
-        sections.overallAssessment || 'No assessment available',
-      contentQuality: sections.contentQuality || 'No data',
-      plainEnglish: sections.plainEnglishReview || 'No data',
-      styleGuide: sections.styleGuideCompliance || 'No data',
-      govspeak: sections.govspeakReview || 'No data',
-      accessibility: sections.accessibilityReview || 'No data',
-      passiveVoice: sections.passiveVoiceReview || 'No data',
-      summaryOfFindings: sections.summaryOfFindings || 'No data',
-      exampleImprovements: sections.exampleImprovements || 'No data'
-    },
-
-    // Full review text from Bedrock AI
-    fullReviewText:
-      reviewResult.reviewText ||
-      reviewResult.fullReview ||
-      'No review text available',
-
-    // Raw data for export
-    rawData: statusData
+    completedAt: statusData.completedAt
   }
-}
 
-/**
- * Calculate overall score from status
- */
-function calculateOverallScore(status) {
-  const scoreMap = {
-    pass: 95,
-    pass_with_recommendations: 80,
-    needs_improvement: 60,
-    fail: 40,
-    unknown: 0
-  }
-  return scoreMap[status] || 0
-}
-
-/**
- * Calculate processing time
- */
-function calculateProcessingTime(startTime, endTime) {
-  if (!startTime || !endTime) return 'N/A'
-
-  const start = new Date(startTime)
-  const end = new Date(endTime)
-  const diffMs = end - start
-  const diffSec = Math.round(diffMs / 1000)
-
-  if (diffSec < 60) {
-    return `${diffSec} seconds`
-  } else {
-    const minutes = Math.floor(diffSec / 60)
-    const seconds = diffSec % 60
-    return `${minutes}m ${seconds}s`
-  }
+  return transformed
 }

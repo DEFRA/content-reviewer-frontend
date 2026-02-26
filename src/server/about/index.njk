@@ -1,16 +1,17 @@
 {% extends 'layouts/page.njk' %}
 
 {% block content %}
-  {{ appHeading({
-    text: heading,
-    caption: "GOV.UK Content Review"
-  }) }}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <h1 class="govuk-heading-l">{{ heading }}</h1>
+    </div>
+  </div>
 
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
       <div class="govuk-body" data-testid="app-page-body">
         <p class="govuk-body-l">
-          AI-powered content review tool to help ensure your content meets GOV.UK standards.
+          An AI‑powered content review tool that helps ensure your content meets GOV.UK standards.
         </p>
         
         <h2 class="govuk-heading-m">What this tool does</h2>
@@ -23,7 +24,94 @@
         </ul>
 
         <h2 class="govuk-heading-m">How to use this tool</h2>
-        <p>Simply paste or type your content in the chat interface on the home page, and our AI assistant will review it against GOV.UK standards and provide feedback.</p>
+        <p>Simply paste or type your content in the text area on the home page, and the AI will review it against GOV.UK standards and provide detailed feedback.</p>
+        
+        <h3 class="govuk-heading-s">Text input requirements</h3>
+        <p>Your content must be:</p>
+        <ul class="govuk-list govuk-list--bullet">
+          <li>Between <strong>10 and 50,000 characters</strong> long</li>
+          <li>Plain text (the AI cannot review formatting like bold text, headings or links)</li>
+          <li>In English</li>
+        </ul>
+        
+        <div class="govuk-inset-text">
+          <p><strong>Tip:</strong> For best results, submit one section or page of content at a time rather than very long documents.</p>
+        </div>
+
+        <h2 class="govuk-heading-m">Processing time</h2>
+        <p>Reviews are typically completed within 30 seconds to 2 minutes. Processing time may vary depending on:</p>
+        <ul class="govuk-list govuk-list--bullet">
+          <li>content length and complexity</li>
+          <li>current service demand</li>
+          <li>analysis depth required</li>
+        </ul>
+        
+        <p>The page will automatically update when your review is ready. You can also close the page and come back later - your review will still be waiting for you in the review history.</p>
+
+        <h2 class="govuk-heading-m">Error handling and retry mechanism</h2>
+        <p>In the event of temporary service interruptions, the system will automatically retry your review request without requiring user intervention. This ensures reliable processing even during periods of high demand or brief service unavailability.</p>
+        
+        <p>Should a review fail after multiple automated retry attempts, an error notification will be displayed. In such cases, please resubmit your content for review.</p>
+
+        <h2 class="govuk-heading-m">How the AI reviews your content</h2>
+        <p>The AI evaluates your content against 5 key categories:</p>
+
+        <h3 class="govuk-heading-s">1. Plain English</h3>
+        <p>The AI checks for:</p>
+        <ul class="govuk-list govuk-list--bullet">
+          <li>Use of clear, simple language and avoidance of jargon</li>
+          <li>Sentence length (aiming for 15-20 words average)</li>
+          <li>GOV.UK "words to avoid" (e.g., "utilise", "facilitate", "going forward")</li>
+          <li>Complex words that could be simplified</li>
+        </ul>
+
+        <h3 class="govuk-heading-s">2. Clarity & Structure</h3>
+        <p>The AI assesses:</p>
+        <ul class="govuk-list govuk-list--bullet">
+          <li>Logical flow and organization of ideas</li>
+          <li>Content scannability and readability</li>
+          <li>User-focused approach (starting with what matters most to users)</li>
+          <li>Passive voice usage (active voice is preferred)</li>
+        </ul>
+
+        <h3 class="govuk-heading-s">3. Accessibility</h3>
+        <p>The AI evaluates:</p>
+        <ul class="govuk-list govuk-list--bullet">
+          <li>Language complexity and reading age</li>
+          <li>Unexplained technical terms and jargon</li>
+          <li>Language barriers for users with different abilities</li>
+          <li>Overall inclusivity of the content</li>
+        </ul>
+
+        <h3 class="govuk-heading-s">4. GOV.UK Style Compliance</h3>
+        <p>The AI checks for:</p>
+        <ul class="govuk-list govuk-list--bullet">
+          <li>Adherence to GOV.UK style guide for language and tone</li>
+          <li>Correct use of numerals vs words (e.g., "9am", not "nine o'clock")</li>
+          <li>Appropriate voice and tone for government content</li>
+          <li>Avoidance of corporate speak and buzzwords</li>
+        </ul>
+
+        <h3 class="govuk-heading-s">5. Content Completeness</h3>
+        <p>The AI assesses whether:</p>
+        <ul class="govuk-list govuk-list--bullet">
+          <li>All necessary information is included</li>
+          <li>Instructions are clear and actionable</li>
+          <li>There are any gaps in the explanation</li>
+          <li>The content length is appropriate for the purpose</li>
+        </ul>
+
+        <div class="govuk-inset-text">
+          <p><strong>Note:</strong> The AI reviews plain text only. It cannot evaluate visual formatting elements like headings, lists, or links. Focus is on language quality and content structure.</p>
+        </div>
+
+        <h2 class="govuk-heading-m">Review output</h2>
+        <p>After reviewing your content, the AI provides:</p>
+        <ul class="govuk-list govuk-list--bullet">
+          <li>A summary with scores for each of the 5 categories</li>
+          <li>Your original content with color-coded highlights showing specific issues</li>
+          <li>Top 5 priority improvements with examples and suggestions</li>
+        </ul>
       </div>
     </div>
   </div>

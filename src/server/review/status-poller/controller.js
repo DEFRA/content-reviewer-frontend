@@ -1,5 +1,8 @@
 import fetch from 'node-fetch'
 
+const HTTP_STATUS_OK = 200
+const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500
+
 /**
  * Review Status Poller Controller
  * Handles polling for AI review progress and completion
@@ -33,15 +36,14 @@ export const reviewStatusPollerController = {
       const backendUrl = config.get('backendUrl')
 
       // Fetch status from backend
-      const response = await fetch(`${backendUrl}/api/review/${reviewId}`)
+      const response = await fetch(`${backendUrl}/api/results/${reviewId}`)
 
       if (!response.ok) {
         throw new Error('Failed to fetch review status')
       }
 
       const statusData = await response.json()
-
-      return h.response(statusData).code(200)
+      return h.response(statusData).code(HTTP_STATUS_OK)
     } catch (error) {
       request.logger.error(error, 'Failed to get review status')
       return h
@@ -49,7 +51,7 @@ export const reviewStatusPollerController = {
           error: 'Failed to get review status',
           status: 'error'
         })
-        .code(500)
+        .code(HTTP_STATUS_INTERNAL_SERVER_ERROR)
     }
   }
 }

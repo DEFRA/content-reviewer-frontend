@@ -238,7 +238,7 @@ export const config = convict({
       doc: 'S3 bucket for uploaded files',
       format: String,
       default: 'dev-service-optimisation-c63f2',
-      env: 'CDP_UPLOADER_S3_BUCKET'
+      env: 'AWS_S3_BUCKET_NAME'
     },
     s3Path: {
       doc: 'S3 path prefix for uploaded files',
@@ -261,6 +261,14 @@ export const config = convict({
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
       ],
       env: 'CDP_UPLOADER_MIME_TYPES'
+    }
+  },
+  contentReview: {
+    maxCharLength: {
+      doc: 'Maximum character length for content review textarea',
+      format: Number,
+      default: 50000,
+      env: 'CONTENT_REVIEW_MAX_CHAR_LEN'
     }
   }
 })

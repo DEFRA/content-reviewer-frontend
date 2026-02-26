@@ -1,0 +1,205 @@
+@use 'pkg:govuk-frontend' as *;
+
+// Review Results Component Styles
+// Styles for the AI-generated review output with color-coded highlights and scores
+
+.review-output {
+  margin-top: 2rem;
+  font-family: 'GDS Transport', arial, sans-serif;
+
+  section {
+    margin-bottom: 3rem;
+    padding: 1.5rem;
+    background-color: govuk-colour('light-grey');
+  }
+
+  h2 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    font-size: 1.6875rem;
+    font-weight: 700;
+    font-family: 'GDS Transport', arial, sans-serif;
+  }
+
+  p,
+  li,
+  span,
+  div {
+    font-family: 'GDS Transport', arial, sans-serif;
+  }
+}
+
+// Scores Summary Section with Category Scores
+.scores-summary {
+  background-color: govuk-colour('light-grey');
+
+  .govuk-summary-list {
+    margin-bottom: 0;
+  }
+
+  .govuk-summary-list__row {
+    border-bottom: 1px solid govuk-colour('mid-grey');
+  }
+
+  .score-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1d70b8;
+    margin-right: 1rem;
+  }
+
+  .score-note {
+    font-size: 0.875rem;
+    color: govuk-colour('dark-grey');
+  }
+}
+
+// Reviewed Content Section with Highlights
+.reviewed-content {
+  background-color: govuk-colour('white');
+
+  h2 {
+    margin-bottom: 0.5rem;
+  }
+
+  .content-body {
+    font-family: 'GDS Transport', arial, sans-serif;
+    font-size: 1.1875rem;
+    line-height: 1.6;
+    color: govuk-colour('black');
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+}
+
+// Highlight styles (moved out to reduce nesting depth)
+.reviewed-content .content-body mark {
+  padding: 2px 4px;
+  font-weight: normal;
+  color: govuk-colour('black');
+  font-family: 'GDS Transport', arial, sans-serif;
+}
+
+// Unified color coding for all highlights (accessibility improvement)
+.highlight-plain-english,
+.highlight-clarity,
+.highlight-accessibility,
+.highlight-govuk-style,
+.highlight-completeness {
+  background-color: #d2e2f1;
+}
+
+// Example Improvements Section
+.example-improvements {
+  background-color: govuk-colour('light-grey');
+
+  .improvement-list {
+    list-style: none;
+    counter-reset: improvement-counter;
+    padding-left: 0;
+    margin: 0;
+  }
+
+  .improvement-item {
+    counter-increment: improvement-counter;
+    position: relative;
+    padding: 1.5rem 1.5rem 1.5rem 3rem;
+    margin-bottom: 1.5rem;
+    background-color: govuk-colour('white');
+
+    &::before {
+      content: counter(improvement-counter);
+      position: absolute;
+      left: 1rem;
+      top: 1.5rem;
+      font-weight: 700;
+      font-size: 1.25rem;
+      color: govuk-colour('dark-grey');
+    }
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+}
+
+// Improvement item elements (moved out to reduce nesting)
+.improvement-item .category-badge {
+  display: inline-block;
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 0.25rem 0.5rem;
+  margin-bottom: 0.5rem;
+  background-color: govuk-colour('blue');
+  color: govuk-colour('white');
+}
+
+.improvement-item .issue-title {
+  display: block;
+  font-size: 1.1875rem;
+  margin-bottom: 0.5rem;
+  color: govuk-colour('black');
+}
+
+.improvement-item .issue-description {
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  color: govuk-colour('dark-grey');
+}
+
+.improvement-item .issue-example {
+  background-color: govuk-colour('light-grey');
+  padding: 1rem;
+}
+
+.improvement-item .issue-example p {
+  margin: 0.5rem 0;
+  font-size: 1rem;
+
+  &:first-child {
+    margin-top: 0;
+  }
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.improvement-item .issue-example strong {
+  font-weight: 700;
+}
+
+.improvement-item .issue-example .before-text {
+  color: govuk-colour('dark-grey');
+}
+
+.improvement-item .issue-example .after-text {
+  color: govuk-colour('green');
+}
+
+// Unified severity styling (accessibility improvement)
+.severity-critical,
+.severity-high,
+.severity-medium,
+.severity-low {
+  &::before {
+    color: govuk-colour('blue');
+  }
+
+  .issue-title {
+    color: govuk-colour('blue');
+  }
+}
+
+// Print styles
+@media print {
+  .review-output section {
+    page-break-inside: avoid;
+    background-color: #ffffff;
+  }
+
+  .review-output mark {
+    background-color: transparent !important;
+    text-decoration: underline;
+  }
+}
