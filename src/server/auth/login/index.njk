@@ -1,0 +1,63 @@
+{% extends "govuk/template.njk" %}
+
+{% from "govuk/components/button/macro.njk" import govukButton %}
+
+{% block pageTitle %}Sign in – Content Review Tool – GOV.UK{% endblock %}
+
+{% block head %}
+  <link href="/public/stylesheets/application.css" rel="stylesheet">
+{% endblock %}
+
+{% block header %}
+  {{ govukHeader({
+    homepageUrl: "https://www.gov.uk/",
+    classes: "app-header",
+    containerClasses: "govuk-width-container",
+    useTudorCrown: true
+  }) }}
+{% endblock %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      <div style="background-color: #1d70b8; padding: 20px 30px; margin-bottom: 30px; text-align: center;">
+        <h1 class="govuk-heading-l" style="color: #ffffff; margin-bottom: 0;">
+          Content Review Assistant
+        </h1>
+      </div>
+
+      <p class="govuk-body-l">An AI-powered content review tool that helps ensure your content meets GOV.UK standards.</p>
+
+      <p class="govuk-body">The Content Review Tool helps you:</p>
+      <ul class="govuk-list govuk-list--bullet">
+        <li>Review content for plain English and clarity</li>
+        <li>Check compliance with GOV.UK style guidelines</li>
+        <li>Identify areas for improvement in readability</li>
+        <li>Get AI-powered suggestions for better content</li>
+      </ul>
+
+      <p class="govuk-body">Click on the button below to log in using your Defra credentials.</p>
+
+      {{ govukButton({
+        text: "Log in",
+        href: "/auth/login",
+        isStartButton: true,
+        classes: "govuk-!-margin-top-2"
+      }) }}
+
+    </div>
+  </div>
+{% endblock %}
+
+{% block footer %}
+  {{ govukFooter({
+    meta: {
+      items: [
+        { href: "/privacy", text: "Privacy" },
+        { href: "/cookies", text: "Cookies" },
+        { href: "/accessibility", text: "Accessibility statement" }
+      ]
+    }
+  }) }}
+{% endblock %}
