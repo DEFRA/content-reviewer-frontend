@@ -49,6 +49,8 @@ function generateTitle(textContent, title) {
 
 /**
  * Submit to backend
+ * Passes the authenticated user's ID as x-user-id header so the backend
+ * can store it on the review record for per-user filtering.
  */
 async function submitToBackend(textContent, finalTitle, request) {
   const backendUrl = config.get('backendUrl')
@@ -56,18 +58,21 @@ async function submitToBackend(textContent, finalTitle, request) {
     `Requesting text review from backend: ${backendUrl}/api/review/text`
   )
 
+  // Prefer the SSO-authenticated user ID from the session cookie over any
+  // client-supplied header, so it cannot be spoofed.
+  const userId = request.auth?.credentials?.user?.id || null
+
   const backendRequestStart = Date.now()
 
   const response = await fetch(`${backendUrl}/api/review/text`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      ...(userId ? { 'x-user-id': userId } : {})
     },
     body: JSON.stringify({
       content: textContent,
-      title: finalTitle,
-      userId: request.headers['x-user-id'] || 'anonymous',
-      sessionId: request.headers['x-session-id'] || null
+      title: finalTitle
     })
   })
 

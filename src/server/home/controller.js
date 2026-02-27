@@ -32,21 +32,30 @@ const getPaginationParams = (request) => {
 }
 
 /**
- * Determine backend endpoint based on pagination needs
+ * Determine backend endpoint based on pagination needs.
+ * Includes userId query param to scope results to the authenticated user.
  */
-const getBackendEndpoint = (backendUrl, limit, pageSize, skip) => {
+const getBackendEndpoint = (backendUrl, limit, pageSize, skip, userId) => {
   let fetchLimit
-  let endpoint
+  const params = new URLSearchParams()
 
   if (limit > pageSize) {
     fetchLimit = pageSize
-    endpoint = `${backendUrl}/api/reviews?limit=${fetchLimit}&skip=${skip}`
+    params.set('limit', fetchLimit)
+    params.set('skip', skip)
   } else {
     fetchLimit = limit
-    endpoint = `${backendUrl}/api/reviews?limit=${fetchLimit}`
+    params.set('limit', fetchLimit)
   }
 
-  return { backendEndpoint: endpoint, fetchLimit }
+  if (userId) {
+    params.set('userId', userId)
+  }
+
+  return {
+    backendEndpoint: `${backendUrl}/api/reviews?${params.toString()}`,
+    fetchLimit
+  }
 }
 
 /**
@@ -111,14 +120,15 @@ const logReviewResults = (
 }
 
 /**
- * Fetch review history from backend
+ * Fetch review history from backend, scoped to the authenticated user.
  */
 const fetchReviewHistory = async (
   backendUrl,
   limit,
   pageSize,
   currentPage,
-  skip
+  skip,
+  userId
 ) => {
   let reviewHistory = []
   let totalReviews = 0
@@ -129,7 +139,8 @@ const fetchReviewHistory = async (
       backendUrl,
       limit,
       pageSize,
-      skip
+      skip,
+      userId
     )
 
     const { data, normalized, missingId, backendRequestTime } =
@@ -175,116 +186,19 @@ export const homeController = {
     const config = request.server.app.config
     const backendUrl = config.get('backendUrl')
 
-<<<<<<< HEAD
-    logger.info('Configuration retrieved', { backendUrl })
-    console.log('[HOME-CONTROLLER] Backend URL:', backendUrl)
+    // Scope review history to the signed-in user only
+    const userId = request.auth?.credentials?.user?.id || null
 
-    // Fetch review history from backend
-    // Default to 5, but support limit query param for future use
-    const limit = parseInt(request.query.limit) || 5
-    let reviewHistory = []
-    try {
-      const backendRequestStart = Date.now()
-      console.log('[HOME-CONTROLLER] Fetching review history from backend')
-      logger.info('Initiating review history fetch for home page', {
-        endpoint: `${backendUrl}/api/reviews?limit=${limit}`
-      })
-
-      const response = await fetch(`${backendUrl}/api/reviews?limit=${limit}`)
-
-      const backendRequestEnd = Date.now()
-      const backendRequestTime =
-        (backendRequestEnd - backendRequestStart) / 1000
-
-      logger.info('Review history fetch response received', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-        requestTime: `${backendRequestTime}s`
-      })
-      console.log('[HOME-CONTROLLER] Review history fetch response:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-
-        console.log('Review history on home page:', data)
-        logger.info('Response from backend for review history', {
-          reviews: data.reviews
-        })
-        console.log(
-          '[HOME-CONTROLLER] Response ID from backend for review history',
-          data.reviews.id
-        )
-
-        // Normalize and log missing IDs to catch "Missing review ID" links
-        const normalized = (data.reviews || []).map((r) => ({
-          ...r,
-          id: r.id || r.reviewId || r.jobId || r._id,
-          reviewId: r.reviewId || r.id || r.jobId || r._id,
-          filename: r.fileName || r.filename || 'Text Content', // map fileName to filename
-          uploadedAt: r.createdAt || r.updatedAt || r.uploadedAt || null // map createdAt/updatedAt to uploadedAt
-        }))
-
-        const missingId = normalized.filter((r) => !r.id && !r.reviewId)
-
-        reviewHistory = normalized
-
-        logger.info('Review history retrieved successfully', {
-          count: reviewHistory.length,
-          totalFromResponse: data.total || data.count || 0,
-          requestTime: `${backendRequestTime}s`,
-          missingIdCount: missingId.length,
-          reviewid: data.reviews.id
-        })
-        if (missingId.length > 0) {
-          logger.warn(
-            {
-              missingIdCount: missingId.length,
-              sample: missingId.slice(0, 3)
-            },
-            'Review history entries missing reviewId'
-          )
-        }
-        console.log('[HOME-CONTROLLER] Review history fetched successfully:', {
-          count: reviewHistory.length,
-          totalFromResponse: data.total || data.count || 0,
-          missingIdCount: missingId.length
-        })
-      } else {
-        logger.warn('Review history fetch failed with non-ok status', {
-          status: response.status,
-          requestTime: `${backendRequestTime}s`
-        })
-        console.warn(
-          '[HOME-CONTROLLER] Review history fetch failed with status:',
-          response.status
-        )
-      }
-    } catch (error) {
-      logger.error('Failed to fetch review history for home page', {
-        message: error.message,
-        stack: error.stack,
-        backendUrl
-      })
-      console.error('[HOME-CONTROLLER] Failed to fetch review history:', {
-        message: error.message,
-        stack: error.stack
-      })
-      request.logger.error(
-        error,
-        'Failed to fetch review history for home page'
-      )
-      // Continue with empty history - don't break the page
-    }
-=======
     const { limit, pageSize, currentPage, skip } = getPaginationParams(request)
     const { reviewHistory, totalReviews, totalPages } =
-      await fetchReviewHistory(backendUrl, limit, pageSize, currentPage, skip)
->>>>>>> ff60217ad53ed6a151cd16f021dd1bc0d6733352
+      await fetchReviewHistory(
+        backendUrl,
+        limit,
+        pageSize,
+        currentPage,
+        skip,
+        userId
+      )
 
     const viewData = {
       pageTitle: 'Home',
