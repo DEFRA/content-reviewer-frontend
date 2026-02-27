@@ -4,6 +4,8 @@ import { createLogger } from '../common/helpers/logging/logger.js'
 
 const logger = createLogger()
 
+const AUTH_FAILED_REDIRECT = '/auth/login-page?error=auth_failed'
+
 // ── Route handlers ─────────────────────────────────────────────────────────────
 
 /**
@@ -17,7 +19,7 @@ async function loginHandler(_request, h) {
       logger.error(
         'MSAL client not initialised – missing AZURE_CLIENT_ID / AZURE_CLIENT_SECRET / AZURE_TENANT_ID'
       )
-      return h.redirect('/auth/login-page?error=auth_failed')
+      return h.redirect(AUTH_FAILED_REDIRECT)
     }
     const authUrl = await msalClient.getAuthCodeUrl({
       scopes: ['openid', 'profile', 'email'],
@@ -28,7 +30,7 @@ async function loginHandler(_request, h) {
     return h.redirect(authUrl)
   } catch (error) {
     logger.error('Azure AD login error:', error)
-    return h.redirect('/auth/login-page?error=auth_failed')
+    return h.redirect(AUTH_FAILED_REDIRECT)
   }
 }
 
@@ -41,7 +43,7 @@ async function callbackHandler(request, h) {
   try {
     if (!msalClient) {
       logger.error('MSAL client not initialised – cannot process callback')
-      return h.redirect('/auth/login-page?error=auth_failed')
+      return h.redirect(AUTH_FAILED_REDIRECT)
     }
     const code = request.query?.code
     if (!code) {
@@ -66,7 +68,7 @@ async function callbackHandler(request, h) {
     return h.redirect('/')
   } catch (error) {
     logger.error('Azure AD callback error:', error)
-    return h.redirect('/auth/login-page?error=auth_failed')
+    return h.redirect(AUTH_FAILED_REDIRECT)
   }
 }
 
