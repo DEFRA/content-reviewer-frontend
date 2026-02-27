@@ -1,6 +1,7 @@
 import path from 'node:path'
 import hapi from '@hapi/hapi'
 import hapiCookie from '@hapi/cookie'
+import Scooter from '@hapi/scooter'
 
 import { router } from './router.js'
 import { config } from '../config/config.js'
@@ -117,6 +118,7 @@ export async function createServer() {
     pulse,
     sessionCache,
     nunjucksConfig,
+    Scooter, // must be registered before blankie/contentSecurityPolicy
     contentSecurityPolicy,
     azureAuth,
     router
