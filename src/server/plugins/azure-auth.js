@@ -4,7 +4,7 @@ import { createLogger } from '../common/helpers/logging/logger.js'
 
 const logger = createLogger()
 
-// ── Route handlers ────────────────────────────────────────────────────────────
+// ── Route handlers ─────────────────────────────────────────────────────────────
 
 /**
  * GET /auth/login
@@ -17,7 +17,7 @@ async function loginHandler(_request, h) {
       logger.error(
         'MSAL client not initialised – missing AZURE_CLIENT_ID / AZURE_CLIENT_SECRET / AZURE_TENANT_ID'
       )
-      return h.redirect('/auth/login-page')
+      return h.redirect('/auth/login-page?error=auth_failed')
     }
     const authUrl = await msalClient.getAuthCodeUrl({
       scopes: ['openid', 'profile', 'email'],
@@ -28,7 +28,7 @@ async function loginHandler(_request, h) {
     return h.redirect(authUrl)
   } catch (error) {
     logger.error('Azure AD login error:', error)
-    return h.redirect('/error')
+    return h.redirect('/auth/login-page?error=auth_failed')
   }
 }
 
@@ -41,12 +41,12 @@ async function callbackHandler(request, h) {
   try {
     if (!msalClient) {
       logger.error('MSAL client not initialised – cannot process callback')
-      return h.redirect('/error')
+      return h.redirect('/auth/login-page?error=auth_failed')
     }
     const code = request.query?.code
     if (!code) {
       logger.error('No authorization code received on /auth/callback')
-      return h.redirect('/error')
+      return h.redirect('/auth/login-page?error=invalid_state')
     }
     const response = await msalClient.acquireTokenByCode({
       code,
@@ -66,7 +66,7 @@ async function callbackHandler(request, h) {
     return h.redirect('/')
   } catch (error) {
     logger.error('Azure AD callback error:', error)
-    return h.redirect('/error')
+    return h.redirect('/auth/login-page?error=auth_failed')
   }
 }
 
