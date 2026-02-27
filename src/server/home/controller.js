@@ -32,21 +32,30 @@ const getPaginationParams = (request) => {
 }
 
 /**
- * Determine backend endpoint based on pagination needs
+ * Determine backend endpoint based on pagination needs.
+ * Includes userId query param to scope results to the authenticated user.
  */
-const getBackendEndpoint = (backendUrl, limit, pageSize, skip) => {
+const getBackendEndpoint = (backendUrl, limit, pageSize, skip, userId) => {
   let fetchLimit
-  let endpoint
+  const params = new URLSearchParams()
 
   if (limit > pageSize) {
     fetchLimit = pageSize
-    endpoint = `${backendUrl}/api/reviews?limit=${fetchLimit}&skip=${skip}`
+    params.set('limit', fetchLimit)
+    params.set('skip', skip)
   } else {
     fetchLimit = limit
-    endpoint = `${backendUrl}/api/reviews?limit=${fetchLimit}`
+    params.set('limit', fetchLimit)
   }
 
-  return { backendEndpoint: endpoint, fetchLimit }
+  if (userId) {
+    params.set('userId', userId)
+  }
+
+  return {
+    backendEndpoint: `${backendUrl}/api/reviews?${params.toString()}`,
+    fetchLimit
+  }
 }
 
 /**
@@ -111,14 +120,15 @@ const logReviewResults = (
 }
 
 /**
- * Fetch review history from backend
+ * Fetch review history from backend, scoped to the authenticated user.
  */
 const fetchReviewHistory = async (
   backendUrl,
   limit,
   pageSize,
   currentPage,
-  skip
+  skip,
+  userId
 ) => {
   let reviewHistory = []
   let totalReviews = 0
@@ -129,7 +139,8 @@ const fetchReviewHistory = async (
       backendUrl,
       limit,
       pageSize,
-      skip
+      skip,
+      userId
     )
 
     const { data, normalized, missingId, backendRequestTime } =
@@ -175,9 +186,19 @@ export const homeController = {
     const config = request.server.app.config
     const backendUrl = config.get('backendUrl')
 
+    // Scope review history to the signed-in user only
+    const userId = request.auth?.credentials?.user?.id || null
+
     const { limit, pageSize, currentPage, skip } = getPaginationParams(request)
     const { reviewHistory, totalReviews, totalPages } =
-      await fetchReviewHistory(backendUrl, limit, pageSize, currentPage, skip)
+      await fetchReviewHistory(
+        backendUrl,
+        limit,
+        pageSize,
+        currentPage,
+        skip,
+        userId
+      )
 
     const viewData = {
       pageTitle: 'Home',
