@@ -15,7 +15,6 @@
 {% endblock %}
 
 {% block header %}
-  {# serviceName being used in govukHeader will be @deprecated in v6. It has moved to govukServiceNavigation - https://github.com/alphagov/govuk-frontend/blob/main/CHANGELOG.md#move-service-name-and-navigation-links-from-the-govuk-header-to-service-navigation-component #}
   {{ govukHeader({
     homepageUrl: "https://www.gov.uk/",
     classes: "app-header",
@@ -23,10 +22,81 @@
     useTudorCrown: true
   }) }}
 
+  {# ── Authenticated user bar ── #}
+  {% if user %}
+    <div class="app-user-bar" role="banner" aria-label="User information">
+      <div class="govuk-width-container app-user-bar__inner">
+        <span class="govuk-body-s app-user-bar__name">
+          Signed in as <strong>{{ user.name if user.name else user.email }}</strong>
+        </span>
+        <a href="/auth/logout" class="govuk-link govuk-body-s app-user-bar__signout" aria-label="Sign out of Content Review Tool">
+          Sign out
+        </a>
+      </div>
+    </div>
+  {% endif %}
+
   {{ govukServiceNavigation({
     navigation: navigation
   }) }}
 {% endblock %}
+
+{% block pageTitle %}
+  {{ pageTitle }}
+{% endblock %}
+
+{% block beforeContent %}
+  {{ cookieBanner() }}
+  {% if breadcrumbs.length > 1 %}
+    {{ govukBreadcrumbs({
+      items: breadcrumbs
+    }) }}
+  {% endif %}
+{% endblock %}
+
+{% block content %}{% endblock %}
+
+{% block footer %}
+  {{ govukFooter({
+    meta: {
+      items: [
+        {
+          href: "/privacy",
+          text: "Privacy"
+        },
+        {
+          href: "/cookies",
+          text: "Cookies"
+        },
+        {
+          href: "/accessibility",
+          text: "Accessibility statement"
+        },
+        {
+          href: "/contact",
+          text: "Contact"
+        }
+      ]
+    },
+    contentLicence: {
+      html: 'All content is available under the <a class="govuk-footer__link" href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/" rel="license">Open Government Licence v3.0</a>, except where otherwise stated'
+    },
+    copyright: {
+      html: '© <a class="govuk-footer__link" href="https://www.nationalarchives.gov.uk/information-management/re-using-public-sector-information/uk-government-licensing-framework/crown-copyright/">Crown copyright</a>'
+    }
+  }) }}
+{% endblock %}
+
+{% block bodyEnd %}
+  <script nonce="{{ cspNonce }}">
+    // Inject backend configuration for client-side JavaScript
+    window.APP_CONFIG = {
+      backendApiUrl: '{{ backendUrl }}'
+    };
+  </script>
+  <script nonce="{{ cspNonce }}" src="{{ getAssetPath('application.js') }}"></script>
+{% endblock %}
+
 
 {% block pageTitle %}
   {{ pageTitle }}
