@@ -9,7 +9,7 @@ const { NODE_ENV = 'development' } = process.env
 const require = createRequire(import.meta.url)
 const dirname = path.dirname(fileURLToPath(import.meta.url))
 
-// Import CommonJS module using require - extract WebpackAssetsManifest from the export object
+// Import CommonJS module using require
 const { WebpackAssetsManifest } = require('webpack-assets-manifest')
 
 const govukFrontendPath = path.dirname(
