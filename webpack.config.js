@@ -9,11 +9,7 @@ const { NODE_ENV = 'development' } = process.env
 const require = createRequire(import.meta.url)
 const dirname = path.dirname(fileURLToPath(import.meta.url))
 
-const WebpackAssetsManifestModule = require('webpack-assets-manifest')
-const WebpackAssetsManifest =
-  WebpackAssetsManifestModule.WebpackAssetsManifest ||
-  WebpackAssetsManifestModule.default ||
-  WebpackAssetsManifestModule
+const { WebpackAssetsManifest } = require('webpack-assets-manifest')
 
 const govukFrontendPath = path.dirname(
   require.resolve('govuk-frontend/package.json')
