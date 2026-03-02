@@ -3,12 +3,14 @@ import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import CopyPlugin from 'copy-webpack-plugin'
 import TerserPlugin from 'terser-webpack-plugin'
-import { WebpackAssetsManifest } from 'webpack-assets-manifest'
 
 const { NODE_ENV = 'development' } = process.env
 
 const require = createRequire(import.meta.url)
 const dirname = path.dirname(fileURLToPath(import.meta.url))
+
+// Import CommonJS module using require - extract WebpackAssetsManifest from the export object
+const { WebpackAssetsManifest } = require('webpack-assets-manifest')
 
 const govukFrontendPath = path.dirname(
   require.resolve('govuk-frontend/package.json')
