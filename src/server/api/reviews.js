@@ -59,14 +59,19 @@ function createErrorResponse(h, message, _limit, _skip) {
  */
 
 /**
- * Fetch reviews from backend
+ * Fetch reviews from backend, scoped to the authenticated user.
  * @param {number} limit - Limit parameter
  * @param {number} skip - Skip parameter
  * @param {number} _page - Page number
+ * @param {string|null} userId - Authenticated user ID for per-user filtering
  * @returns {Promise<Object>}
  */
-async function fetchReviewsFromBackend(limit, skip, _page) {
-  const endpoint = `${backendUrl}/api/reviews?limit=${limit}&skip=${skip}`
+async function fetchReviewsFromBackend(limit, skip, _page, userId = null) {
+  const params = new URLSearchParams({ limit, skip })
+  if (userId) {
+    params.set('userId', userId)
+  }
+  const endpoint = `${backendUrl}/api/reviews?${params.toString()}`
   const startTime = Date.now()
   const response = await fetch(endpoint)
   const backendRequestTime = ((Date.now() - startTime) / 1000).toFixed(2)
@@ -92,10 +97,11 @@ export async function getReviewsController(request, h) {
   const startTime = Date.now()
   const requestLogger = request.logger
   const { limit, page, skip } = calculatePagination(request.query)
+  const userId = request.auth?.credentials?.user?.id || null
 
   try {
     const { response, backendRequestTime, endpoint } =
-      await fetchReviewsFromBackend(limit, skip, page)
+      await fetchReviewsFromBackend(limit, skip, page, userId)
 
     if (!response.ok) {
       logger.error(
