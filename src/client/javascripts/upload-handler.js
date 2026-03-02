@@ -1,5 +1,5 @@
 // Upload form handler
-const DEFAULT_CHARACTER_LIMIT = 50000
+const DEFAULT_CHARACTER_LIMIT = 100000
 const CHARACTER_LIMIT =
   globalThis.contentReviewMaxCharLength || DEFAULT_CHARACTER_LIMIT
 const GOVUK_ERROR_MESSAGE_CLASS = 'govuk-error-message'
