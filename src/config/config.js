@@ -224,7 +224,7 @@ export const config = convict({
   backendUrl: {
     doc: 'Backend API URL',
     format: String,
-    default: 'https://content-reviewer-backend.dev.cdp-int.defra.cloud',
+    default: 'http://localhost:8085',
     env: 'BACKEND_URL'
   },
   cdpUploader: {
@@ -267,7 +267,7 @@ export const config = convict({
     maxCharLength: {
       doc: 'Maximum character length for content review textarea',
       format: Number,
-      default: 50000,
+      default: 100000,
       env: 'CONTENT_REVIEW_MAX_CHAR_LEN'
     }
   },
