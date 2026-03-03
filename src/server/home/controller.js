@@ -3,6 +3,7 @@
  * Handles displaying the main page with review submission and history
  */
 import { createLogger } from '../common/helpers/logging/logger.js'
+import { getUserIdentifier } from '../common/helpers/get-user-identifier.js'
 
 const logger = createLogger()
 
@@ -186,8 +187,8 @@ export const homeController = {
     const config = request.server.app.config
     const backendUrl = config.get('backendUrl')
 
-    // Scope review history to the signed-in user only
-    const userId = request.auth?.credentials?.user?.id || null
+    // Use session ID for anonymous users to ensure consistent review history per-session
+    const userId = getUserIdentifier(request)
 
     const { limit, pageSize, currentPage, skip } = getPaginationParams(request)
     const { reviewHistory, totalReviews, totalPages } =

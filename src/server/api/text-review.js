@@ -1,6 +1,7 @@
 import fetch from 'node-fetch'
 import { config } from '../../config/config.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
+import { getUserIdentifier } from '../common/helpers/get-user-identifier.js'
 
 const logger = createLogger()
 
@@ -60,7 +61,8 @@ async function submitToBackend(textContent, finalTitle, request) {
 
   // Prefer the SSO-authenticated user ID from the session cookie over any
   // client-supplied header, so it cannot be spoofed.
-  const userId = request.auth?.credentials?.user?.id || null
+  // For anonymous users, use session ID for consistent tracking.
+  const userId = getUserIdentifier(request)
 
   const backendRequestStart = Date.now()
 
