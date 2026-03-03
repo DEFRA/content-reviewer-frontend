@@ -4,7 +4,7 @@ import { homeController } from './controller'
 const mockConfig = {
   get: vi.fn((key) => {
     if (key === 'backendUrl') {
-      return 'http://mock-backend'
+      return 'https://mock-backend'
     }
     if (key === 'contentReview.maxCharLength') {
       return '100000'
@@ -30,7 +30,8 @@ globalThis.fetch = vi.fn()
 
 const HOME_INDEX_VIEW = 'home/index'
 
-describe('homeController', () => {
+// Default rendering tests
+describe('homeController - default rendering', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -47,11 +48,18 @@ describe('homeController', () => {
         pageTitle: 'Home',
         heading: 'Home',
         reviewHistory: [],
-        backendUrl: 'http://mock-backend',
+        backendUrl: 'https://mock-backend',
         contentReviewMaxCharLength: '100000',
         pagination: expect.objectContaining({ currentPage: 1, totalPages: 1 })
       })
     )
+  })
+})
+
+// Flash messages tests
+describe('homeController - flash messages', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
   })
 
   it('handles uploadSuccess and uploadError flash messages', async () => {
@@ -70,6 +78,13 @@ describe('homeController', () => {
         uploadError: 'Error!'
       })
     )
+  })
+})
+
+// Pagination and backend data tests
+describe('homeController - pagination and backend data', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
   })
 
   it('handles pagination params and backend data', async () => {
@@ -96,6 +111,13 @@ describe('homeController', () => {
       })
     )
   })
+})
+
+// Error handling tests
+describe('homeController - error handling', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
 
   it('handles backend errors gracefully', async () => {
     globalThis.fetch.mockRejectedValueOnce(new Error('Backend down'))
@@ -108,6 +130,13 @@ describe('homeController', () => {
         pagination: expect.objectContaining({ totalReviews: 0, totalPages: 1 })
       })
     )
+  })
+})
+
+// Review id normalization tests
+describe('homeController - review id normalization', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
   })
 
   it('normalizes review ids from backend', async () => {
