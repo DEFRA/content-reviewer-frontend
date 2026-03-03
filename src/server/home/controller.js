@@ -25,7 +25,7 @@ const normalizeReviewData = (reviews) => {
  * Get pagination parameters from request
  */
 const getPaginationParams = (request) => {
-  const limit = Number.parseInt(request.query.limit) || 10
+  const limit = Number.parseInt(request.query.limit) || 5
   const pageSize = 25
   const currentPage = Number.parseInt(request.query.page) || 1
   const skip = (currentPage - 1) * pageSize
