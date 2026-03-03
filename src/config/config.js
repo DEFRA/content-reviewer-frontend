@@ -267,7 +267,7 @@ export const config = convict({
     maxCharLength: {
       doc: 'Maximum character length for content review textarea',
       format: Number,
-      default: 50000,
+      default: 100000,
       env: 'CONTENT_REVIEW_MAX_CHAR_LEN'
     }
   },
