@@ -28,7 +28,8 @@ function makeH() {
 
 const ERROR_VIEW_PATH = 'error/index'
 
-describe('catchAll', () => {
+// Tests for catchAll when response is not a Boom error
+describe('catchAll - non Boom error', () => {
   it('should return h.continue when response is not a Boom error', () => {
     const request = makeRequest(HTTP_OK, false)
     const h = makeH()
@@ -38,7 +39,10 @@ describe('catchAll', () => {
     expect(result).toBe(h.continue)
     expect(h.view).not.toHaveBeenCalled()
   })
+})
 
+// Tests for catchAll rendering error views for specific status codes
+describe('catchAll - error view rendering', () => {
   it('should render error view with "Page not found" for 404', () => {
     const request = makeRequest(HTTP_NOT_FOUND)
     const h = makeH()
@@ -104,7 +108,10 @@ describe('catchAll', () => {
     })
     expect(request.logger.error).not.toHaveBeenCalled()
   })
+})
 
+// Tests for catchAll logging and response code
+describe('catchAll - logging and response code', () => {
   it('should log the error stack for 5xx errors', () => {
     const request = makeRequest(
       HTTP_INTERNAL_SERVER_ERROR,

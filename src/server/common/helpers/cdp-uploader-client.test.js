@@ -24,8 +24,8 @@ vi.mock('undici', () => ({
   fetch: vi.fn()
 }))
 
-const REDIRECT_URL = 'http://redirect.url'
-const CALLBACK_URL = 'http://callback.url'
+const REDIRECT_URL = 'https://redirect.url'
+const CALLBACK_URL = 'https://callback.url'
 const POLL_MAX_ATTEMPTS = 5
 const POLL_INTERVAL_MS = 100
 let fetch
@@ -56,9 +56,10 @@ afterEach(() => {
 
 // Split 'initiateUpload' tests into two smaller describe blocks
 
+// Split out initiateUpload success cases
 describe('initiateUpload - success cases', () => {
   it('should POST to /initiate and return response data on success', async () => {
-    const mockData = { uploadId: 'abc123', url: 'http://upload.url' }
+    const mockData = { uploadId: 'abc123', url: 'https://upload.url' }
     fetch.mockResolvedValue({
       ok: true,
       json: vi.fn().mockResolvedValue(mockData)
@@ -130,236 +131,240 @@ describe('initiateUpload - success cases', () => {
       json: vi.fn().mockResolvedValue({})
     })
 
-    await initiateUpload({ redirect: 'http://redirect.url' })
+    await initiateUpload({ redirect: 'https://redirect.url' })
 
     const body = JSON.parse(fetch.mock.calls[0][1].body)
     expect(body.s3Bucket).toBe(TEST_S3_BUCKET)
     expect(body.mimeTypes).toEqual(ALLOWED_MIME_TYPES)
     expect(body.maxFileSize).toBe(10000000)
   })
+})
 
-  describe('initiateUpload - error cases', () => {
-    it('should throw an error when response is not ok', async () => {
-      fetch.mockResolvedValue({
-        ok: false,
-        statusText: 'Bad Request',
-        text: vi.fn().mockResolvedValue('Invalid payload')
-      })
-      await expect(initiateUpload({ redirect: REDIRECT_URL })).rejects.toThrow(
-        'Failed to initiate upload: Bad Request - Invalid payload'
-      )
+// Split out initiateUpload error cases
+describe('initiateUpload - error cases', () => {
+  it('should throw an error when response is not ok', async () => {
+    fetch.mockResolvedValue({
+      ok: false,
+      statusText: 'Bad Request',
+      text: vi.fn().mockResolvedValue('Invalid payload')
+    })
+    await expect(initiateUpload({ redirect: REDIRECT_URL })).rejects.toThrow(
+      'Failed to initiate upload: Bad Request - Invalid payload'
+    )
+  })
+})
+
+// Split out getUploadStatus tests
+const UPLOAD_ID = 'upload-123'
+// Group: Basic status fetch and query param tests
+describe('getUploadStatus - basic fetch and query params', () => {
+  it('should GET /status/:uploadId and return status data', async () => {
+    const mockStatus = { uploadStatus: 'ready', form: {} }
+    fetch.mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue(mockStatus)
     })
 
-    // ─── getUploadStatus ─────────────────────────────────────────────────────────
+    const result = await getUploadStatus(UPLOAD_ID)
 
-    const UPLOAD_ID = 'upload-123'
-
-    describe('getUploadStatus', () => {
-      const S3_DETAILS_LABEL = 'S3 DETAILS:'
-
-      it('should GET /status/:uploadId and return status data', async () => {
-        const mockStatus = { uploadStatus: 'ready', form: {} }
-        fetch.mockResolvedValue({
-          ok: true,
-          json: vi.fn().mockResolvedValue(mockStatus)
+    expect(fetch).toHaveBeenCalledWith(
+      'http://localhost:7337/status/upload-123',
+      expect.objectContaining({
+        method: 'GET',
+        headers: expect.objectContaining({
+          'User-Agent': 'content-reviewer-frontend'
         })
-
-        const result = await getUploadStatus(UPLOAD_ID)
-
-        expect(fetch).toHaveBeenCalledWith(
-          'http://localhost:7337/status/upload-123',
-          expect.objectContaining({
-            method: 'GET',
-            headers: expect.objectContaining({
-              'User-Agent': 'content-reviewer-frontend'
-            })
-          })
-        )
-        expect(result).toEqual(mockStatus)
       })
+    )
+    expect(result).toEqual(mockStatus)
+  })
 
-      it('should append debug=true query param when debug is true', async () => {
-        fetch.mockResolvedValue({
-          ok: true,
-          json: vi.fn().mockResolvedValue({ uploadStatus: 'ready' })
-        })
-        await getUploadStatus(UPLOAD_ID, true)
+  it('should append debug=true query param when debug is true', async () => {
+    fetch.mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ uploadStatus: 'ready' })
+    })
+    await getUploadStatus(UPLOAD_ID, true)
 
-        const calledUrl = fetch.mock.calls[0][0]
-        expect(calledUrl).toContain('debug=true')
-      })
+    const calledUrl = fetch.mock.calls[0][0]
+    expect(calledUrl).toContain('debug=true')
+  })
 
-      it('should NOT append debug param when debug is false (default)', async () => {
-        fetch.mockResolvedValue({
-          ok: true,
-          json: vi.fn().mockResolvedValue({ uploadStatus: 'ready' })
-        })
+  it('should NOT append debug param when debug is false (default)', async () => {
+    fetch.mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ uploadStatus: 'ready' })
+    })
 
-        await getUploadStatus(UPLOAD_ID)
+    await getUploadStatus(UPLOAD_ID)
 
-        const calledUrl = fetch.mock.calls[0][0]
-        expect(calledUrl).not.toContain('debug')
-      })
+    const calledUrl = fetch.mock.calls[0][0]
+    expect(calledUrl).not.toContain('debug')
+  })
 
-      it('should throw when response is not ok', async () => {
-        fetch.mockResolvedValue({
-          ok: false,
-          statusText: 'Not Found'
-        })
+  it('should throw when response is not ok', async () => {
+    fetch.mockResolvedValue({
+      ok: false,
+      statusText: 'Not Found'
+    })
 
-        await expect(getUploadStatus('bad-id')).rejects.toThrow(
-          'Failed to get upload status: Not Found'
-        )
-      })
+    await expect(getUploadStatus('bad-id')).rejects.toThrow(
+      'Failed to get upload status: Not Found'
+    )
+  })
+})
 
-      it('should log S3 details when s3Bucket is present in response', async () => {
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+// Group: S3 details logging tests
+describe('getUploadStatus - S3 details logging', () => {
+  const S3_DETAILS_LABEL = 'S3 DETAILS:'
 
-        const mockStatus = {
-          uploadStatus: 'ready',
-          form: {
-            file: {
-              s3Bucket: 'my-bucket',
-              s3Key: 'my-key',
-              filename: 'doc.pdf',
-              detectedContentType: 'application/pdf'
-            }
-          }
+  it('should log S3 details when s3Bucket is present in response', async () => {
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+    const mockStatus = {
+      uploadStatus: 'ready',
+      form: {
+        file: {
+          s3Bucket: 'my-bucket',
+          s3Key: 'my-key',
+          filename: 'doc.pdf',
+          detectedContentType: ALLOWED_MIME_TYPES[0]
         }
+      }
+    }
 
-        fetch.mockResolvedValue({
-          ok: true,
-          json: vi.fn().mockResolvedValue(mockStatus)
-        })
-
-        await getUploadStatus(UPLOAD_ID)
-
-        expect(consoleSpy).toHaveBeenCalledWith(S3_DETAILS_LABEL)
-        expect(consoleSpy).toHaveBeenCalledWith('- S3 Bucket:', 'my-bucket')
-        expect(consoleSpy).toHaveBeenCalledWith('- S3 Key:', 'my-key')
-        expect(consoleSpy).toHaveBeenCalledWith('- Filename:', 'doc.pdf')
-        expect(consoleSpy).toHaveBeenCalledWith(
-          '- Content Type:',
-          'application/pdf'
-        )
-      })
-
-      it('should log S3 details when s3Key is present (but no s3Bucket)', async () => {
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-
-        const mockStatus = {
-          uploadStatus: 'ready',
-          form: { file: { s3Key: 'my-key' } }
-        }
-
-        fetch.mockResolvedValue({
-          ok: true,
-          json: vi.fn().mockResolvedValue(mockStatus)
-        })
-
-        await getUploadStatus(UPLOAD_ID)
-
-        expect(consoleSpy).toHaveBeenCalledWith(S3_DETAILS_LABEL)
-        expect(consoleSpy).toHaveBeenCalledWith('- S3 Bucket:', 'NOT SET')
-        expect(consoleSpy).toHaveBeenCalledWith('- S3 Key:', 'my-key')
-        expect(consoleSpy).toHaveBeenCalledWith('- Filename:', 'NOT SET')
-        expect(consoleSpy).toHaveBeenCalledWith('- Content Type:', 'NOT SET')
-      })
-
-      it('should NOT log S3 details when neither s3Bucket nor s3Key is present', async () => {
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-
-        fetch.mockResolvedValue({
-          ok: true,
-          json: vi.fn().mockResolvedValue({ uploadStatus: 'ready', form: {} })
-        })
-
-        await getUploadStatus(UPLOAD_ID)
-
-        expect(consoleSpy).not.toHaveBeenCalledWith(S3_DETAILS_LABEL)
-      })
+    fetch.mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue(mockStatus)
     })
 
-    describe('pollUploadStatus', () => {
-      beforeEach(() => {
-        vi.useFakeTimers()
-      })
+    await getUploadStatus(UPLOAD_ID)
 
-      afterEach(() => {
-        vi.useRealTimers()
-      })
+    expect(consoleSpy).toHaveBeenCalledWith(S3_DETAILS_LABEL)
+    expect(consoleSpy).toHaveBeenCalledWith('- S3 Bucket:', 'my-bucket')
+    expect(consoleSpy).toHaveBeenCalledWith('- S3 Key:', 'my-key')
+    expect(consoleSpy).toHaveBeenCalledWith('- Filename:', 'doc.pdf')
+    expect(consoleSpy).toHaveBeenCalledWith(
+      '- Content Type:',
+      'application/pdf'
+    )
+  })
 
-      it('should return immediately when status is "ready"', async () => {
-        fetch.mockResolvedValue({
-          ok: true,
-          json: vi.fn().mockResolvedValue({ uploadStatus: 'ready' })
-        })
+  it('should log S3 details when s3Key is present (but no s3Bucket)', async () => {
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-        const result = await pollUploadStatus(
-          UPLOAD_ID,
-          POLL_MAX_ATTEMPTS,
-          POLL_INTERVAL_MS
-        )
+    const mockStatus = {
+      uploadStatus: 'ready',
+      form: { file: { s3Key: 'my-key' } }
+    }
 
-        expect(result).toEqual({ uploadStatus: 'ready' })
-        expect(fetch).toHaveBeenCalledTimes(1)
-      })
-
-      it('should return immediately when status is "rejected"', async () => {
-        fetch.mockResolvedValue({
-          ok: true,
-          json: vi.fn().mockResolvedValue({ uploadStatus: 'rejected' })
-        })
-
-        const result = await pollUploadStatus(UPLOAD_ID, POLL_MAX_ATTEMPTS, 100)
-
-        expect(result).toEqual({ uploadStatus: 'rejected' })
-        expect(fetch).toHaveBeenCalledTimes(1)
-      })
-
-      it('should poll multiple times until status is ready', async () => {
-        const POLL_ATTEMPTS_UNTIL_READY = 3
-        fetch
-          .mockResolvedValueOnce({
-            ok: true,
-            json: vi.fn().mockResolvedValue({ uploadStatus: 'pending' })
-          })
-          .mockResolvedValueOnce({
-            ok: true,
-            json: vi.fn().mockResolvedValue({ uploadStatus: 'pending' })
-          })
-          .mockResolvedValueOnce({
-            ok: true,
-            json: vi.fn().mockResolvedValue({ uploadStatus: 'ready' })
-          })
-
-        const pollPromise = pollUploadStatus(UPLOAD_ID, POLL_MAX_ATTEMPTS, 100)
-
-        // Advance timers for each pending poll interval
-        await vi.runAllTimersAsync()
-
-        const result = await pollPromise
-        expect(result).toEqual({ uploadStatus: 'ready' })
-        expect(fetch).toHaveBeenCalledTimes(POLL_ATTEMPTS_UNTIL_READY)
-      })
-
-      it('should throw timeout error when maxAttempts is exceeded', async () => {
-        fetch.mockResolvedValue({
-          ok: true,
-          json: vi.fn().mockResolvedValue({ uploadStatus: 'pending' })
-        })
-
-        const MAX_ATTEMPTS = 3
-        const pollPromise = pollUploadStatus(UPLOAD_ID, MAX_ATTEMPTS, 100)
-        const rejectExpectation = expect(pollPromise).rejects.toThrow(
-          'Upload status polling timeout'
-        )
-
-        await vi.runAllTimersAsync()
-        await rejectExpectation
-
-        expect(fetch).toHaveBeenCalledTimes(MAX_ATTEMPTS)
-      })
+    fetch.mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue(mockStatus)
     })
+
+    await getUploadStatus(UPLOAD_ID)
+
+    expect(consoleSpy).toHaveBeenCalledWith(S3_DETAILS_LABEL)
+    expect(consoleSpy).toHaveBeenCalledWith('- S3 Bucket:', 'NOT SET')
+    expect(consoleSpy).toHaveBeenCalledWith('- S3 Key:', 'my-key')
+    expect(consoleSpy).toHaveBeenCalledWith('- Filename:', 'NOT SET')
+    expect(consoleSpy).toHaveBeenCalledWith('- Content Type:', 'NOT SET')
+  })
+
+  it('should NOT log S3 details when neither s3Bucket nor s3Key is present', async () => {
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+    fetch.mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ uploadStatus: 'ready', form: {} })
+    })
+
+    await getUploadStatus(UPLOAD_ID)
+
+    expect(consoleSpy).not.toHaveBeenCalledWith(S3_DETAILS_LABEL)
+  })
+})
+
+// Split out pollUploadStatus tests
+describe('pollUploadStatus', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('should return immediately when status is "ready"', async () => {
+    fetch.mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ uploadStatus: 'ready' })
+    })
+
+    const result = await pollUploadStatus(
+      UPLOAD_ID,
+      POLL_MAX_ATTEMPTS,
+      POLL_INTERVAL_MS
+    )
+
+    expect(result).toEqual({ uploadStatus: 'ready' })
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('should return immediately when status is "rejected"', async () => {
+    fetch.mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ uploadStatus: 'rejected' })
+    })
+
+    const result = await pollUploadStatus(UPLOAD_ID, POLL_MAX_ATTEMPTS, 100)
+
+    expect(result).toEqual({ uploadStatus: 'rejected' })
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('should poll multiple times until status is ready', async () => {
+    const POLL_ATTEMPTS_UNTIL_READY = 3
+    fetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ uploadStatus: 'pending' })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ uploadStatus: 'pending' })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ uploadStatus: 'ready' })
+      })
+
+    const pollPromise = pollUploadStatus(UPLOAD_ID, POLL_MAX_ATTEMPTS, 100)
+
+    // Advance timers for each pending poll interval
+    await vi.runAllTimersAsync()
+
+    const result = await pollPromise
+    expect(result).toEqual({ uploadStatus: 'ready' })
+    expect(fetch).toHaveBeenCalledTimes(POLL_ATTEMPTS_UNTIL_READY)
+  })
+
+  it('should throw timeout error when maxAttempts is exceeded', async () => {
+    fetch.mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ uploadStatus: 'pending' })
+    })
+
+    const MAX_ATTEMPTS = 3
+    const pollPromise = pollUploadStatus(UPLOAD_ID, MAX_ATTEMPTS, 100)
+    const rejectExpectation = expect(pollPromise).rejects.toThrow(
+      'Upload status polling timeout'
+    )
+
+    await vi.runAllTimersAsync()
+    await rejectExpectation
+
+    expect(fetch).toHaveBeenCalledTimes(MAX_ATTEMPTS)
   })
 })
