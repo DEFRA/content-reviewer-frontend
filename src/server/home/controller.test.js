@@ -48,7 +48,7 @@ describe('homeController - default rendering', () => {
         pageTitle: 'Home',
         heading: 'Home',
         reviewHistory: [],
-        backendUrl: 'https://mock-backend',
+        backendUrl: 'http://mock-backend',
         contentReviewMaxCharLength: '100000',
         pagination: expect.objectContaining({ currentPage: 1, totalPages: 1 })
       })
