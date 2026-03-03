@@ -19,34 +19,57 @@
     homepageUrl: "https://www.gov.uk/",
     classes: "app-header",
     containerClasses: "govuk-width-container",
-    useTudorCrown: true
+    useTudorCrown: true,
+    serviceName: "Content Review Assistant",
+    serviceUrl: "/"
   }) }}
 
-  {# ── Authenticated user bar ── #}
+  {# GOV.UK Service Navigation with authentication #}
   {% if user %}
-    <div class="app-user-bar" role="banner" aria-label="User information">
-      <div class="govuk-width-container app-user-bar__inner">
-        <span class="govuk-body-s app-user-bar__name">
-          Signed in as <strong>{{ user.name if user.name else user.email }}</strong>
-        </span>
-        <a href="/auth/logout" class="govuk-link govuk-body-s app-user-bar__signout" aria-label="Sign out of Content Review Tool">
-          Sign out
-        </a>
-      </div>
-    </div>
+    {{ govukServiceNavigation({
+      serviceName: "Content Review Assistant",
+      serviceUrl: "/",
+      navigation: [
+        {
+          href: "/",
+          text: "Home",
+          active: true if pageTitle == 'Home' else false
+        },
+        {
+          href: "/about",
+          text: "About",
+          active: true if pageTitle == 'About' else false
+        },
+        {
+          href: "/auth/logout",
+          text: "Sign out",
+          classes: "govuk-service-navigation__link--right"
+        }
+      ]
+    }) }}
   {% else %}
-    <div class="app-user-bar" role="banner" aria-label="User information">
-      <div class="govuk-width-container app-user-bar__inner">
-        <span class="govuk-body-s app-user-bar__name">
-          <a href="/auth/login-page" class="govuk-link">Sign in</a> (optional - for Defra users only)
-        </span>
-      </div>
-    </div>
+    {{ govukServiceNavigation({
+      serviceName: "Content Review Assistant",
+      serviceUrl: "/",
+      navigation: [
+        {
+          href: "/",
+          text: "Home",
+          active: true if pageTitle == 'Home' else false
+        },
+        {
+          href: "/about",
+          text: "About",
+          active: true if pageTitle == 'About' else false
+        },
+        {
+          href: "/auth/login-page",
+          text: "Sign in",
+          classes: "govuk-service-navigation__link--right"
+        }
+      ]
+    }) }}
   {% endif %}
-
-  {{ govukServiceNavigation({
-    navigation: navigation
-  }) }}
 {% endblock %}
 
 {% block pageTitle %}
