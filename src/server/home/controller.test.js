@@ -7,7 +7,7 @@ const mockConfig = {
       return 'http://mock-backend'
     }
     if (key === 'contentReview.maxCharLength') {
-      return '50000'
+      return '100000'
     }
     return ''
   })
@@ -48,7 +48,7 @@ describe('homeController', () => {
         heading: 'Home',
         reviewHistory: [],
         backendUrl: 'http://mock-backend',
-        contentReviewMaxCharLength: '50000',
+        contentReviewMaxCharLength: '100000',
         pagination: expect.objectContaining({ currentPage: 1, totalPages: 1 })
       })
     )

@@ -10,7 +10,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 // Mirror the limit defined in the source module so tests stay in sync
 // without hard-coding a magic number that could silently drift.
-const TEXT_CHAR_LIMIT = 50000
+const TEXT_CHAR_LIMIT = 100000
 const TEXT_CONTENT_ID = 'text-content'
 const FILE_UPLOAD_ID = 'file-upload'
 
@@ -130,7 +130,7 @@ describe('upload-handler - character count', () => {
 
   it('should clear character count when text is empty', () => {
     // When the textarea is emptied the counter must be hidden completely
-    // rather than showing "50000 characters remaining", which would be
+    // rather than showing "100000 characters remaining", which would be
     // visually noisy for an empty field.
     const textarea = document.getElementById(TEXT_CONTENT_ID)
     const msg = document.getElementById('characterCountMessage')
