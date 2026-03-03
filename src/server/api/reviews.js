@@ -1,5 +1,6 @@
 import { config } from '../../config/config.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
+import { getUserIdentifier } from '../common/helpers/get-user-identifier.js'
 
 const logger = createLogger()
 const backendUrl = config.get('backendUrl')
@@ -97,7 +98,8 @@ export async function getReviewsController(request, h) {
   const startTime = Date.now()
   const requestLogger = request.logger
   const { limit, page, skip } = calculatePagination(request.query)
-  const userId = request.auth?.credentials?.user?.id || null
+  // Use session ID for anonymous users to ensure consistent review history
+  const userId = getUserIdentifier(request)
 
   try {
     const { response, backendRequestTime, endpoint } =
