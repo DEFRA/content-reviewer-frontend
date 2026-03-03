@@ -34,6 +34,14 @@
         </a>
       </div>
     </div>
+  {% else %}
+    <div class="app-user-bar" role="banner" aria-label="User information">
+      <div class="govuk-width-container app-user-bar__inner">
+        <span class="govuk-body-s app-user-bar__name">
+          <a href="/auth/login-page" class="govuk-link">Sign in</a> (optional - for Defra users only)
+        </span>
+      </div>
+    </div>
   {% endif %}
 
   {{ govukServiceNavigation({
