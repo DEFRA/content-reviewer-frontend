@@ -1,4 +1,5 @@
 import path from 'node:path'
+import crypto from 'node:crypto'
 import hapi from '@hapi/hapi'
 import hapiCookie from '@hapi/cookie'
 import Scooter from '@hapi/scooter'
@@ -93,9 +94,6 @@ function injectUserContext(server) {
  * This ensures getUserIdentifier can track reviews per-session for non-authenticated users.
  */
 function initializeAnonymousSessions(server) {
-  const SESSION_ID_BASE = 36
-  const SESSION_ID_LENGTH = 9
-
   server.ext('onPreAuth', (request, h) => {
     // Skip if already authenticated
     if (request.auth?.credentials?.isAuthenticated) {
@@ -105,10 +103,10 @@ function initializeAnonymousSessions(server) {
     // Check if a session cookie already exists
     const existingSession = request.state['content-reviewer-session']
     if (!existingSession?.sid) {
-      // Create a new anonymous session with a unique session ID
-      const randomPart = Math.random()
-        .toString(SESSION_ID_BASE)
-        .substring(2, 2 + SESSION_ID_LENGTH)
+      // Create a new anonymous session with a cryptographically secure unique session ID
+      // Use crypto.randomBytes for secure random generation instead of Math.random()
+      const randomBytes = crypto.randomBytes(16)
+      const randomPart = randomBytes.toString('hex')
       const sessionId = `${Date.now()}-${randomPart}`
       request.cookieAuth.set({
         sid: sessionId,
