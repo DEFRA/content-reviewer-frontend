@@ -64,8 +64,6 @@ async function submitToBackend(textContent, finalTitle, request) {
   // For anonymous users, use session ID for consistent tracking.
   const userId = getUserIdentifier(request)
 
-  logger.info(`[TEXT-REVIEW] Submitting with userId: ${userId}`)
-
   const backendRequestStart = Date.now()
 
   const response = await fetch(`${backendUrl}/api/review/text`, {
