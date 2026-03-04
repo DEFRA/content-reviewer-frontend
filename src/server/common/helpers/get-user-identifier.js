@@ -18,7 +18,16 @@ export function getUserIdentifier(request) {
   const sessionId = request.auth?.credentials?.sid
   if (sessionId) {
     // Use a prefix to distinguish session-based IDs from user IDs
-    return `session:${sessionId}`
+    // If sessionId is an object, extract a unique property, otherwise use as string
+    let sessionIdStr
+    if (typeof sessionId === 'object' && sessionId !== null) {
+      sessionIdStr = sessionId.sid || sessionId.id || JSON.stringify(sessionId)
+    } else if (typeof sessionId === 'string') {
+      sessionIdStr = sessionId
+    } else {
+      sessionIdStr = JSON.stringify(sessionId)
+    }
+    return `session:${sessionIdStr}`
   }
 
   // Fallback: if no session exists yet (shouldn't happen after our fix)
