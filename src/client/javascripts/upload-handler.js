@@ -391,6 +391,10 @@ async function submitTextReview(textContent) {
         status: 'pending'
       })
     }
+    // Start auto-refresh to track review status
+    if (typeof globalThis.startAutoRefresh === 'function') {
+      globalThis.startAutoRefresh()
+    }
     return data
   } catch (error) {
     console.error('[UPLOAD-HANDLER] Text review error:', error)
@@ -432,6 +436,10 @@ async function submitFileUpload(file) {
         timestamp: Date.now(),
         status: 'pending'
       })
+    }
+    // Start auto-refresh to track review status
+    if (typeof globalThis.startAutoRefresh === 'function') {
+      globalThis.startAutoRefresh()
     }
     setTimeout(() => {
       globalThis.location.reload()

@@ -101,6 +101,10 @@ export async function getReviewsController(request, h) {
   // Use session ID for anonymous users to ensure consistent review history
   const userId = getUserIdentifier(request)
 
+  logger.info(
+    `[REVIEWS] Fetching reviews with userId: ${userId}, limit: ${limit}, page: ${page}`
+  )
+
   try {
     const { response, backendRequestTime, endpoint } =
       await fetchReviewsFromBackend(limit, skip, page, userId)
