@@ -21,12 +21,14 @@ export function getUserIdentifier(request) {
     console.log('[getUserIdentifier] Anonymous session:', sessionId)
     // Use a prefix to distinguish session-based IDs from user IDs
     // If sessionId is an object, extract a unique property, otherwise use as string
-    const sessionIdStr =
-      typeof sessionId === 'object' && sessionId !== null
-        ? sessionId.sid || sessionId.id || JSON.stringify(sessionId)
-        : typeof sessionId === 'string'
-          ? sessionId
-          : JSON.stringify(sessionId)
+    let sessionIdStr
+    if (typeof sessionId === 'object' && sessionId !== null) {
+      sessionIdStr = sessionId.sid || sessionId.id || JSON.stringify(sessionId)
+    } else if (typeof sessionId === 'string') {
+      sessionIdStr = sessionId
+    } else {
+      sessionIdStr = JSON.stringify(sessionId)
+    }
     return `session:${sessionIdStr}`
   }
 
