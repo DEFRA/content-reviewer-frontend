@@ -74,6 +74,32 @@
         color: #505a5f;
         font-weight: normal;
       }
+
+      /* Highlighted issue links - preserve mark styling, remove default link appearance */
+      a.highlight-link {
+        text-decoration: none;
+        color: inherit;
+      }
+
+      a.highlight-link:hover mark,
+      a.highlight-link:focus mark {
+        outline: 3px solid #ffdd00;
+        outline-offset: 1px;
+        cursor: pointer;
+      }
+
+      /* Smooth scroll for anchor navigation */
+      html {
+        scroll-behavior: smooth;
+      }
+
+      /* Highlight the improvement item when navigated to */
+      .improvement-item:target {
+        outline: 3px solid #1d70b8;
+        outline-offset: 4px;
+        background-color: #e8f4fd;
+        border-radius: 4px;
+      }
     </style>
   {% endif %}
   
@@ -85,12 +111,13 @@
 {% set content = reviewData.reviewedContent.plainText -%}
 {% set issues = reviewData.reviewedContent.issues -%}
 {% if issues and issues.length > 0 -%}
-{# Build highlighted content by replacing issue text with marks #}
+{# Build highlighted content by replacing issue text with linked marks #}
 {% set highlightedContent = content -%}
 {% for issue in issues -%}
 {% set issueText = issue.text -%}
 {% set categoryClass = 'highlight-' + issue.category -%}
-{% set markedText = '<mark class="' + categoryClass + '">' + issueText + '</mark>' -%}
+{% set anchorId = 'improvement-' + loop.index -%}
+{% set markedText = '<a href="#' + anchorId + '" class="highlight-link"><mark class="' + categoryClass + '">' + issueText + '</mark></a>' -%}
 {% set highlightedContent = highlightedContent | replace(issueText, markedText) -%}
 {% endfor -%}
 {{ highlightedContent | safe }}
@@ -110,7 +137,7 @@
     {% if reviewData.improvements and reviewData.improvements.length > 0 %}
       <ol class="improvement-list">
         {% for improvement in reviewData.improvements %}
-          <li class="improvement-item severity-{{ improvement.severity }}">
+          <li id="improvement-{{ loop.index }}" class="improvement-item severity-{{ improvement.severity }}">
             <span class="category-badge">{{ improvement.category }}</span>
             <strong class="issue-title">{{ improvement.issue }}</strong>
             <p class="issue-description">{{ improvement.why }}</p>
