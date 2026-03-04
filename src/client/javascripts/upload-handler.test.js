@@ -609,8 +609,10 @@ describe('upload-handler - updateReviewHistory global', () => {
     vi.useFakeTimers()
     setupDOM()
     const updateSpy = vi.fn()
+    const forceStartAutoRefreshSpy = vi.fn()
     const startAutoRefreshSpy = vi.fn()
     vi.stubGlobal('updateReviewHistory', updateSpy)
+    vi.stubGlobal('forceStartAutoRefresh', forceStartAutoRefreshSpy)
     vi.stubGlobal('startAutoRefresh', startAutoRefreshSpy)
     vi.stubGlobal(
       'fetch',
@@ -638,7 +640,8 @@ describe('upload-handler - updateReviewHistory global', () => {
     await vi.runAllTimersAsync()
 
     expect(updateSpy).toHaveBeenCalled()
-    expect(startAutoRefreshSpy).toHaveBeenCalled()
+    // Should prefer forceStartAutoRefresh if available
+    expect(forceStartAutoRefreshSpy).toHaveBeenCalled()
     vi.useRealTimers()
   })
 
@@ -650,6 +653,16 @@ describe('upload-handler - updateReviewHistory global', () => {
     setupDOM()
     const updateSpy = vi.fn()
     const startAutoRefreshSpy = vi.fn()
+
+    // Mock sessionStorage
+    const sessionStorageMock = {
+      setItem: vi.fn(),
+      getItem: vi.fn(),
+      removeItem: vi.fn(),
+      clear: vi.fn()
+    }
+    vi.stubGlobal('sessionStorage', sessionStorageMock)
+
     vi.stubGlobal('updateReviewHistory', updateSpy)
     vi.stubGlobal('startAutoRefresh', startAutoRefreshSpy)
     vi.stubGlobal('location', { reload: vi.fn() })
@@ -680,6 +693,11 @@ describe('upload-handler - updateReviewHistory global', () => {
 
     expect(updateSpy).toHaveBeenCalled()
     expect(startAutoRefreshSpy).toHaveBeenCalled()
+    // Should set sessionStorage flag before page reload
+    expect(sessionStorageMock.setItem).toHaveBeenCalledWith(
+      'reviewJustSubmitted',
+      'true'
+    )
     vi.useRealTimers()
   })
 })

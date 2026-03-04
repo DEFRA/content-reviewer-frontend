@@ -1,4 +1,5 @@
 // Upload form handler
+/* global sessionStorage */
 const DEFAULT_CHARACTER_LIMIT = 100000
 const CHARACTER_LIMIT =
   globalThis.contentReviewMaxCharLength || DEFAULT_CHARACTER_LIMIT
@@ -391,8 +392,10 @@ async function submitTextReview(textContent) {
         status: 'pending'
       })
     }
-    // Start auto-refresh to track review status
-    if (typeof globalThis.startAutoRefresh === 'function') {
+    // Start auto-refresh to track review status (force restart to ensure it's running)
+    if (typeof globalThis.forceStartAutoRefresh === 'function') {
+      globalThis.forceStartAutoRefresh()
+    } else if (typeof globalThis.startAutoRefresh === 'function') {
       globalThis.startAutoRefresh()
     }
     return data
@@ -441,6 +444,8 @@ async function submitFileUpload(file) {
     if (typeof globalThis.startAutoRefresh === 'function') {
       globalThis.startAutoRefresh()
     }
+    // Set flag so page reload will start auto-refresh
+    sessionStorage.setItem('reviewJustSubmitted', 'true')
     setTimeout(() => {
       globalThis.location.reload()
     }, RELOAD_DELAY)
