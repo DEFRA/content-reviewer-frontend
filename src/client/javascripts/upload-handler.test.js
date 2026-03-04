@@ -606,9 +606,12 @@ describe('upload-handler - updateReviewHistory global', () => {
     // server-rendered table via AJAX) the module must delegate to it instead
     // of calling the local addReviewToHistory() fallback. This prevents
     // duplicate rows appearing in the table.
+    vi.useFakeTimers()
     setupDOM()
     const updateSpy = vi.fn()
+    const startAutoRefreshSpy = vi.fn()
     vi.stubGlobal('updateReviewHistory', updateSpy)
+    vi.stubGlobal('startAutoRefresh', startAutoRefreshSpy)
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
@@ -625,18 +628,30 @@ describe('upload-handler - updateReviewHistory global', () => {
       configurable: true
     })
     document.getElementById('uploadForm').dispatchEvent(new Event('submit'))
+
+    // Wait for async operations
     await vi.waitFor(() => {
-      expect(updateSpy).toHaveBeenCalled()
+      expect(vi.mocked(globalThis.fetch)).toHaveBeenCalled()
     })
+
+    // Fast-forward timers to trigger setTimeout
+    await vi.runAllTimersAsync()
+
+    expect(updateSpy).toHaveBeenCalled()
+    expect(startAutoRefreshSpy).toHaveBeenCalled()
+    vi.useRealTimers()
   })
 
   it('should call globalThis.updateReviewHistory after a successful file upload', async () => {
     // Same delegation check as above but for the submitFileUpload path.
     // location.reload is also stubbed to avoid jsdom navigation errors that
     // would occur when the real reload() is called after a successful upload.
+    vi.useFakeTimers()
     setupDOM()
     const updateSpy = vi.fn()
+    const startAutoRefreshSpy = vi.fn()
     vi.stubGlobal('updateReviewHistory', updateSpy)
+    vi.stubGlobal('startAutoRefresh', startAutoRefreshSpy)
     vi.stubGlobal('location', { reload: vi.fn() })
     vi.stubGlobal(
       'fetch',
@@ -654,8 +669,17 @@ describe('upload-handler - updateReviewHistory global', () => {
     })
     fileInput.dispatchEvent(new Event('change'))
     document.getElementById('uploadForm').dispatchEvent(new Event('submit'))
+
+    // Wait for async operations
     await vi.waitFor(() => {
-      expect(updateSpy).toHaveBeenCalled()
+      expect(vi.mocked(globalThis.fetch)).toHaveBeenCalled()
     })
+
+    // Fast-forward timers to trigger setTimeout
+    await vi.runAllTimersAsync()
+
+    expect(updateSpy).toHaveBeenCalled()
+    expect(startAutoRefreshSpy).toHaveBeenCalled()
+    vi.useRealTimers()
   })
 })
