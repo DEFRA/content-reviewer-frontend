@@ -5,6 +5,8 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { initializeElements } from './dom-elements.js'
 import { updateCharacterCount } from './character-counter.js'
 
+const CHARACTER_LIMIT = 100000
+
 describe('upload/character-counter', () => {
   let textInput
   let charCountMsg
@@ -36,10 +38,10 @@ describe('upload/character-counter', () => {
     expect(charCountMsg.textContent).toContain('characters remaining')
     expect(charCountMsg.style.display).toBe('')
     expect(charCountMsg.classList.contains('govuk-error-message')).toBe(false)
-  })
 
-  it('should show error when over limit', () => {
-    textInput.value = 'x'.repeat(100001) // Over 100,000 limit
+    textInput.value = 'x'.repeat(CHARACTER_LIMIT + 1) // Over 100,000 limit
+    updateCharacterCount()
+    textInput.value = 'x'.repeat(CHARACTER_LIMIT + 1) // Over 100,000 limit
     updateCharacterCount()
 
     expect(charCountMsg.textContent).toContain('characters too many')
@@ -51,10 +53,10 @@ describe('upload/character-counter', () => {
     updateCharacterCount()
 
     expect(charCountMsg.textContent).toContain('99000 characters remaining')
-  })
 
-  it('should calculate excess characters correctly', () => {
-    textInput.value = 'x'.repeat(100010)
+    textInput.value = 'x'.repeat(CHARACTER_LIMIT + 10)
+    updateCharacterCount()
+    textInput.value = 'x'.repeat(CHARACTER_LIMIT + 10)
     updateCharacterCount()
 
     expect(charCountMsg.textContent).toContain(

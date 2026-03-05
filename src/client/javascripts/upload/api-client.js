@@ -15,18 +15,47 @@ import { updateMutualExclusion } from './input-controls.js'
 import { showProgress, hideProgress, showError } from './ui-feedback.js'
 import { addReviewToHistory } from './review-history.js'
 
+function getPreviewText(textContent) {
+  const words = textContent.trim().split(/\s+/)
+  return words.length > 0
+    ? `${words.slice(0, PREVIEW_WORDS_LIMIT).join(' ').substring(0, PREVIEW_CHARS_LIMIT)}...`
+    : 'Text content'
+}
+
+function handleReviewHistory(data, previewText) {
+  if (typeof globalThis.updateReviewHistory === 'function') {
+    setTimeout(() => globalThis.updateReviewHistory(), HISTORY_UPDATE_DELAY)
+  } else {
+    addReviewToHistory({
+      id: data.reviewId || data.id,
+      fileName: previewText,
+      timestamp: Date.now(),
+      status: 'pending'
+    })
+  }
+}
+
+function startAutoRefresh() {
+  if (typeof globalThis.forceStartAutoRefresh === 'function') {
+    globalThis.forceStartAutoRefresh()
+  } else if (typeof globalThis.startAutoRefresh === 'function') {
+    globalThis.startAutoRefresh()
+  } else {
+    // No auto-refresh function available
+    console.warn(
+      '[UPLOAD-HANDLER] No auto-refresh function found on globalThis.'
+    )
+  }
+}
+
 export async function submitTextReview(textContent) {
+  const elements = getElements()
   try {
-    const elements = getElements()
     if (elements.textContentInput) {
       elements.textContentInput.disabled = true
     }
     showProgress('Submitting content for review...', PROGRESS_INITIAL)
-    const words = textContent.trim().split(/\s+/)
-    const previewText =
-      words.length > 0
-        ? `${words.slice(0, PREVIEW_WORDS_LIMIT).join(' ').substring(0, PREVIEW_CHARS_LIMIT)}...`
-        : 'Text content'
+    const previewText = getPreviewText(textContent)
     const response = await fetch('/api/review/text', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -46,27 +75,12 @@ export async function submitTextReview(textContent) {
     if (elements.uploadButton) {
       elements.uploadButton.disabled = false
     }
-    if (typeof globalThis.updateReviewHistory === 'function') {
-      setTimeout(() => globalThis.updateReviewHistory(), HISTORY_UPDATE_DELAY)
-    } else {
-      addReviewToHistory({
-        id: data.reviewId || data.id,
-        fileName: previewText,
-        timestamp: Date.now(),
-        status: 'pending'
-      })
-    }
-    // Start auto-refresh to track review status (force restart to ensure it's running)
-    if (typeof globalThis.forceStartAutoRefresh === 'function') {
-      globalThis.forceStartAutoRefresh()
-    } else if (typeof globalThis.startAutoRefresh === 'function') {
-      globalThis.startAutoRefresh()
-    }
+    handleReviewHistory(data, previewText)
+    startAutoRefresh()
     return data
   } catch (error) {
     console.error('[UPLOAD-HANDLER] Text review error:', error)
     showError(error.message)
-    const elements = getElements()
     if (elements.textContentInput) {
       elements.textContentInput.disabled = false
     }

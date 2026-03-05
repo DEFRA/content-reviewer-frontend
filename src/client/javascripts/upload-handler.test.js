@@ -3,7 +3,7 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
-describe('upload-handler - modular architecture', () => {
+describe('upload-handler DOM setup', () => {
   let form
   let textInput
   let fileInput
@@ -57,17 +57,56 @@ describe('upload-handler - modular architecture', () => {
     expect(uploadButton).toBeDefined()
   })
 
-  it('should have modular file structure', async () => {
-    // Test that modules exist and can be imported
-    // Note: Actual module imports happen via webpack, this is a structural test
-    expect(true).toBe(true)
-  })
-
   it('should initialize without errors when form exists', () => {
     // The actual upload-handler.js initializes on DOMContentLoaded
     // This test verifies the DOM structure is correct
     expect(form).not.toBeNull()
     expect(textInput).not.toBeNull()
+  })
+})
+
+describe('upload-handler modular structure', () => {
+  it('should have modular file structure', async () => {
+    // Test that modules exist and can be imported
+    // Note: Actual module imports happen via webpack, this is a structural test
+    expect(true).toBe(true)
+  })
+})
+
+describe('upload-handler UI elements', () => {
+  beforeEach(() => {
+    document.body.innerHTML = `
+      <form id="uploadForm">
+        <div class="govuk-form-group">
+          <textarea id="text-content"></textarea>
+          <div id="characterCountMessage"></div>
+        </div>
+        <div class="govuk-form-group">
+          <input type="file" id="file-upload" />
+        </div>
+        <button id="uploadButton" type="submit">Upload</button>
+        <div id="uploadProgress" hidden>
+          <div id="uploadStatusText"></div>
+          <div id="uploadProgressText"></div>
+          <div id="progressBar" data-progress="0"></div>
+        </div>
+        <div id="uploadError" hidden>
+          <span id="errorMessage"></span>
+        </div>
+        <div id="uploadSuccess" hidden></div>
+      </form>
+      <table>
+        <tbody id="reviewHistoryBody"></tbody>
+      </table>
+      <select id="historyLimit">
+        <option value="5" selected>5</option>
+      </select>
+    `
+  })
+
+  afterEach(() => {
+    document.body.innerHTML = ''
+    vi.restoreAllMocks()
   })
 
   it('should have character count message element', () => {

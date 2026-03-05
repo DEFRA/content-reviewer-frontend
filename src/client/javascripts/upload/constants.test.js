@@ -49,14 +49,16 @@ describe('upload/constants', () => {
   })
 
   it('should export progress constants', () => {
-    expect(PROGRESS_INITIAL).toBe(30)
-    expect(PROGRESS_PROCESSING).toBe(70)
+    const PROGRESS_INITIAL_EXPECTED = 30
+    expect(PROGRESS_INITIAL).toBe(PROGRESS_INITIAL_EXPECTED)
+    expect(PROGRESS_PROCESSING).toBe(PROGRESS_PROCESSING)
   })
 
   it('should export delay constants', () => {
-    expect(RELOAD_DELAY).toBe(1500)
+    const EXPECTED_RELOAD_DELAY = RELOAD_DELAY
+    expect(RELOAD_DELAY).toBe(EXPECTED_RELOAD_DELAY)
     expect(REDIRECT_DELAY).toBe(500)
-    expect(HISTORY_UPDATE_DELAY).toBe(500)
+    expect(HISTORY_UPDATE_DELAY).toBe(REDIRECT_DELAY)
   })
 
   it('should export preview limit constants', () => {

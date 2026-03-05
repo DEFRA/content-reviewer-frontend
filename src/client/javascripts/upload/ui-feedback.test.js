@@ -97,13 +97,14 @@ describe('upload/ui-feedback', () => {
       const uploadStatusText = document.getElementById('uploadStatusText')
       const uploadProgressText = document.getElementById('uploadProgressText')
       const progressBar = document.getElementById('progressBar')
+      const PROGRESS_PERCENTAGE = 50
 
-      showProgress('Uploading...', 50)
+      showProgress('Uploading...', PROGRESS_PERCENTAGE)
 
       expect(uploadProgress.hidden).toBe(false)
       expect(uploadStatusText.textContent).toBe('Uploading...')
-      expect(uploadProgressText.textContent).toBe('50%')
-      expect(progressBar.dataset.progress).toBe('50')
+      expect(uploadProgressText.textContent).toBe(`${PROGRESS_PERCENTAGE}%`)
+      expect(progressBar.dataset.progress).toBe(PROGRESS_PERCENTAGE.toString())
     })
 
     it('should round percentage to integer', () => {
