@@ -19,15 +19,12 @@
     homepageUrl: "https://www.gov.uk/",
     classes: "app-header",
     containerClasses: "govuk-width-container",
-    useTudorCrown: true,
-    serviceName: "Content Review Assistant",
-    serviceUrl: "/"
+    useTudorCrown: true
   }) }}
 
   {# GOV.UK Service Navigation with authentication #}
   {% if user %}
     {{ govukServiceNavigation({
-      serviceName: "Content Review Assistant",
       serviceUrl: "/",
       navigation: [
         {
@@ -49,7 +46,6 @@
     }) }}
   {% else %}
     {{ govukServiceNavigation({
-      serviceName: "Content Review Assistant",
       serviceUrl: "/",
       navigation: [
         {

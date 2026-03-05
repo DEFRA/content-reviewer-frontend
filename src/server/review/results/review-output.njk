@@ -106,29 +106,38 @@
   {# Reviewed Content Section with Highlights #}
   <section class="reviewed-content">
     <h2>Your Content (with issues highlighted)</h2>
-    <div class="content-body">{%- if reviewData.reviewedContent and reviewData.reviewedContent.plainText -%}
-{# Render text with issue highlights #}
-{% set content = reviewData.reviewedContent.plainText -%}
-{% set issues = reviewData.reviewedContent.issues -%}
-{% if issues and issues.length > 0 -%}
-{# Build highlighted content by replacing issue text with linked marks #}
-{% set highlightedContent = content -%}
-{% for issue in issues -%}
-{% set issueText = issue.text -%}
-{% set categoryClass = 'highlight-' + issue.category -%}
-{% set anchorId = 'improvement-' + loop.index -%}
-{% set markedText = '<a href="#' + anchorId + '" class="highlight-link"><mark class="' + categoryClass + '">' + issueText + '</mark></a>' -%}
-{% set highlightedContent = highlightedContent | replace(issueText, markedText) -%}
-{% endfor -%}
-{{ highlightedContent | safe }}
-{%- else -%}
-{# No issues found, show plain text #}
-{{ content }}
-{%- endif -%}
-{%- else -%}
-<p>No content available</p>
-{%- endif -%}
-</div>
+    {%- if reviewData.reviewedContent and reviewData.reviewedContent.plainText -%}
+      {%- set content = reviewData.reviewedContent.plainText | trim -%}
+      {%- set issues = reviewData.reviewedContent.issues -%}
+      {%- if issues and issues.length > 0 -%}
+        {%- set highlightedContent = content -%}
+        {%- for issue in issues -%}
+          {%- set issueText = issue.text -%}
+          {%- set categoryClass = 'highlight-' + issue.category -%}
+          {%- set matchedIndex = 0 -%}
+          {%- for improvement in reviewData.improvements -%}
+            {%- if matchedIndex == 0 and improvement.current and improvement.current == issueText -%}
+              {%- set matchedIndex = loop.index -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if matchedIndex == 0 -%}
+            {%- for improvement in reviewData.improvements -%}
+              {%- if matchedIndex == 0 and improvement.current and issueText in improvement.current -%}
+                {%- set matchedIndex = loop.index -%}
+              {%- endif -%}
+            {%- endfor -%}
+          {%- endif -%}
+          {%- set anchorId = 'improvement-' + (matchedIndex if matchedIndex > 0 else loop.index) -%}
+          {%- set markedText = '<a href="#' + anchorId + '" class="highlight-link"><mark class="' + categoryClass + '">' + issueText + '</mark></a>' -%}
+          {%- set highlightedContent = highlightedContent | replace(issueText, markedText) -%}
+        {%- endfor -%}
+    <div class="content-body">{{ highlightedContent | trim | safe }}</div>
+      {%- else -%}
+    <div class="content-body">{{ content }}</div>
+      {%- endif -%}
+    {%- else -%}
+    <div class="content-body"><p>No content available</p></div>
+    {%- endif -%}
   </section>
 
   {# Priority Improvements Section #}
