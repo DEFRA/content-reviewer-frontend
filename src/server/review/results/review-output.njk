@@ -116,7 +116,23 @@
 {% for issue in issues -%}
 {% set issueText = issue.text -%}
 {% set categoryClass = 'highlight-' + issue.category -%}
-{% set anchorId = 'improvement-' + loop.index -%}
+{# Find the matching improvement index by comparing issue text to improvement.current #}
+{% set matchedIndex = 0 -%}
+{% for improvement in reviewData.improvements -%}
+{% if matchedIndex == 0 and improvement.current and improvement.current == issueText -%}
+{% set matchedIndex = loop.index -%}
+{% endif -%}
+{% endfor -%}
+{# Fall back to matching on partial text if exact match not found #}
+{% if matchedIndex == 0 -%}
+{% for improvement in reviewData.improvements -%}
+{% if matchedIndex == 0 and improvement.current and issueText in improvement.current -%}
+{% set matchedIndex = loop.index -%}
+{% endif -%}
+{% endfor -%}
+{% endif -%}
+{# Use matched improvement index, or fall back to issue loop index if no match #}
+{% set anchorId = 'improvement-' + (matchedIndex if matchedIndex > 0 else loop.index) -%}
 {% set markedText = '<a href="#' + anchorId + '" class="highlight-link"><mark class="' + categoryClass + '">' + issueText + '</mark></a>' -%}
 {% set highlightedContent = highlightedContent | replace(issueText, markedText) -%}
 {% endfor -%}
