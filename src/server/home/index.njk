@@ -559,7 +559,9 @@
       
       // Map status to display text with three dots
       let displayText = '';
-      if (statusLower === 'processing') {
+      if (statusLower === 'pending') {
+        displayText = 'Pending...';
+      } else if (statusLower === 'processing') {
         displayText = 'Processing...';
       } else if (statusLower === 'analyzing') {
         displayText = 'Analyzing...';
@@ -640,33 +642,8 @@
           // New review - create a complete new row and add it to the table
           const row = createReviewRow(review);
           tbody.appendChild(row);
-          
-          // Attach delete handler immediately for the new row
-          const deleteBtn = row.querySelector('.delete-review-btn');
-          if (deleteBtn) {
-            deleteBtn.addEventListener('click', async function() {
-              const reviewId = this.getAttribute('data-review-id');
-              const filename = this.getAttribute('data-filename');
-              
-              // Disable button during deletion
-              this.disabled = true;
-              const originalText = this.textContent;
-              this.textContent = 'Deleting...';
-              
-              await deleteReview(reviewId, filename);
-              
-              // Re-enable button (if row still exists)
-              if (document.contains(this)) {
-                this.disabled = false;
-                this.textContent = originalText;
-              }
-            });
-          }
         }
       });
-      
-      // Attach delete handlers after updating table (for any existing buttons)
-      attachDeleteHandlers();
       
       // Remove rows that are no longer in the response, BUT keep active reviews
       // that were just added client-side (they may not be in backend yet due to S3 delay)
@@ -959,34 +936,46 @@
     }
     
     // Attach delete button click handlers
+    // Track if delete handlers have been attached to prevent duplicates
+    let deleteHandlersAttached = false;
+    
     function attachDeleteHandlers() {
-      const deleteButtons = document.querySelectorAll('.delete-review-btn');
-      deleteButtons.forEach(button => {
-        // Remove existing listeners to prevent duplicates
-        button.replaceWith(button.cloneNode(true));
+      // Use event delegation to avoid duplicate listeners
+      if (deleteHandlersAttached) {
+        return; // Already attached
+      }
+      
+      const tbody = document.getElementById('reviewHistoryBody');
+      if (!tbody) {
+        return;
+      }
+      
+      // Use event delegation on the tbody element
+      tbody.addEventListener('click', async function(event) {
+        const button = event.target.closest('.delete-review-btn');
+        if (!button) {
+          return; // Not a delete button click
+        }
+        
+        const reviewId = button.getAttribute('data-review-id');
+        const filename = button.getAttribute('data-filename');
+        
+        // Disable button during deletion
+        button.disabled = true;
+        const originalText = button.textContent;
+        button.textContent = 'Deleting...';
+        
+        await deleteReview(reviewId, filename);
+        
+        // Re-enable button (if row still exists)
+        if (document.contains(button)) {
+          button.disabled = false;
+          button.textContent = originalText;
+        }
       });
       
-      // Re-query and attach new listeners
-      const newDeleteButtons = document.querySelectorAll('.delete-review-btn');
-      newDeleteButtons.forEach(button => {
-        button.addEventListener('click', async function() {
-          const reviewId = this.getAttribute('data-review-id');
-          const filename = this.getAttribute('data-filename');
-          
-          // Disable button during deletion
-          this.disabled = true;
-          const originalText = this.textContent;
-          this.textContent = 'Deleting...';
-          
-          await deleteReview(reviewId, filename);
-          
-          // Re-enable button (if row still exists)
-          if (document.contains(this)) {
-            this.disabled = false;
-            this.textContent = originalText;
-          }
-        });
-      });
+      deleteHandlersAttached = true;
+      console.log('[HOME] Delete handlers attached using event delegation');
     }
     
     // Attach handlers on page load
@@ -995,6 +984,7 @@
     // Start auto-refresh
     function startAutoRefresh() {
       if (autoRefreshInterval) {
+        console.log('[HOME] Auto-refresh already running');
         return; // Already running
       }
       
@@ -1002,40 +992,63 @@
       autoRefreshInterval = setInterval(updateReviewHistory, 5000);
     }
     
+    // Force start auto-refresh (restarts if already running)
+    function forceStartAutoRefresh() {
+      if (autoRefreshInterval) {
+        console.log('[HOME] Stopping existing auto-refresh before restart');
+        clearInterval(autoRefreshInterval);
+        autoRefreshInterval = null;
+      }
+      
+      console.log('[HOME] Force starting auto-refresh');
+      autoRefreshInterval = setInterval(updateReviewHistory, 5000);
+    }
+    
     // Make functions globally accessible for upload-handler.js
     window.startAutoRefresh = startAutoRefresh;
+    window.forceStartAutoRefresh = forceStartAutoRefresh;
     window.updateReviewHistory = updateReviewHistory;
     
-    // Check if there are any active reviews on page load
-    const tableRows = document.querySelectorAll('#reviewHistoryBody tr');
-    let hasActiveReviews = false;
-    let activeStatuses = [];
-    
-    tableRows.forEach(row => {
-      const statusCell = row.querySelector('.govuk-tag');
-      if (statusCell) {
-        const statusText = statusCell.textContent.trim().toLowerCase();
-        // Only check for pending or processing statuses (not grey/unknown)
-        if (statusCell.classList.contains('govuk-tag--blue') ||
-            statusCell.classList.contains('govuk-tag--yellow')) {
-          hasActiveReviews = true;
-          activeStatuses.push(statusText);
-        }
-      }
-    });
-    
-    // Start auto-refresh if there are active reviews
-    if (hasActiveReviews) {
-      console.log('[HOME] Active reviews detected on page load:', {
-        count: activeStatuses.length,
-        statuses: activeStatuses
-      });
-      // Do an immediate update first to get latest status
+    // Check if we just submitted a review (flag set by upload-handler before reload)
+    const justSubmitted = sessionStorage.getItem('reviewJustSubmitted');
+    if (justSubmitted) {
+      console.log('[HOME] Review was just submitted - forcing auto-refresh start');
+      sessionStorage.removeItem('reviewJustSubmitted');
+      // Force start auto-refresh immediately
       updateReviewHistory();
-      // Then start the interval
-      startAutoRefresh();
+      forceStartAutoRefresh();
     } else {
-      console.log('[HOME] No active reviews on page load - auto-refresh not started');
+      // Check if there are any active reviews on page load
+      const tableRows = document.querySelectorAll('#reviewHistoryBody tr');
+      let hasActiveReviews = false;
+      let activeStatuses = [];
+      
+      tableRows.forEach(row => {
+        const statusCell = row.querySelector('.govuk-tag');
+        if (statusCell) {
+          const statusText = statusCell.textContent.trim().toLowerCase();
+          // Only check for pending or processing statuses (not grey/unknown)
+          if (statusCell.classList.contains('govuk-tag--blue') ||
+              statusCell.classList.contains('govuk-tag--yellow')) {
+            hasActiveReviews = true;
+            activeStatuses.push(statusText);
+          }
+        }
+      });
+      
+      // Start auto-refresh if there are active reviews
+      if (hasActiveReviews) {
+        console.log('[HOME] Active reviews detected on page load:', {
+          count: activeStatuses.length,
+          statuses: activeStatuses
+        });
+        // Do an immediate update first to get latest status
+        updateReviewHistory();
+        // Then start the interval
+        startAutoRefresh();
+      } else {
+        console.log('[HOME] No active reviews on page load - auto-refresh not started');
+      }
     }
     
     // Clean up interval when page is unloaded
