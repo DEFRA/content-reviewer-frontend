@@ -342,7 +342,6 @@
 {% block bodyEnd %}
   {{ super() }}
   <script nonce="{{ cspNonce }}" src="{{ getAssetPath('upload-handler.js') }}"></script>
-  <!--
   <script nonce="{{ cspNonce }}">
     // Make content review max character length available to upload-handler.js
     window.contentReviewMaxCharLength = {{ contentReviewMaxCharLength }};
@@ -1079,5 +1078,4 @@
       }
     });
   </script>
-  -->
 {% endblock %}
