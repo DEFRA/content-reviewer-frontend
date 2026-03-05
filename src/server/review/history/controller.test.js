@@ -216,7 +216,7 @@ describe('reviewHistoryController - deleteReview', () => {
     )
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://localhost:4000/api/results/test-123',
+      'http://localhost:4000/api/reviews/test-123',
       {
         method: 'DELETE'
       }
@@ -276,7 +276,7 @@ describe('reviewHistoryController - deleteReview', () => {
     await reviewHistoryController.deleteReview(mockRequest, mockH)
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://localhost:4000/api/results/test-log',
+      'http://localhost:4000/api/reviews/test-log',
       { method: 'DELETE' }
     )
     expect(mockH.redirect).toHaveBeenCalledWith(REVIEW_HISTORY_REDIRECT)
