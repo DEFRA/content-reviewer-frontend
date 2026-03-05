@@ -10,7 +10,6 @@ export function getUserIdentifier(request) {
   // First, try to get authenticated user ID
   const authenticatedUserId = request.auth?.credentials?.user?.id
   if (authenticatedUserId) {
-    console.log('[getUserIdentifier] Authenticated user:', authenticatedUserId)
     return authenticatedUserId
   }
 
@@ -18,7 +17,6 @@ export function getUserIdentifier(request) {
   // After our fix, anonymous sessions have credentials with sid
   const sessionId = request.auth?.credentials?.sid
   if (sessionId) {
-    console.log('[getUserIdentifier] Anonymous session:', sessionId)
     // Use a prefix to distinguish session-based IDs from user IDs
     // If sessionId is an object, extract a unique property, otherwise use as string
     let sessionIdStr
@@ -34,9 +32,5 @@ export function getUserIdentifier(request) {
 
   // Fallback: if no session exists yet (shouldn't happen after our fix)
   // This ensures each upload gets tracked even if session management fails
-  console.log(
-    '[getUserIdentifier] No session found - credentials:',
-    request.auth?.credentials
-  )
   return null
 }
