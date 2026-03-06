@@ -23,15 +23,17 @@ function getPreviewText(textContent) {
 }
 
 function handleReviewHistory(data, previewText) {
+  // Always add pending entry immediately for instant visual feedback
+  addReviewToHistory({
+    id: data.reviewId || data.id,
+    fileName: previewText,
+    timestamp: Date.now(),
+    status: 'pending'
+  })
+
+  // Also trigger a refresh after a delay to update from server
   if (typeof globalThis.updateReviewHistory === 'function') {
     setTimeout(() => globalThis.updateReviewHistory(), HISTORY_UPDATE_DELAY)
-  } else {
-    addReviewToHistory({
-      id: data.reviewId || data.id,
-      fileName: previewText,
-      timestamp: Date.now(),
-      status: 'pending'
-    })
   }
 }
 
@@ -59,6 +61,7 @@ export async function submitTextReview(textContent) {
     const response = await fetch('/api/review/text', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
       body: JSON.stringify({ textContent })
     })
     if (!response.ok) {
@@ -95,6 +98,7 @@ export async function submitFileUpload(file) {
     formData.append('file', file)
     const response = await fetch('/api/upload', {
       method: 'POST',
+      credentials: 'same-origin',
       body: formData
     })
     showProgress('Processing upload...', PROGRESS_PROCESSING)
