@@ -323,7 +323,7 @@
       
       <!-- Pagination Info Message -->
       {% if pagination %}
-      <p class="govuk-body govuk-!-font-size-19 govuk-!-margin-top-3">
+      <p class="govuk-body govuk-!-font-size-19 govuk-!-margin-top-3" id="paginationInfo">
         {% if currentLimit <= 25 %}
           Showing {{ reviewHistory.length }} of {{ pagination.totalReviews }} reviews
         {% else %}
@@ -342,7 +342,6 @@
 {% block bodyEnd %}
   {{ super() }}
   <script nonce="{{ cspNonce }}" src="{{ getAssetPath('upload-handler.js') }}"></script>
-
   <script nonce="{{ cspNonce }}">
     // Make content review max character length available to upload-handler.js
     window.contentReviewMaxCharLength = {{ contentReviewMaxCharLength }};
@@ -427,6 +426,7 @@
           headers: {
             'Accept': 'application/json'
           },
+          credentials: 'same-origin',
           signal: currentAbortController.signal
         })
         
@@ -480,6 +480,9 @@
 
         // Update the table with the review data
         updateReviewTable(pagedReviews);
+        
+        // Update pagination info message
+        updatePaginationInfo(data, normalized.length, limit, currentPage);
         
         // Check if there are still active reviews (pending or processing, not completed or failed)
         const activeReviews = normalized.filter(r => {
@@ -582,6 +585,28 @@
       }
       
       cell.textContent = displayText;
+    }
+    
+    // Update pagination info message dynamically
+    function updatePaginationInfo(data, reviewCount, limit, currentPage) {
+      const paginationInfo = document.getElementById('paginationInfo');
+      if (!paginationInfo) {
+        return;
+      }
+      
+      const totalReviews = data.total || data.pagination?.total || reviewCount;
+      const pageSize = 25;
+      
+      let message = '';
+      if (limit <= 25) {
+        message = `Showing ${reviewCount} of ${totalReviews} reviews`;
+      } else {
+        const startItem = (currentPage - 1) * pageSize + 1;
+        const endItem = Math.min(currentPage * pageSize, totalReviews);
+        message = `Showing ${startItem} to ${endItem} of ${totalReviews} reviews`;
+      }
+      
+      paginationInfo.textContent = message;
     }
     
     // Update the review table with new data
@@ -855,7 +880,8 @@
           method: 'DELETE',
           headers: {
             'Accept': 'application/json'
-          }
+          },
+          credentials: 'same-origin'
         });
         
         if (!response.ok) {
@@ -1079,5 +1105,4 @@
       }
     });
   </script>
-  
 {% endblock %}
