@@ -36,13 +36,9 @@
           href: "/about",
           text: "About",
           active: true if pageTitle == 'About' else false
-        },
-        {
-          href: "/auth/logout",
-          text: "Sign out",
-          classes: "govuk-service-navigation__link--right"
         }
-      ]
+      ],
+      slot: '<a class="govuk-service-navigation__link" href="/auth/logout">Sign out</a>'
     }) }}
   {% else %}
     {{ govukServiceNavigation({
@@ -57,13 +53,9 @@
           href: "/about",
           text: "About",
           active: true if pageTitle == 'About' else false
-        },
-        {
-          href: "/auth/login-page",
-          text: "Sign in",
-          classes: "govuk-service-navigation__link--right"
         }
-      ]
+      ],
+      slot: '<a class="govuk-service-navigation__link" href="/auth/login-page">Sign in (Optional)</a>'
     }) }}
   {% endif %}
 {% endblock %}
