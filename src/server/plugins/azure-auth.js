@@ -38,16 +38,28 @@ async function loginHandler(_request, h) {
  * GET /auth/callback
  * Azure AD redirects here with ?code=… after the user authenticates.
  * Exchanges the code for tokens, then stores the user in the session cookie.
+ * If authentication fails, preserve the anonymous session so review history is not lost.
  */
 async function callbackHandler(request, h) {
+  // Preserve the existing anonymous session in case authentication fails
+  const existingSession = request.auth?.credentials || null
+
   try {
     if (!msalClient) {
       logger.error('MSAL client not initialised – cannot process callback')
+      // Restore anonymous session if it existed
+      if (existingSession?.sid && !existingSession?.isAuthenticated) {
+        request.cookieAuth.set(existingSession)
+      }
       return h.redirect(AUTH_FAILED_REDIRECT)
     }
     const code = request.query?.code
     if (!code) {
       logger.error('No authorization code received on /auth/callback')
+      // Restore anonymous session if it existed
+      if (existingSession?.sid && !existingSession?.isAuthenticated) {
+        request.cookieAuth.set(existingSession)
+      }
       return h.redirect('/auth/login-page?error=invalid_state')
     }
     const response = await msalClient.acquireTokenByCode({
@@ -56,6 +68,8 @@ async function callbackHandler(request, h) {
       redirectUri: config.get('azure.redirectUri')
     })
     const account = response.account
+
+    // Only set authenticated session if successful
     request.cookieAuth.set({
       user: {
         id: account.homeAccountId,
@@ -68,6 +82,13 @@ async function callbackHandler(request, h) {
     return h.redirect('/')
   } catch (error) {
     logger.error('Azure AD callback error:', error)
+
+    // Restore anonymous session if it existed - this prevents review history loss
+    if (existingSession?.sid && !existingSession?.isAuthenticated) {
+      logger.info('Restoring anonymous session after failed auth attempt')
+      request.cookieAuth.set(existingSession)
+    }
+
     return h.redirect(AUTH_FAILED_REDIRECT)
   }
 }

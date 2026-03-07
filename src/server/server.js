@@ -119,18 +119,23 @@ function initializeAnonymousSessions(server) {
       const randomPart = randomBytes.toString('hex')
       const sessionId = `${Date.now()}-${randomPart}`
 
-      // Set the session cookie with the new session ID
-      request.cookieAuth.set({
+      const newSession = {
         sid: sessionId,
         isAuthenticated: false,
         createdAt: new Date().toISOString()
-      })
+      }
 
-      // Also update auth.credentials so it's immediately available in this request
-      request.auth.credentials = {
-        sid: sessionId,
-        isAuthenticated: false,
-        createdAt: new Date().toISOString()
+      // Set the session cookie with the new session ID (persists to next request)
+      request.cookieAuth.set(newSession)
+
+      // CRITICAL: Also update auth.credentials so the session ID is available
+      // immediately in this request's route handler (getUserIdentifier will use it).
+      // Without this, the first review submission for an anonymous user would be
+      // stored with userId=null and would not appear in their history.
+      if (!request.auth) {
+        request.auth = { credentials: newSession }
+      } else {
+        request.auth.credentials = newSession
       }
     }
 
