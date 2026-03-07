@@ -132,10 +132,10 @@ function initializeAnonymousSessions(server) {
       // immediately in this request's route handler (getUserIdentifier will use it).
       // Without this, the first review submission for an anonymous user would be
       // stored with userId=null and would not appear in their history.
-      if (!request.auth) {
-        request.auth = { credentials: newSession }
-      } else {
+      if (request.auth) {
         request.auth.credentials = newSession
+      } else {
+        request.auth = { credentials: newSession }
       }
     }
 
