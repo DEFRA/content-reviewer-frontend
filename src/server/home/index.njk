@@ -375,7 +375,7 @@
     // Get the current limit from dropdown
     function getCurrentLimit() {
       const limitSelect = document.getElementById('reviewLimit');
-      return parseInt(limitSelect?.value, 5);
+      return parseInt(limitSelect?.value, 10);
     }
     
     // Add event listener to dropdown
@@ -432,11 +432,7 @@
         
         if (!response.ok) {
           console.error('[HOME] Failed to fetch review history:', response.status);
-          // Stop auto-refresh on error to prevent spam
-          if (autoRefreshInterval) {
-            clearInterval(autoRefreshInterval);
-            autoRefreshInterval = null;
-          }
+          // Do NOT stop auto-refresh on a transient error - just skip this cycle
           return;
         }
         
@@ -507,7 +503,7 @@
         
         // Stop auto-refresh if no active reviews
         if (!hasActiveReviews && autoRefreshInterval) {
-          console.log('[HOME] Auto-refresh stopped - all reviews completed or failed');
+          console.log('[HOME] Auto-refresh paused - no active reviews');
           clearInterval(autoRefreshInterval);
           autoRefreshInterval = null;
         } else if (hasActiveReviews && !autoRefreshInterval) {
@@ -523,11 +519,7 @@
         // Only log error if it's not an abort (which happens during navigation)
         if (error.name !== 'AbortError') {
           console.error('[HOME] Error updating review history:', error);
-          // Stop auto-refresh on network error to prevent continuous failed requests
-          if (autoRefreshInterval) {
-            clearInterval(autoRefreshInterval);
-            autoRefreshInterval = null;
-          }
+          // Do NOT stop auto-refresh on network error - just skip this cycle and retry next interval
         }
         // Silently ignore AbortError - it's expected during page navigation
       } finally {
@@ -614,8 +606,37 @@
       const tbody = document.getElementById('reviewHistoryBody');
       
       if (!reviews || reviews.length === 0) {
-        tbody.innerHTML = '<tr class="govuk-table__row"><td class="govuk-table__cell" colspan="4"><p class="govuk-body">No review history available.</p></td></tr>';
+        // Only clear the table if there are no client-side pending rows to preserve
+        const existingActiveRows = tbody.querySelectorAll('tr[data-review-id]');
+        let hasClientSideActive = false;
+        existingActiveRows.forEach(row => {
+          const statusTag = row.querySelector('.govuk-tag');
+          if (statusTag && (statusTag.classList.contains('govuk-tag--yellow') || statusTag.classList.contains('govuk-tag--blue'))) {
+            hasClientSideActive = true;
+          }
+        });
+        if (!hasClientSideActive) {
+          // Safe to show "no reviews" message only if there are no pending client rows
+          while (tbody.firstChild) { tbody.removeChild(tbody.firstChild); }
+          const emptyRow = document.createElement('tr');
+          emptyRow.className = 'govuk-table__row';
+          const emptyCell = document.createElement('td');
+          emptyCell.className = 'govuk-table__cell';
+          emptyCell.setAttribute('colspan', '5');
+          const emptyP = document.createElement('p');
+          emptyP.className = 'govuk-body';
+          emptyP.textContent = 'No review history available.';
+          emptyCell.appendChild(emptyP);
+          emptyRow.appendChild(emptyCell);
+          tbody.appendChild(emptyRow);
+        }
         return;
+      }
+      
+      // Remove the "no reviews" placeholder row if it exists
+      const placeholderRow = tbody.querySelector('tr:not([data-review-id])');
+      if (placeholderRow) {
+        placeholderRow.remove();
       }
       
       // Build a Map of existing rows for quick lookup, keyed by reviewId
@@ -670,8 +691,10 @@
         }
       });
       
-      // Remove rows that are no longer in the response, BUT keep active reviews
-      // that were just added client-side (they may not be in backend yet due to S3 delay)
+      // Remove rows that are no longer in the server response.
+      // IMPORTANT: Keep any pending/processing rows that were added client-side and
+      // are not yet confirmed by the backend (S3 propagation delay or userId mismatch
+      // on first request before session cookie was established).
       existingRows.forEach((row, reviewId) => {
         const statusCell = row.querySelector('.govuk-tag');
         const isPending = statusCell && statusCell.classList.contains('govuk-tag--yellow');
@@ -918,14 +941,24 @@
       notification.setAttribute('role', 'alert');
       notification.setAttribute('aria-labelledby', 'notification-title');
       notification.setAttribute('data-module', 'govuk-notification-banner');
-      notification.innerHTML = `
-        <div class="govuk-notification-banner__header">
-          <h2 class="govuk-notification-banner__title" id="notification-title">Success</h2>
-        </div>
-        <div class="govuk-notification-banner__content">
-          <p class="govuk-notification-banner__heading">${message}</p>
-        </div>
-      `;
+      
+      const header = document.createElement('div');
+      header.className = 'govuk-notification-banner__header';
+      const title = document.createElement('h2');
+      title.className = 'govuk-notification-banner__title';
+      title.id = 'notification-title';
+      title.textContent = 'Success';
+      header.appendChild(title);
+      
+      const content = document.createElement('div');
+      content.className = 'govuk-notification-banner__content';
+      const heading = document.createElement('p');
+      heading.className = 'govuk-notification-banner__heading';
+      heading.textContent = message;
+      content.appendChild(heading);
+      
+      notification.appendChild(header);
+      notification.appendChild(content);
       
       // Insert at the top of the page
       const container = document.querySelector('.govuk-grid-column-full');
@@ -944,12 +977,21 @@
       notification.setAttribute('role', 'alert');
       notification.setAttribute('aria-labelledby', 'error-summary-title');
       notification.setAttribute('data-module', 'govuk-error-summary');
-      notification.innerHTML = `
-        <h2 class="govuk-error-summary__title" id="error-summary-title">There is a problem</h2>
-        <div class="govuk-error-summary__body">
-          <p class="govuk-body">${message}</p>
-        </div>
-      `;
+      
+      const title = document.createElement('h2');
+      title.className = 'govuk-error-summary__title';
+      title.id = 'error-summary-title';
+      title.textContent = 'There is a problem';
+      
+      const body = document.createElement('div');
+      body.className = 'govuk-error-summary__body';
+      const p = document.createElement('p');
+      p.className = 'govuk-body';
+      p.textContent = message;
+      body.appendChild(p);
+      
+      notification.appendChild(title);
+      notification.appendChild(body);
       
       // Insert at the top of the page
       const container = document.querySelector('.govuk-grid-column-full');
@@ -1062,18 +1104,25 @@
         }
       });
       
-      // Start auto-refresh if there are active reviews
+      // Always do an immediate refresh on page load to get latest server-side status.
+      // This ensures anonymous users see their history even if the table was empty
+      // at initial render (e.g. session cookie arrived after server-side render).
+      updateReviewHistory();
+      
+      // Start auto-refresh unconditionally so pending/processing reviews are tracked.
+      // The interval will self-stop only when there are no active reviews left.
       if (hasActiveReviews) {
         console.log('[HOME] Active reviews detected on page load:', {
           count: activeStatuses.length,
           statuses: activeStatuses
         });
-        // Do an immediate update first to get latest status
-        updateReviewHistory();
-        // Then start the interval
         startAutoRefresh();
       } else {
-        console.log('[HOME] No active reviews on page load - auto-refresh not started');
+        // Still start auto-refresh even with no visible active reviews.
+        // The user may have submitted a review in a previous request whose session
+        // cookie wasn't yet set when the page was server-rendered.
+        console.log('[HOME] No active reviews on initial render - starting auto-refresh anyway to catch any in-flight reviews');
+        startAutoRefresh();
       }
     }
     
