@@ -1,9 +1,16 @@
 import FormData from 'form-data'
-import fetch from 'node-fetch'
+import { Agent, fetch as undiciFetch } from 'undici'
 import { config } from '../../config/config.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
 
 const logger = createLogger()
+
+// Reuse a single undici Agent with keep-alive for all upload backend calls
+const keepAliveAgent = new Agent({
+  keepAliveTimeout: 30_000,
+  keepAliveMaxTimeout: 300_000,
+  connections: 5
+})
 
 const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500
 const HTTP_STATUS_BAD_REQUEST = 400
@@ -129,10 +136,11 @@ async function sendFileToBackend(file, fileInfo, request) {
     `Uploading file to backend: ${file.hapi.filename} (${file.bytes} bytes)`
   )
 
-  const response = await fetch(`${backendUrl}/api/upload`, {
+  const response = await undiciFetch(`${backendUrl}/api/upload`, {
     method: 'POST',
     body: formData,
-    headers: formData.getHeaders()
+    headers: formData.getHeaders(),
+    dispatcher: keepAliveAgent
   })
 
   const backendRequestEnd = Date.now()

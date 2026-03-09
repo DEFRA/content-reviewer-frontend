@@ -3,9 +3,18 @@
  * Handles displaying list of past reviews
  */
 import { createLogger } from '../../common/helpers/logging/logger.js'
+import { getUserIdentifier } from '../../common/helpers/get-user-identifier.js'
+import { Agent } from 'undici'
 
 const logger = createLogger()
 const REVIEW_HISTORY_TITLE = 'Review History'
+
+// Reuse a single undici Agent with keep-alive for all history page backend calls
+const keepAliveAgent = new Agent({
+  keepAliveTimeout: 30_000,
+  keepAliveMaxTimeout: 300_000,
+  connections: 5
+})
 
 export const reviewHistoryController = {
   /**
@@ -13,32 +22,22 @@ export const reviewHistoryController = {
    */
   async showHistory(request, h) {
     const startTime = Date.now()
-    logger.info('Review history page request started')
 
     try {
       const config = request.server.app.config
       const backendUrl = config.get('backendUrl')
 
-      logger.info('Configuration retrieved for review history', { backendUrl })
+      // Scope results to the authenticated/session user
+      const userId = getUserIdentifier(request)
+      const params = new URLSearchParams({ limit: 100 })
+      if (userId) {
+        params.set('userId', userId)
+      }
+      const endpoint = `${backendUrl}/api/reviews?${params.toString()}`
 
-      // Fetch review history from backend (S3-backed storage)
       const backendRequestStart = Date.now()
-      logger.info('Initiating review history fetch', {
-        endpoint: `${backendUrl}/api/reviews?limit=100`
-      })
-
-      const response = await fetch(`${backendUrl}/api/reviews?limit=100`)
-
-      const backendRequestEnd = Date.now()
-      const backendRequestTime =
-        (backendRequestEnd - backendRequestStart) / 1000
-
-      logger.info('Review history fetch response received', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-        requestTime: `${backendRequestTime}s`
-      })
+      const response = await fetch(endpoint, { dispatcher: keepAliveAgent })
+      const backendRequestTime = (Date.now() - backendRequestStart) / 1000
 
       if (!response.ok) {
         logger.error('Review history fetch failed', {
@@ -52,25 +51,24 @@ export const reviewHistoryController = {
       const data = await response.json()
       const totalProcessingTime = (Date.now() - startTime) / 1000
 
-      logger.info('Review history processed successfully', {
-        reviewsCount: data.reviews?.length || 0,
-        total: data.total || data.count || 0,
-        totalProcessingTime: `${totalProcessingTime}s`,
-        backendRequestTime: `${backendRequestTime}s`
-      })
-      const viewData = {
+      logger.info(
+        `Review history processed - count: ${data.reviews?.length ?? 0}, total: ${data.total ?? data.count ?? 0}, time: ${totalProcessingTime}s`
+      )
+
+      return h.view('review/history/index', {
         pageTitle: REVIEW_HISTORY_TITLE,
         heading: REVIEW_HISTORY_TITLE,
+        breadcrumbs: [
+          { text: 'Home', href: '/' },
+          { text: REVIEW_HISTORY_TITLE }
+        ],
         reviews: data.reviews || [],
         count: data.total || data.count || 0
-      }
-
-      logger.info('Rendering review history view')
-      return h.view('review/history/index', viewData)
+      })
     } catch (error) {
       const totalProcessingTime = (Date.now() - startTime) / 1000
 
-      logger.error('Review history request failed with error', {
+      logger.error('Review history request failed', {
         error: error.message,
         stack: error.stack,
         totalProcessingTime: `${totalProcessingTime}s`
@@ -78,16 +76,17 @@ export const reviewHistoryController = {
 
       request.logger.error(error, 'Failed to fetch review history')
 
-      const errorViewData = {
+      return h.view('review/history/index', {
         pageTitle: REVIEW_HISTORY_TITLE,
         heading: REVIEW_HISTORY_TITLE,
+        breadcrumbs: [
+          { text: 'Home', href: '/' },
+          { text: REVIEW_HISTORY_TITLE }
+        ],
         reviews: [],
         count: 0,
         error: 'Unable to load review history. Please try again later.'
-      }
-
-      logger.info('Rendering error view for review history')
-      return h.view('review/history/index', errorViewData)
+      })
     }
   },
 
@@ -96,70 +95,43 @@ export const reviewHistoryController = {
    */
   async deleteReview(request, h) {
     const startTime = Date.now()
-    logger.info('Delete review request started')
 
     try {
       const { reviewId } = request.params
       const config = request.server.app.config
       const backendUrl = config.get('backendUrl')
 
-      logger.info('Delete review request details', {
-        reviewId,
-        backendUrl
-      })
-
       const backendRequestStart = Date.now()
-      logger.info('Initiating delete request to backend', {
-        reviewId,
-        endpoint: `${backendUrl}/api/reviews/${reviewId}`
-      })
-
       const response = await fetch(`${backendUrl}/api/reviews/${reviewId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        dispatcher: keepAliveAgent
       })
-
-      const backendRequestEnd = Date.now()
-      const backendRequestTime =
-        (backendRequestEnd - backendRequestStart) / 1000
+      const backendRequestTime = (Date.now() - backendRequestStart) / 1000
       const totalProcessingTime = (Date.now() - startTime) / 1000
-
-      logger.info('Delete request completed', {
-        reviewId,
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-        requestTime: `${backendRequestTime}s`,
-        totalProcessingTime: `${totalProcessingTime}s`
-      })
 
       if (!response.ok) {
         logger.error('Delete request failed', {
           reviewId,
           status: response.status,
-          statusText: response.statusText,
           requestTime: `${backendRequestTime}s`
         })
         throw new Error('Failed to delete review')
       }
 
-      logger.info('Review deleted successfully, redirecting', {
-        reviewId,
-        totalProcessingTime: `${totalProcessingTime}s`
-      })
-      // Redirect back to history
+      logger.info(
+        `Review deleted - id: ${reviewId}, time: ${totalProcessingTime}s`
+      )
       return h.redirect('/review/history')
     } catch (error) {
       const totalProcessingTime = (Date.now() - startTime) / 1000
 
-      logger.error('Delete review request failed with error', {
+      logger.error('Delete review request failed', {
         reviewId: request.params.reviewId,
         error: error.message,
-        stack: error.stack,
         totalProcessingTime: `${totalProcessingTime}s`
       })
 
       request.logger.error(error, 'Failed to delete review')
-      logger.info('Redirecting with error parameter after delete failure')
       return h.redirect('/review/history?error=delete_failed')
     }
   }

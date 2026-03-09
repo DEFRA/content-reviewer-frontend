@@ -1,12 +1,24 @@
 import { config } from '../../config/config.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
 import { getUserIdentifier } from '../common/helpers/get-user-identifier.js'
+import { Agent } from 'undici'
 
 const logger = createLogger()
 const backendUrl = config.get('backendUrl')
 const PAGE_SIZE = 25
 const INTERNAL_SERVER_ERROR = 500
 const OK = 200
+
+// Reuse a single undici Agent with keep-alive across all /api/reviews fetch calls.
+// Node 18+ built-in fetch uses undici internally, so passing an undici Agent
+// as the `dispatcher` option is the correct way to enable connection reuse.
+// This avoids a new TCP handshake on every auto-refresh poll (every 5 seconds),
+// significantly reducing latency for the most frequent API call in the app.
+const keepAliveAgent = new Agent({
+  keepAliveTimeout: 30_000, // keep idle connections open for 30 s
+  keepAliveMaxTimeout: 300_000, // maximum keep-alive window
+  connections: 10 // max concurrent connections to backend
+})
 
 /**
  * Calculate pagination parameters
@@ -74,7 +86,10 @@ async function fetchReviewsFromBackend(limit, skip, _page, userId = null) {
   }
   const endpoint = `${backendUrl}/api/reviews?${params.toString()}`
   const startTime = Date.now()
-  const response = await fetch(endpoint)
+  const response = await fetch(endpoint, {
+    // Pass the undici Agent as dispatcher so the built-in fetch reuses TCP connections
+    dispatcher: keepAliveAgent
+  })
   const backendRequestTime = ((Date.now() - startTime) / 1000).toFixed(2)
   return { response, backendRequestTime, endpoint }
 }

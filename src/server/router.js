@@ -54,7 +54,14 @@ export const router = {
       server.route({
         method: 'GET',
         path: '/api/reviews',
-        handler: getReviewsController
+        handler: getReviewsController,
+        options: {
+          cache: {
+            // Tell Hapi not to cache on the server side - reviews are dynamic
+            // but allow short-lived browser caching with revalidation
+            otherwise: 'no-cache, no-store, must-revalidate'
+          }
+        }
       })
 
       server.route(deleteReviewRoute)
