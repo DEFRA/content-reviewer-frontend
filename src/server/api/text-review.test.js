@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { textReviewApiController } from './text-review.js'
-import fetch from 'node-fetch'
 
 const BACKEND_URL = 'http://localhost:4000'
 const TEXT_ENDPOINT = `${BACKEND_URL}/api/review/text`
@@ -35,9 +34,22 @@ vi.mock('../common/helpers/get-user-identifier.js', () => ({
   getUserIdentifier: vi.fn(() => 'user-123')
 }))
 
-vi.mock('node-fetch', () => ({
-  default: vi.fn()
+// vi.hoisted ensures these are available inside the hoisted vi.mock() factory.
+// The Agent stub is a plain object factory – undici Agent is only used as `new Agent(opts)`
+// and the instance is passed as `dispatcher`; tests never call methods on it.
+const { MockAgent, fetchMock } = vi.hoisted(() => ({
+  // Use Object as a stand-in constructor: `new Object()` returns `{}`
+  MockAgent: Object,
+  fetchMock: vi.fn()
 }))
+
+// Mock undici Agent – must use vi.hoisted value, not vi.fn() directly in factory
+vi.mock('undici', () => ({
+  Agent: MockAgent
+}))
+
+// Mock global fetch for all tests
+vi.stubGlobal('fetch', fetchMock)
 
 function createMockRequest(payload = {}) {
   return {
@@ -116,7 +128,7 @@ describe('textReviewApiController.reviewText - title generation', () => {
   })
 
   it('uses provided title when given', async () => {
-    fetch.mockResolvedValueOnce({
+    fetchMock.mockResolvedValueOnce({
       ok: true,
       json: vi.fn().mockResolvedValueOnce({ reviewId: 'rev-001' })
     })
@@ -124,7 +136,7 @@ describe('textReviewApiController.reviewText - title generation', () => {
     const req = createMockRequest({ title: 'My Custom Title' })
     await textReviewApiController.reviewText(req, mockH)
 
-    expect(fetch).toHaveBeenCalledWith(
+    expect(fetchMock).toHaveBeenCalledWith(
       TEXT_ENDPOINT,
       expect.objectContaining({
         method: 'POST',
@@ -134,7 +146,7 @@ describe('textReviewApiController.reviewText - title generation', () => {
   })
 
   it('auto-generates title from first 3 words when no title given', async () => {
-    fetch.mockResolvedValueOnce({
+    fetchMock.mockResolvedValueOnce({
       ok: true,
       json: vi.fn().mockResolvedValueOnce({ reviewId: 'rev-002' })
     })
@@ -142,7 +154,7 @@ describe('textReviewApiController.reviewText - title generation', () => {
     const req = createMockRequest({ title: null })
     await textReviewApiController.reviewText(req, mockH)
 
-    expect(fetch).toHaveBeenCalledWith(
+    expect(fetchMock).toHaveBeenCalledWith(
       TEXT_ENDPOINT,
       expect.objectContaining({
         body: expect.stringContaining('...')
@@ -161,7 +173,7 @@ describe('textReviewApiController.reviewText - backend success', () => {
 
   it('returns 200 with reviewId on successful backend response', async () => {
     const reviewId = 'rev-success-001'
-    fetch.mockResolvedValueOnce({
+    fetchMock.mockResolvedValueOnce({
       ok: true,
       json: vi.fn().mockResolvedValueOnce({ reviewId })
     })
@@ -180,7 +192,7 @@ describe('textReviewApiController.reviewText - backend success', () => {
   })
 
   it('includes x-user-id header when user is identified', async () => {
-    fetch.mockResolvedValueOnce({
+    fetchMock.mockResolvedValueOnce({
       ok: true,
       json: vi.fn().mockResolvedValueOnce({ reviewId: 'rev-004' })
     })
@@ -188,7 +200,7 @@ describe('textReviewApiController.reviewText - backend success', () => {
     const req = createMockRequest()
     await textReviewApiController.reviewText(req, mockH)
 
-    expect(fetch).toHaveBeenCalledWith(
+    expect(fetchMock).toHaveBeenCalledWith(
       TEXT_ENDPOINT,
       expect.objectContaining({
         headers: expect.objectContaining({ 'x-user-id': 'user-123' })
@@ -201,7 +213,7 @@ describe('textReviewApiController.reviewText - backend success', () => {
       await import('../common/helpers/get-user-identifier.js')
     getUserIdentifier.mockReturnValueOnce(null)
 
-    fetch.mockResolvedValueOnce({
+    fetchMock.mockResolvedValueOnce({
       ok: true,
       json: vi.fn().mockResolvedValueOnce({ reviewId: 'rev-005' })
     })
@@ -209,7 +221,7 @@ describe('textReviewApiController.reviewText - backend success', () => {
     const req = createMockRequest()
     await textReviewApiController.reviewText(req, mockH)
 
-    expect(fetch).toHaveBeenCalledWith(
+    expect(fetchMock).toHaveBeenCalledWith(
       TEXT_ENDPOINT,
       expect.objectContaining({
         headers: expect.not.objectContaining({ 'x-user-id': expect.anything() })
@@ -227,7 +239,7 @@ describe('textReviewApiController.reviewText - backend errors', () => {
   })
 
   it('returns 500 when backend response is not ok', async () => {
-    fetch.mockResolvedValueOnce({
+    fetchMock.mockResolvedValueOnce({
       ok: false,
       status: HTTP_STATUS_SERVICE_UNAVAILABLE,
       statusText: 'Service Unavailable'
@@ -248,7 +260,7 @@ describe('textReviewApiController.reviewText - backend errors', () => {
   })
 
   it('returns 500 when fetch throws a network error', async () => {
-    fetch.mockRejectedValueOnce(new Error('Connection refused'))
+    fetchMock.mockRejectedValueOnce(new Error('Connection refused'))
 
     const req = createMockRequest()
     await textReviewApiController.reviewText(req, mockH)
@@ -267,7 +279,7 @@ describe('textReviewApiController.reviewText - backend errors', () => {
   it('falls back to "Internal server error" when thrown error has no message', async () => {
     const errorWithNoMessage = new Error('placeholder')
     errorWithNoMessage.message = ''
-    fetch.mockRejectedValueOnce(errorWithNoMessage)
+    fetchMock.mockRejectedValueOnce(errorWithNoMessage)
 
     const req = createMockRequest()
     await textReviewApiController.reviewText(req, mockH)

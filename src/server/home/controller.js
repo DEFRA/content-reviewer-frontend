@@ -4,8 +4,17 @@
  */
 import { createLogger } from '../common/helpers/logging/logger.js'
 import { getUserIdentifier } from '../common/helpers/get-user-identifier.js'
+import { Agent } from 'undici'
 
 const logger = createLogger()
+
+// Reuse a single undici Agent with keep-alive for all server-side backend calls
+// from the home page controller. Avoids a fresh TCP handshake on every page render.
+const keepAliveAgent = new Agent({
+  keepAliveTimeout: 30_000,
+  keepAliveMaxTimeout: 300_000,
+  connections: 5
+})
 
 /**
  * Normalize review data to ensure consistent structure
@@ -92,7 +101,9 @@ const calculatePagination = (limit, pageSize, data, normalizedLength) => {
  */
 const processBackendResponse = async (backendEndpoint) => {
   const startTime = Date.now()
-  const response = await fetch(backendEndpoint)
+  const response = await fetch(backendEndpoint, {
+    dispatcher: keepAliveAgent
+  })
   const data = await response.json()
   const backendRequestTime = Date.now() - startTime
 
@@ -206,12 +217,12 @@ export const homeController = {
     const viewData = {
       pageTitle: 'Home',
       heading: 'Home',
+      breadcrumbs: [],
       uploadSuccess: uploadSuccess.length > 0 ? uploadSuccess[0] : null,
       uploadError: uploadError.length > 0 ? uploadError[0] : null,
       reviewHistory,
       backendUrl,
       contentReviewMaxCharLength: config.get('contentReview.maxCharLength'),
-      cacheBuster: Date.now(),
       currentLimit: limit,
       pagination: {
         currentPage,

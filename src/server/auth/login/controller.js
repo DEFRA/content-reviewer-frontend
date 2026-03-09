@@ -20,9 +20,10 @@ export const loginController = {
         'An error occurred during sign in. You can continue using the tool without signing in. Your review history will be saved for this session.'
       : null
     return h.view('auth/login/index', {
-      pageTitle: 'Sign in - Content Review Tool - GOV.UK',
-      heading: 'Content Review Assistant',
+      pageTitle: 'Sign in – Content Review Tool – GOV.UK',
+      heading: 'Sign in',
       serviceName: 'Content Review Tool',
+      breadcrumbs: [{ text: 'Home', href: '/' }, { text: 'Sign in' }],
       errorMessage
     })
   }

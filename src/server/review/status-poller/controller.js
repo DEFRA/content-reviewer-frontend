@@ -1,7 +1,14 @@
-import fetch from 'node-fetch'
+import { Agent } from 'undici'
 
 const HTTP_STATUS_OK = 200
 const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500
+
+// Reuse a single undici Agent with keep-alive for all status polling backend calls
+const keepAliveAgent = new Agent({
+  keepAliveTimeout: 30_000,
+  keepAliveMaxTimeout: 300_000,
+  connections: 5
+})
 
 /**
  * Review Status Poller Controller
@@ -36,7 +43,9 @@ export const reviewStatusPollerController = {
       const backendUrl = config.get('backendUrl')
 
       // Fetch status from backend
-      const response = await fetch(`${backendUrl}/api/results/${reviewId}`)
+      const response = await fetch(`${backendUrl}/api/results/${reviewId}`, {
+        dispatcher: keepAliveAgent
+      })
 
       if (!response.ok) {
         throw new Error('Failed to fetch review status')

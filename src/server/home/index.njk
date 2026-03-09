@@ -1,37 +1,5 @@
 {% extends 'layouts/page.njk' %}
 
-{% block head %}
-  {{ super() }}
-  <style nonce="{{ cspNonce }}">
-    /* Animated loading dots */
-    .loading-dots {
-      display: inline-block;
-      margin-left: 2px;
-    }
-    .loading-dots span {
-      animation: blink 1.4s infinite;
-      animation-fill-mode: both;
-    }
-    .loading-dots span:nth-child(2) {
-      animation-delay: 0.2s;
-    }
-    .loading-dots span:nth-child(3) {
-      animation-delay: 0.4s;
-    }
-    @keyframes blink {
-      0%, 80%, 100% { opacity: 0; }
-      40% { opacity: 1; }
-    }
-    .upload-progress-bar {
-      background: #1d70b8;
-      height: 10px;
-      border-radius: 5px;
-      transition: width 0.3s ease;
-      width: 0%;
-    }
-  </style>
-{% endblock %}
-
 {% block content %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-full">
@@ -117,10 +85,10 @@
               Do not include personal or financial information, like your National Insurance number or credit card details
             </div>
             <div class="govuk-error-summary__body" id="uploadError" hidden>
-              <p class="govuk-error-message" id="errorMessage" style="font-weight:bold; color:#d4351c;"></p>
+              <p class="govuk-error-message app-error-message" id="errorMessage"></p>
             </div>
             {% if errorMessage %}
-              <p id="text-content-error" class="govuk-error-message" style="font-weight:bold; color:#d4351c;">
+              <p id="text-content-error" class="govuk-error-message app-error-message">
                 <span class="govuk-visually-hidden">Error:</span> {{ errorMessage }}
               </p>
             {% endif %}
@@ -163,12 +131,12 @@
           <div class="govuk-grid-column-one-half">
             <h2 class="govuk-heading-m">Review History</h2>
           </div>
-          <div class="govuk-grid-column-one-half" style="text-align: right;">
-            <form id="reviewLimitForm" method="get" class="govuk-form-group" style="display: inline-block; text-align: left; margin-bottom: 0;">
+          <div class="govuk-grid-column-one-half app-review-history__header">
+            <form id="reviewLimitForm" method="get" class="govuk-form-group app-review-limit-form">
               <label class="govuk-label govuk-!-margin-bottom-1" for="reviewLimit">
                 Show latest
               </label>
-              <select class="govuk-select" id="reviewLimit" name="limit" style="width: auto;">
+              <select class="govuk-select app-review-limit-select" id="reviewLimit" name="limit">
                 <option value="5" {% if (currentLimit == 5) %}selected{% endif %}>5 reviews</option>
                 <option value="10" {% if (currentLimit == 10) %}selected{% endif %}>10 reviews</option>
                 <option value="50" {% if (currentLimit == 50) %}selected{% endif %}>50 reviews</option>
@@ -346,24 +314,6 @@
     // Make content review max character length available to upload-handler.js
     window.contentReviewMaxCharLength = {{ contentReviewMaxCharLength }};
     
-    console.log('[HOME] Page loaded with data:', {
-      currentLimit: {{ currentLimit }},
-      currentPage: {{ pagination.currentPage }},
-      pageSize: {{ pagination.pageSize }},
-      totalReviews: {{ pagination.totalReviews }},
-      totalPages: {{ pagination.totalPages }},
-      reviewHistoryLength: {{ reviewHistory | length }},
-      hasPreviousPage: {{ pagination.hasPreviousPage | dump }},
-      hasNextPage: {{ pagination.hasNextPage | dump }},
-      contentReviewMaxCharLength: {{ contentReviewMaxCharLength }}
-    });
-    
-    console.log('[HOME] Review history items on initial load:');
-    {% for review in reviewHistory %}
-    console.log('  - {{ review.filename | safe }} ({{ review.status }})');
-    {% endfor %}
-    
-    console.log('[HOME] Page loaded');
     // ============ AUTO-REFRESH LOGIC ============
     // Note: Upload form handling is now in upload-handler.js
     // Auto-refresh state
@@ -405,7 +355,7 @@
       currentAbortController = new AbortController();
       
       try {
-        const limit = document.getElementById('reviewLimit')?.value || 5;
+        const limit = parseInt(document.getElementById('reviewLimit')?.value, 10) || 5;
         // Get current page from URL or default to 1
         const urlParams = new URLSearchParams(window.location.search);
         const currentPage = parseInt(urlParams.get('page')) || 1;
@@ -418,8 +368,6 @@
           apiUrl += `&page=${currentPage}`;
         }
         
-        console.log('[HOME] Auto-refresh fetching:', { limit, currentPage, apiUrl });
-        
         // Call frontend proxy route instead of backend directly to avoid CORS issues
         const response = await fetch(apiUrl, {
           method: 'GET',
@@ -431,7 +379,6 @@
         })
         
         if (!response.ok) {
-          console.error('[HOME] Failed to fetch review history:', response.status);
           // Do NOT stop auto-refresh on a transient error - just skip this cycle
           return;
         }
@@ -440,15 +387,7 @@
         
         // Normalize review data for client-side rendering
         const normalized = (data.reviews || []).map(r => {
-          // Determine filename - preserve the original if it exists
-          let displayFilename = r.fileName || r.filename;
-          
-          // If fileName/filename is missing or empty for text content, use first 10 chars
-          if (!displayFilename || displayFilename === 'Text Content') {
-            // Try to get from content if available, otherwise keep 'Text Content'
-            displayFilename = r.fileName || r.filename || 'Text Content';
-          }
-          
+          let displayFilename = r.fileName || r.filename || 'Text Content';
           return {
             ...r,
             filename: displayFilename,
@@ -459,20 +398,7 @@
 
         // For paginated views (limit > 25), backend already returns the correct page
         // For non-paginated views (limit <= 25), show all items
-        let pagedReviews;
-        
-        if (limit > 25) {
-          // Backend pagination: API already returned the correct page's data
-          pagedReviews = normalized;
-          console.log('[HOME] Using backend-paginated data:', {
-            currentPage,
-            receivedItems: normalized.length,
-            expectedPageSize: 25
-          });
-        } else {
-          // No pagination needed: show all returned items
-          pagedReviews = normalized;
-        }
+        const pagedReviews = normalized;
 
         // Update the table with the review data
         updateReviewTable(pagedReviews);
@@ -480,21 +406,18 @@
         // Update pagination info message
         updatePaginationInfo(data, normalized.length, limit, currentPage);
         
-        // Check if there are still active reviews (pending or processing, not completed or failed)
-        const activeReviews = normalized.filter(r => {
+        // Check if there are still active reviews (pending or processing)
+        const activeInApi = normalized.filter(r => {
           const status = (r.status || '').toLowerCase();
           return status === 'pending' || status === 'processing';
         });
-        
-        const hasActiveReviews = activeReviews.length > 0;
-        
-        // Log status check results for debugging
-        console.log('[HOME] Status check:', {
-          totalReviews: normalized.length,
-          activeCount: activeReviews.length,
-          statuses: normalized.map(r => ({ id: r.id || r.reviewId, status: r.status })),
-          hasActiveReviews
-        });
+
+        // Also check the DOM table for any pending/processing rows not yet in the API response
+        const domPendingRows = document.querySelectorAll(
+          '#reviewHistoryBody tr .govuk-tag--yellow, #reviewHistoryBody tr .govuk-tag--blue'
+        );
+
+        const hasActiveReviews = activeInApi.length > 0 || domPendingRows.length > 0;
         
         // Hide success message if no active reviews (all completed)
         if (!hasActiveReviews && uploadSuccess) {
@@ -503,17 +426,11 @@
         
         // Stop auto-refresh if no active reviews
         if (!hasActiveReviews && autoRefreshInterval) {
-          console.log('[HOME] Auto-refresh paused - no active reviews');
           clearInterval(autoRefreshInterval);
           autoRefreshInterval = null;
         } else if (hasActiveReviews && !autoRefreshInterval) {
-          // Restart auto-refresh if new active reviews appeared
-          console.log('[HOME] Active reviews detected, restarting auto-refresh');
           startAutoRefresh();
         }
-        
-        // Store last review data for reference
-        window.lastReviewData = normalized;
         
       } catch (error) {
         // Only log error if it's not an abort (which happens during navigation)
@@ -882,28 +799,20 @@
     // Delete review functionality
     async function deleteReview(reviewId, filename) {
       if (!reviewId) {
-        console.error('[HOME] Cannot delete review - missing ID');
         showErrorNotification('Error: Missing review ID');
         return;
       }
       
-      // Show confirmation using GOV.UK pattern
       const confirmDelete = confirm(`Are you sure you want to delete the review for "${filename}"?\n\nThis action cannot be undone.`);
       
       if (!confirmDelete) {
-        console.log('[HOME] Delete cancelled by user');
         return;
       }
       
-      console.log('[HOME] Deleting review:', reviewId);
-      
       try {
-        // Call delete API endpoint
         const response = await fetch(`/api/reviews/${reviewId}`, {
           method: 'DELETE',
-          headers: {
-            'Accept': 'application/json'
-          },
+          headers: { 'Accept': 'application/json' },
           credentials: 'same-origin'
         });
         
@@ -912,20 +821,13 @@
           throw new Error(errorData.error || `Failed to delete review: ${response.status}`);
         }
         
-        const result = await response.json();
-        console.log('[HOME] Review deleted successfully:', result);
-        
         // Immediately remove the row from the table for instant feedback
         const rowToDelete = document.querySelector(`tr[data-review-id="${reviewId}"]`);
         if (rowToDelete) {
           rowToDelete.remove();
-          console.log('[HOME] Review row removed from table:', reviewId);
         }
         
-        // Show success notification
         showSuccessNotification(`Review "${filename}" has been deleted successfully.`);
-        
-        // Refresh the review history to update the table with fresh data from server
         await updateReviewHistory();
         
       } catch (error) {

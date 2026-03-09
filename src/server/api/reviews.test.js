@@ -20,6 +20,20 @@ vi.mock('../common/helpers/logging/logger.js', () => ({
   }))
 }))
 
+vi.mock('../common/helpers/get-user-identifier.js', () => ({
+  getUserIdentifier: vi.fn(() => null)
+}))
+
+// Use vi.hoisted so MockAgent is available when the factory is hoisted
+const { MockAgent } = vi.hoisted(() => {
+  function MockAgent() {}
+  return { MockAgent }
+})
+
+vi.mock('undici', () => ({
+  Agent: MockAgent
+}))
+
 globalThis.fetch = vi.fn()
 
 function createMockRequest(query = {}) {
@@ -86,7 +100,8 @@ describe('getReviewsController - Default Pagination', () => {
     await getReviewsController(mockRequest, mockH)
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://localhost:4000/api/reviews?limit=25&skip=0'
+      'http://localhost:4000/api/reviews?limit=25&skip=0',
+      expect.objectContaining({})
     )
     expect(mockH.response).toHaveBeenCalledWith({
       success: true,
@@ -112,7 +127,8 @@ describe('getReviewsController - Default Pagination', () => {
     await getReviewsController(mockRequest, mockH)
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://localhost:4000/api/reviews?limit=25&skip=0'
+      'http://localhost:4000/api/reviews?limit=25&skip=0',
+      expect.objectContaining({})
     )
   })
 })
@@ -147,7 +163,8 @@ describe('getReviewsController - Custom Pagination', () => {
     await getReviewsController(mockRequest, mockH)
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://localhost:4000/api/reviews?limit=10&skip=10'
+      'http://localhost:4000/api/reviews?limit=10&skip=10',
+      expect.objectContaining({})
     )
   })
 })
