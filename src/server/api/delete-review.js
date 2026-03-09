@@ -1,4 +1,4 @@
-import fetch from 'node-fetch'
+import { Agent } from 'undici'
 import { config } from '../../config/config.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
 
@@ -7,6 +7,13 @@ const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500
 
 const logger = createLogger()
 const backendUrl = config.get('backendUrl')
+
+// Reuse a single undici Agent with keep-alive for all delete review backend calls
+const keepAliveAgent = new Agent({
+  keepAliveTimeout: 30_000,
+  keepAliveMaxTimeout: 300_000,
+  connections: 5
+})
 
 /**
  * Delete a review from the backend
@@ -29,7 +36,8 @@ export async function deleteReviewController(request, h) {
       method: 'DELETE',
       headers: {
         Accept: 'application/json'
-      }
+      },
+      dispatcher: keepAliveAgent
     })
 
     const backendRequestEnd = Date.now()
