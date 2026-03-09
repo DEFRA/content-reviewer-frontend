@@ -86,10 +86,8 @@
             </div>
             <div class="govuk-error-summary__body" id="uploadError" hidden>
               <p class="govuk-error-message app-error-message" id="errorMessage"></p>
-              <p class="govuk-error-message app-error-message" id="errorMessage"></p>
             </div>
             {% if errorMessage %}
-              <p id="text-content-error" class="govuk-error-message app-error-message">
               <p id="text-content-error" class="govuk-error-message app-error-message">
                 <span class="govuk-visually-hidden">Error:</span> {{ errorMessage }}
               </p>
@@ -135,12 +133,9 @@
           </div>
           <div class="govuk-grid-column-one-half app-review-history__header">
             <form id="reviewLimitForm" method="get" class="govuk-form-group app-review-limit-form">
-          <div class="govuk-grid-column-one-half app-review-history__header">
-            <form id="reviewLimitForm" method="get" class="govuk-form-group app-review-limit-form">
               <label class="govuk-label govuk-!-margin-bottom-1" for="reviewLimit">
                 Show latest
               </label>
-              <select class="govuk-select app-review-limit-select" id="reviewLimit" name="limit">
               <select class="govuk-select app-review-limit-select" id="reviewLimit" name="limit">
                 <option value="5" {% if (currentLimit == 5) %}selected{% endif %}>5 reviews</option>
                 <option value="10" {% if (currentLimit == 10) %}selected{% endif %}>10 reviews</option>
@@ -361,7 +356,6 @@
       
       try {
         const limit = parseInt(document.getElementById('reviewLimit')?.value, 10) || 5;
-        const limit = parseInt(document.getElementById('reviewLimit')?.value, 10) || 5;
         // Get current page from URL or default to 1
         const urlParams = new URLSearchParams(window.location.search);
         const currentPage = parseInt(urlParams.get('page')) || 1;
@@ -386,7 +380,6 @@
         
         if (!response.ok) {
           // Do NOT stop auto-refresh on a transient error - just skip this cycle
-          // Do NOT stop auto-refresh on a transient error - just skip this cycle
           return;
         }
         
@@ -394,7 +387,6 @@
         
         // Normalize review data for client-side rendering
         const normalized = (data.reviews || []).map(r => {
-          let displayFilename = r.fileName || r.filename || 'Text Content';
           let displayFilename = r.fileName || r.filename || 'Text Content';
           return {
             ...r,
@@ -407,7 +399,6 @@
         // For paginated views (limit > 25), backend already returns the correct page
         // For non-paginated views (limit <= 25), show all items
         const pagedReviews = normalized;
-        const pagedReviews = normalized;
 
         // Update the table with the review data
         updateReviewTable(pagedReviews);
@@ -417,18 +408,9 @@
         
         // Check if there are still active reviews (pending or processing)
         const activeInApi = normalized.filter(r => {
-        // Check if there are still active reviews (pending or processing)
-        const activeInApi = normalized.filter(r => {
           const status = (r.status || '').toLowerCase();
           return status === 'pending' || status === 'processing';
         });
-
-        // Also check the DOM table for any pending/processing rows not yet in the API response
-        const domPendingRows = document.querySelectorAll(
-          '#reviewHistoryBody tr .govuk-tag--yellow, #reviewHistoryBody tr .govuk-tag--blue'
-        );
-
-        const hasActiveReviews = activeInApi.length > 0 || domPendingRows.length > 0;
 
         // Also check the DOM table for any pending/processing rows not yet in the API response
         const domPendingRows = document.querySelectorAll(
@@ -830,7 +812,6 @@
       try {
         const response = await fetch(`/api/reviews/${reviewId}`, {
           method: 'DELETE',
-          headers: { 'Accept': 'application/json' },
           headers: { 'Accept': 'application/json' },
           credentials: 'same-origin'
         });
