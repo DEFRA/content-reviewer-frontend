@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { uploadApiController } from './upload.js'
-import fetch from 'node-fetch'
 
 const BACKEND_URL = 'http://localhost:4000'
 const UPLOAD_ENDPOINT = `${BACKEND_URL}/api/upload`
@@ -36,16 +35,23 @@ vi.mock('../common/helpers/logging/logger.js', () => ({
   }))
 }))
 
-vi.mock('node-fetch', () => ({
-  default: vi.fn()
+// Use vi.hoisted so all references are available when factories are hoisted
+const { MockAgent, undiciFetchMock, FormDataMock } = vi.hoisted(() => {
+  function MockAgent() {}
+  const undiciFetchMock = vi.fn()
+  function FormDataMock() {
+    this.append = vi.fn()
+    this.getHeaders = vi.fn(() => ({ 'content-type': 'multipart/form-data' }))
+  }
+  return { MockAgent, undiciFetchMock, FormDataMock }
+})
+
+vi.mock('undici', () => ({
+  Agent: MockAgent,
+  fetch: undiciFetchMock
 }))
 
-vi.mock('form-data', () => ({ default: formDataMock }))
-
-function formDataMock() {
-  this.append = vi.fn()
-  this.getHeaders = vi.fn(() => ({ 'content-type': 'multipart/form-data' }))
-}
+vi.mock('form-data', () => ({ default: FormDataMock }))
 
 function createMockFile(
   filename = TEST_FILENAME,
@@ -153,7 +159,7 @@ describe('uploadApiController.uploadFile - accepted file types', () => {
   })
 
   it('accepts .doc extension with non-standard MIME type', async () => {
-    fetch.mockResolvedValueOnce({
+    undiciFetchMock.mockResolvedValueOnce({
       ok: true,
       json: vi.fn().mockResolvedValueOnce({
         reviewId: TEST_REVIEW_ID,
@@ -171,7 +177,7 @@ describe('uploadApiController.uploadFile - accepted file types', () => {
   })
 
   it('accepts .docx extension with correct MIME type', async () => {
-    fetch.mockResolvedValueOnce({
+    undiciFetchMock.mockResolvedValueOnce({
       ok: true,
       json: vi.fn().mockResolvedValueOnce({
         reviewId: TEST_REVIEW_ID,
@@ -202,7 +208,7 @@ describe('uploadApiController.uploadFile - backend success', () => {
   })
 
   it('returns 200 with reviewId on successful backend upload', async () => {
-    fetch.mockResolvedValueOnce({
+    undiciFetchMock.mockResolvedValueOnce({
       ok: true,
       json: vi.fn().mockResolvedValueOnce({
         reviewId: TEST_REVIEW_ID,
@@ -213,7 +219,7 @@ describe('uploadApiController.uploadFile - backend success', () => {
     const req = createMockRequest()
     await uploadApiController.uploadFile(req, mockH)
 
-    expect(fetch).toHaveBeenCalledWith(
+    expect(undiciFetchMock).toHaveBeenCalledWith(
       UPLOAD_ENDPOINT,
       expect.objectContaining({ method: 'POST' })
     )
@@ -229,7 +235,7 @@ describe('uploadApiController.uploadFile - backend success', () => {
   })
 
   it('includes reviewId null fallback in success response', async () => {
-    fetch.mockResolvedValueOnce({
+    undiciFetchMock.mockResolvedValueOnce({
       ok: true,
       json: vi.fn().mockResolvedValueOnce({ reviewId: null, filename: null })
     })
@@ -252,7 +258,7 @@ describe('uploadApiController.uploadFile - backend errors', () => {
   })
 
   it('returns 500 when backend responds with error status', async () => {
-    fetch.mockResolvedValueOnce({
+    undiciFetchMock.mockResolvedValueOnce({
       ok: false,
       status: HTTP_STATUS_SERVICE_UNAVAILABLE,
       statusText: 'Service Unavailable',
@@ -274,7 +280,7 @@ describe('uploadApiController.uploadFile - backend errors', () => {
   })
 
   it('returns 500 when fetch throws a network error', async () => {
-    fetch.mockRejectedValueOnce(new Error('ECONNREFUSED'))
+    undiciFetchMock.mockRejectedValueOnce(new Error('ECONNREFUSED'))
 
     const req = createMockRequest()
     await uploadApiController.uploadFile(req, mockH)
@@ -293,7 +299,7 @@ describe('uploadApiController.uploadFile - backend errors', () => {
   it('falls back to "Internal server error" when thrown error has no message', async () => {
     const errorWithNoMessage = new Error('placeholder')
     errorWithNoMessage.message = ''
-    fetch.mockRejectedValueOnce(errorWithNoMessage)
+    undiciFetchMock.mockRejectedValueOnce(errorWithNoMessage)
 
     const req = createMockRequest()
     await uploadApiController.uploadFile(req, mockH)

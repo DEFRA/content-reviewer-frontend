@@ -1,9 +1,16 @@
-import fetch from 'node-fetch'
 import { config } from '../../config/config.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
 import { getUserIdentifier } from '../common/helpers/get-user-identifier.js'
+import { Agent } from 'undici'
 
 const logger = createLogger()
+
+// Reuse a single undici Agent with keep-alive for all text review backend calls
+const keepAliveAgent = new Agent({
+  keepAliveTimeout: 30_000,
+  keepAliveMaxTimeout: 300_000,
+  connections: 5
+})
 
 const HTTP_STATUS = {
   OK: 200,
@@ -75,7 +82,8 @@ async function submitToBackend(textContent, finalTitle, request) {
     body: JSON.stringify({
       content: textContent,
       title: finalTitle
-    })
+    }),
+    dispatcher: keepAliveAgent
   })
 
   const backendRequestEnd = Date.now()

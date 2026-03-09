@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { deleteReviewController } from './delete-review.js'
-import fetch from 'node-fetch'
 
 const BACKEND_URL = 'http://localhost:4000'
 const REVIEW_ID = 'review-abc-123'
@@ -30,9 +29,19 @@ vi.mock('../common/helpers/logging/logger.js', () => ({
   }))
 }))
 
-vi.mock('node-fetch', () => ({
-  default: vi.fn()
+// Use vi.hoisted so the Agent class reference is available when the factory is hoisted
+const { MockAgent } = vi.hoisted(() => {
+  function MockAgent() {}
+  return { MockAgent }
+})
+
+vi.mock('undici', () => ({
+  Agent: MockAgent
 }))
+
+// Mock global fetch for all tests
+const fetchMock = vi.fn()
+vi.stubGlobal('fetch', fetchMock)
 
 function createMockRequest(reviewId = REVIEW_ID) {
   return {
@@ -67,14 +76,14 @@ describe('deleteReviewController - success responses', () => {
 
   it('returns 200 with success true when backend responds ok', async () => {
     const backendData = { message: 'Review deleted successfully' }
-    fetch.mockResolvedValueOnce({
+    fetchMock.mockResolvedValueOnce({
       ok: true,
       json: vi.fn().mockResolvedValueOnce(backendData)
     })
 
     await deleteReviewController(mockRequest, mockH)
 
-    expect(fetch).toHaveBeenCalledWith(
+    expect(fetchMock).toHaveBeenCalledWith(
       DELETE_ENDPOINT,
       expect.objectContaining({ method: 'DELETE' })
     )
@@ -85,7 +94,7 @@ describe('deleteReviewController - success responses', () => {
   })
 
   it('uses data.message from backend when present', async () => {
-    fetch.mockResolvedValueOnce({
+    fetchMock.mockResolvedValueOnce({
       ok: true,
       json: vi.fn().mockResolvedValueOnce({ message: 'Custom delete message' })
     })
@@ -98,7 +107,7 @@ describe('deleteReviewController - success responses', () => {
   })
 
   it('falls back to default message when backend data has no message', async () => {
-    fetch.mockResolvedValueOnce({
+    fetchMock.mockResolvedValueOnce({
       ok: true,
       json: vi.fn().mockResolvedValueOnce({})
     })
@@ -126,7 +135,7 @@ describe('deleteReviewController - error responses', () => {
       error: 'Not found',
       message: 'Review does not exist'
     })
-    fetch.mockResolvedValueOnce({
+    fetchMock.mockResolvedValueOnce({
       ok: false,
       status: HTTP_STATUS_NOT_FOUND,
       text: vi.fn().mockResolvedValueOnce(errorBody)
@@ -145,7 +154,7 @@ describe('deleteReviewController - error responses', () => {
   })
 
   it('wraps plain text error body when JSON.parse fails', async () => {
-    fetch.mockResolvedValueOnce({
+    fetchMock.mockResolvedValueOnce({
       ok: false,
       status: HTTP_STATUS_SERVICE_UNAVAILABLE,
       text: vi.fn().mockResolvedValueOnce('Service unavailable')
@@ -165,7 +174,7 @@ describe('deleteReviewController - error responses', () => {
   })
 
   it('uses fallback error/message when error fields are absent in JSON error body', async () => {
-    fetch.mockResolvedValueOnce({
+    fetchMock.mockResolvedValueOnce({
       ok: false,
       status: HTTP_STATUS_NOT_FOUND,
       text: vi.fn().mockResolvedValueOnce(JSON.stringify({}))
@@ -182,7 +191,7 @@ describe('deleteReviewController - error responses', () => {
   })
 
   it('returns 500 when fetch throws an error', async () => {
-    fetch.mockRejectedValueOnce(new Error('Network failure'))
+    fetchMock.mockRejectedValueOnce(new Error('Network failure'))
 
     await deleteReviewController(mockRequest, mockH)
 
