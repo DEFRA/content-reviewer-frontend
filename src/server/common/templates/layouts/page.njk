@@ -22,7 +22,7 @@
     useTudorCrown: true
   }) }}
 
-  {# GOV.UK Service Navigation with authentication #}
+  {# GOV.UK Service Navigation with authentication - Username and Sign in/out buttons in top right #}
   {% if user %}
     {{ govukServiceNavigation({
       serviceUrl: "/",
@@ -38,7 +38,9 @@
           active: true if pageTitle == 'About' else false
         }
       ],
-      slot: '<a class="govuk-service-navigation__link" href="/auth/logout">Sign out</a>'
+      slots: {
+        navigationEnd: '<li class="govuk-service-navigation__item app-service-navigation__item--auth"><span class="govuk-service-navigation__text">' + (user.displayName or user.email or user.name or 'User') + '</span></li><li class="govuk-service-navigation__item app-service-navigation__item--auth"><a class="govuk-service-navigation__link" href="/auth/logout">Sign out</a></li>'
+      }
     }) }}
   {% else %}
     {{ govukServiceNavigation({
@@ -55,7 +57,9 @@
           active: true if pageTitle == 'About' else false
         }
       ],
-      slot: '<a class="govuk-service-navigation__link" href="/auth/login-page">Sign in (Optional)</a>'
+      slots: {
+        navigationEnd: '<li class="govuk-service-navigation__item app-service-navigation__item--auth"><a class="govuk-service-navigation__link" href="/auth/login-page">Sign in (Optional)</a></li>'
+      }
     }) }}
   {% endif %}
 {% endblock %}
