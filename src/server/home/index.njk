@@ -34,7 +34,7 @@
         <div class="govuk-error-summary__body">
           <ul class="govuk-list govuk-error-summary__list">
             <li>
-              <a href="#text-content">{{ errorMessage }}</a>
+              <a href="#text-content">{{ uploadError }}</a>
             </li>
           </ul>
         </div>
@@ -48,11 +48,8 @@
       <!-- Content Review Form -->
       <div class="govuk-!-margin-bottom-6">
         <form id="uploadForm" enctype="multipart/form-data">
-          
-          <!-- Upload Error Message (Dynamic) -->
 
-
-          <!-- Upload Success Message (Dynamic) -->
+          <!-- Dynamic success banner (shown by JS after submission) -->
           <div id="uploadSuccess" class="govuk-notification-banner govuk-notification-banner--success" role="alert" hidden>
             <div class="govuk-notification-banner__header">
               <h2 class="govuk-notification-banner__title">Success</h2>
@@ -77,29 +74,25 @@
           </div> -->
 
           <!-- Text Content Option -->
-          <div class="govuk-form-group{% if errorMessage %} govuk-form-group--error{% endif %}" id="textFormGroup">
+          <div class="govuk-form-group" id="textFormGroup">
             <label class="govuk-label govuk-label--s" for="text-content">
               Type or paste your content for review
             </label>
             <div class="govuk-hint" id="more-detail-int">
               Do not include personal or financial information, like your National Insurance number or credit card details
             </div>
-            <div class="govuk-error-summary__body" id="uploadError" hidden>
+            <!-- Dynamic error message shown by JS -->
+            <div id="uploadErrorContainer" hidden>
               <p class="govuk-error-message app-error-message" id="errorMessage"></p>
             </div>
-            {% if errorMessage %}
-              <p id="text-content-error" class="govuk-error-message app-error-message">
-                <span class="govuk-visually-hidden">Error:</span> {{ errorMessage }}
-              </p>
-            {% endif %}
             <textarea 
-              class="govuk-textarea{% if errorMessage %} govuk-textarea--error{% endif %}" 
+              class="govuk-textarea" 
               id="text-content" 
               name="textContent" 
               rows="8" 
               placeholder="Type or paste content here..."
-              aria-describedby="more-detail-int{% if errorMessage %} text-content-error{% endif %}"
-            >{{ textContent }}</textarea>
+              aria-describedby="more-detail-int"
+            ></textarea>
             <div id="characterCountMessage" class="govuk-hint govuk-!-margin-top-2" aria-live="polite"></div>
           </div>
           
@@ -420,8 +413,9 @@
         const hasActiveReviews = activeInApi.length > 0 || domPendingRows.length > 0;
         
         // Hide success message if no active reviews (all completed)
-        if (!hasActiveReviews && uploadSuccess) {
-          uploadSuccess.hidden = true;
+        const uploadSuccessEl = document.getElementById('uploadSuccess');
+        if (!hasActiveReviews && uploadSuccessEl) {
+          uploadSuccessEl.hidden = true;
         }
         
         // Stop auto-refresh if no active reviews
@@ -945,7 +939,6 @@
       });
       
       deleteHandlersAttached = true;
-      console.log('[HOME] Delete handlers attached using event delegation');
     }
     
     // Attach handlers on page load
@@ -954,23 +947,17 @@
     // Start auto-refresh
     function startAutoRefresh() {
       if (autoRefreshInterval) {
-        console.log('[HOME] Auto-refresh already running');
         return; // Already running
       }
-      
-      console.log('[HOME] Starting auto-refresh');
       autoRefreshInterval = setInterval(updateReviewHistory, 5000);
     }
     
     // Force start auto-refresh (restarts if already running)
     function forceStartAutoRefresh() {
       if (autoRefreshInterval) {
-        console.log('[HOME] Stopping existing auto-refresh before restart');
         clearInterval(autoRefreshInterval);
         autoRefreshInterval = null;
       }
-      
-      console.log('[HOME] Force starting auto-refresh');
       autoRefreshInterval = setInterval(updateReviewHistory, 5000);
     }
     
@@ -982,50 +969,30 @@
     // Check if we just submitted a review (flag set by upload-handler before reload)
     const justSubmitted = sessionStorage.getItem('reviewJustSubmitted');
     if (justSubmitted) {
-      console.log('[HOME] Review was just submitted - forcing auto-refresh start');
       sessionStorage.removeItem('reviewJustSubmitted');
-      // Force start auto-refresh immediately
       updateReviewHistory();
       forceStartAutoRefresh();
     } else {
       // Check if there are any active reviews on page load
       const tableRows = document.querySelectorAll('#reviewHistoryBody tr');
       let hasActiveReviews = false;
-      let activeStatuses = [];
       
       tableRows.forEach(row => {
         const statusCell = row.querySelector('.govuk-tag');
         if (statusCell) {
-          const statusText = statusCell.textContent.trim().toLowerCase();
-          // Only check for pending or processing statuses (not grey/unknown)
           if (statusCell.classList.contains('govuk-tag--blue') ||
               statusCell.classList.contains('govuk-tag--yellow')) {
             hasActiveReviews = true;
-            activeStatuses.push(statusText);
           }
         }
       });
       
       // Always do an immediate refresh on page load to get latest server-side status.
-      // This ensures anonymous users see their history even if the table was empty
-      // at initial render (e.g. session cookie arrived after server-side render).
       updateReviewHistory();
       
-      // Start auto-refresh unconditionally so pending/processing reviews are tracked.
-      // The interval will self-stop only when there are no active reviews left.
-      if (hasActiveReviews) {
-        console.log('[HOME] Active reviews detected on page load:', {
-          count: activeStatuses.length,
-          statuses: activeStatuses
-        });
-        startAutoRefresh();
-      } else {
-        // Still start auto-refresh even with no visible active reviews.
-        // The user may have submitted a review in a previous request whose session
-        // cookie wasn't yet set when the page was server-rendered.
-        console.log('[HOME] No active reviews on initial render - starting auto-refresh anyway to catch any in-flight reviews');
-        startAutoRefresh();
-      }
+      // Always start auto-refresh so pending/processing reviews are tracked.
+      // The interval self-stops when there are no active reviews remaining.
+      startAutoRefresh();
     }
     
     // Clean up interval when page is unloaded
@@ -1048,7 +1015,6 @@
     // This ensures review history stays up-to-date in the background
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && !isPageUnloading) {
-        console.log('[HOME] Page visible - triggering immediate update');
         // Trigger an immediate update when page becomes visible again
         if (autoRefreshInterval) {
           updateReviewHistory();
