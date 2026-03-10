@@ -1,5 +1,4 @@
 import path from 'node:path'
-import crypto from 'node:crypto'
 import hapi from '@hapi/hapi'
 import hapiCookie from '@hapi/cookie'
 import Scooter from '@hapi/scooter'
@@ -51,13 +50,8 @@ function configureCookieAuth(server) {
       if (!session) {
         return { isValid: false }
       }
-      // Accept both authenticated sessions AND anonymous sessions
-      // Authenticated session: has isAuthenticated = true and user object
+      // Only accept authenticated sessions (isAuthenticated = true with a user object)
       if (session.isAuthenticated === true && session.user) {
-        return { isValid: true, credentials: session }
-      }
-      // Anonymous session: has a session ID (sid) for tracking
-      if (session.sid) {
         return { isValid: true, credentials: session }
       }
       return { isValid: false }
@@ -84,53 +78,6 @@ function injectUserContext(server) {
     const user = request.auth?.credentials?.user ?? null
     response.source.context = response.source.context || {}
     response.source.context.user = user
-    return h.continue
-  })
-}
-
-/**
- * Initialize a session for anonymous users on their first request.
- * This ensures getUserIdentifier can track reviews per-session for non-authenticated users.
- */
-function initializeAnonymousSessions(server) {
-  server.ext('onPostAuth', (request, h) => {
-    // Only create session for anonymous users (not authenticated)
-    const isAuthenticated = request.auth?.credentials?.isAuthenticated === true
-
-    if (isAuthenticated) {
-      return h.continue
-    }
-
-    // Check if anonymous session already exists in credentials
-    const hasSessionId = request.auth?.credentials?.sid
-
-    if (!hasSessionId) {
-      // Create a new anonymous session with a cryptographically secure unique session ID
-      // Use crypto.randomBytes for secure random generation instead of Math.random()
-      const randomBytes = crypto.randomBytes(16)
-      const randomPart = randomBytes.toString('hex')
-      const sessionId = `${Date.now()}-${randomPart}`
-
-      const newSession = {
-        sid: sessionId,
-        isAuthenticated: false,
-        createdAt: new Date().toISOString()
-      }
-
-      // Set the session cookie with the new session ID (persists to next request)
-      request.cookieAuth.set(newSession)
-
-      // CRITICAL: Also update auth.credentials so the session ID is available
-      // immediately in this request's route handler (getUserIdentifier will use it).
-      // Without this, the first review submission for an anonymous user would be
-      // stored with userId=null and would not appear in their history.
-      if (request.auth) {
-        request.auth.credentials = newSession
-      } else {
-        request.auth = { credentials: newSession }
-      }
-    }
-
     return h.continue
   })
 }
@@ -181,7 +128,6 @@ export async function createServer() {
 
   server.ext('onPreResponse', catchAll)
   injectUserContext(server)
-  initializeAnonymousSessions(server)
 
   return server
 }
