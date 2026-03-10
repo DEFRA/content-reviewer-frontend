@@ -34,7 +34,7 @@
         <div class="govuk-error-summary__body">
           <ul class="govuk-list govuk-error-summary__list">
             <li>
-              <a href="#text-content">{{ errorMessage }}</a>
+              <a href="#text-content">{{ uploadError }}</a>
             </li>
           </ul>
         </div>
@@ -48,11 +48,8 @@
       <!-- Content Review Form -->
       <div class="govuk-!-margin-bottom-6">
         <form id="uploadForm" enctype="multipart/form-data">
-          
-          <!-- Upload Error Message (Dynamic) -->
 
-
-          <!-- Upload Success Message (Dynamic) -->
+          <!-- Dynamic success banner (shown by JS after submission) -->
           <div id="uploadSuccess" class="govuk-notification-banner govuk-notification-banner--success" role="alert" hidden>
             <div class="govuk-notification-banner__header">
               <h2 class="govuk-notification-banner__title">Success</h2>
@@ -77,7 +74,7 @@
           </div> -->
 
           <!-- Text Content Option -->
-          <div class="govuk-form-group{% if errorMessage %} govuk-form-group--error{% endif %}" id="textFormGroup">
+          <div class="govuk-form-group" id="textFormGroup">
             <label class="govuk-label govuk-label--s" for="text-content">
               Type or paste your content for review
             </label>
@@ -95,13 +92,13 @@
               </p>
             {% endif %}
             <textarea 
-              class="govuk-textarea{% if errorMessage %} govuk-textarea--error{% endif %}" 
+              class="govuk-textarea" 
               id="text-content" 
               name="textContent" 
               rows="8" 
               placeholder="Type or paste content here..."
-              aria-describedby="more-detail-int{% if errorMessage %} text-content-error{% endif %}"
-            >{{ textContent }}</textarea>
+              aria-describedby="more-detail-int"
+            ></textarea>
             <div id="characterCountMessage" class="govuk-hint govuk-!-margin-top-2" aria-live="polite"></div>
           </div>
           
@@ -331,6 +328,7 @@
     function getCurrentLimit() {
       const limitSelect = document.getElementById('reviewLimit');
       return parseInt(limitSelect?.value, 10);
+      return parseInt(limitSelect?.value, 10);
     }
     
     // Add event listener to dropdown
@@ -357,6 +355,7 @@
       currentAbortController = new AbortController();
 
       try {
+        const limit = parseInt(document.getElementById('reviewLimit')?.value, 10) || 5;
         const limit = parseInt(document.getElementById('reviewLimit')?.value, 10) || 5;
         // Get current page from URL or default to 1
         const urlParams = new URLSearchParams(window.location.search);
@@ -559,7 +558,37 @@
           emptyRow.appendChild(emptyCell);
           tbody.appendChild(emptyRow);
         }
+        // Only clear the table if there are no client-side pending rows to preserve
+        const existingActiveRows = tbody.querySelectorAll('tr[data-review-id]');
+        let hasClientSideActive = false;
+        existingActiveRows.forEach(row => {
+          const statusTag = row.querySelector('.govuk-tag');
+          if (statusTag && (statusTag.classList.contains('govuk-tag--yellow') || statusTag.classList.contains('govuk-tag--blue'))) {
+            hasClientSideActive = true;
+          }
+        });
+        if (!hasClientSideActive) {
+          // Safe to show "no reviews" message only if there are no pending client rows
+          while (tbody.firstChild) { tbody.removeChild(tbody.firstChild); }
+          const emptyRow = document.createElement('tr');
+          emptyRow.className = 'govuk-table__row';
+          const emptyCell = document.createElement('td');
+          emptyCell.className = 'govuk-table__cell';
+          emptyCell.setAttribute('colspan', '5');
+          const emptyP = document.createElement('p');
+          emptyP.className = 'govuk-body';
+          emptyP.textContent = 'No review history available.';
+          emptyCell.appendChild(emptyP);
+          emptyRow.appendChild(emptyCell);
+          tbody.appendChild(emptyRow);
+        }
         return;
+      }
+      
+      // Remove the "no reviews" placeholder row if it exists
+      const placeholderRow = tbody.querySelector('tr:not([data-review-id])');
+      if (placeholderRow) {
+        placeholderRow.remove();
       }
       
       // Remove the "no reviews" placeholder row if it exists
@@ -620,6 +649,10 @@
         }
       });
       
+      // Remove rows that are no longer in the server response.
+      // IMPORTANT: Keep any pending/processing rows that were added client-side and
+      // are not yet confirmed by the backend (S3 propagation delay or userId mismatch
+      // on first request before session cookie was established).
       // Remove rows that are no longer in the server response.
       // IMPORTANT: Keep any pending/processing rows that were added client-side and
       // are not yet confirmed by the backend (S3 propagation delay or userId mismatch
@@ -825,6 +858,7 @@
         const response = await fetch(`/api/reviews/${reviewId}`, {
           method: 'DELETE',
           headers: { 'Accept': 'application/json' },
+          headers: { 'Accept': 'application/json' },
           credentials: 'same-origin'
         });
         
@@ -874,6 +908,24 @@
       notification.appendChild(header);
       notification.appendChild(content);
       
+      const header = document.createElement('div');
+      header.className = 'govuk-notification-banner__header';
+      const title = document.createElement('h2');
+      title.className = 'govuk-notification-banner__title';
+      title.id = 'notification-title';
+      title.textContent = 'Success';
+      header.appendChild(title);
+      
+      const content = document.createElement('div');
+      content.className = 'govuk-notification-banner__content';
+      const heading = document.createElement('p');
+      heading.className = 'govuk-notification-banner__heading';
+      heading.textContent = message;
+      content.appendChild(heading);
+      
+      notification.appendChild(header);
+      notification.appendChild(content);
+      
       // Insert at the top of the page
       const container = document.querySelector('.govuk-grid-column-full');
       container.insertBefore(notification, container.firstChild);
@@ -891,6 +943,21 @@
       notification.setAttribute('role', 'alert');
       notification.setAttribute('aria-labelledby', 'error-summary-title');
       notification.setAttribute('data-module', 'govuk-error-summary');
+      
+      const title = document.createElement('h2');
+      title.className = 'govuk-error-summary__title';
+      title.id = 'error-summary-title';
+      title.textContent = 'There is a problem';
+      
+      const body = document.createElement('div');
+      body.className = 'govuk-error-summary__body';
+      const p = document.createElement('p');
+      p.className = 'govuk-body';
+      p.textContent = message;
+      body.appendChild(p);
+      
+      notification.appendChild(title);
+      notification.appendChild(body);
       
       const title = document.createElement('h2');
       title.className = 'govuk-error-summary__title';
@@ -957,7 +1024,6 @@
       });
       
       deleteHandlersAttached = true;
-      console.log('[HOME] Delete handlers attached using event delegation');
     }
     
     // Attach handlers on page load
@@ -966,23 +1032,17 @@
     // Start auto-refresh
     function startAutoRefresh() {
       if (autoRefreshInterval) {
-        console.log('[HOME] Auto-refresh already running');
         return; // Already running
       }
-      
-      console.log('[HOME] Starting auto-refresh');
       autoRefreshInterval = setInterval(updateReviewHistory, 5000);
     }
     
     // Force start auto-refresh (restarts if already running)
     function forceStartAutoRefresh() {
       if (autoRefreshInterval) {
-        console.log('[HOME] Stopping existing auto-refresh before restart');
         clearInterval(autoRefreshInterval);
         autoRefreshInterval = null;
       }
-      
-      console.log('[HOME] Force starting auto-refresh');
       autoRefreshInterval = setInterval(updateReviewHistory, 5000);
     }
     
@@ -994,9 +1054,7 @@
     // Check if we just submitted a review (flag set by upload-handler before reload)
     const justSubmitted = sessionStorage.getItem('reviewJustSubmitted');
     if (justSubmitted) {
-      console.log('[HOME] Review was just submitted - forcing auto-refresh start');
       sessionStorage.removeItem('reviewJustSubmitted');
-      // Force start auto-refresh immediately
       updateReviewHistory();
       forceStartAutoRefresh();
     } else {
@@ -1046,7 +1104,6 @@
     // This ensures review history stays up-to-date in the background
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && !isPageUnloading) {
-        console.log('[HOME] Page visible - triggering immediate update');
         // Trigger an immediate update when page becomes visible again
         if (autoRefreshInterval) {
           updateReviewHistory();
