@@ -343,120 +343,114 @@
     
     // Function to update review history without page reload
     async function updateReviewHistory() {
-      // Prevent fetches during page unload/navigation
-      // Auto-refresh continues even when page is hidden/navigated away
+      // Prevent concurrent fetches; isPageUnloading guards against fetches during navigation
       if (isRefreshing || isPageUnloading) {
         return;
       }
-      
+
       isRefreshing = true;
-      
-      // Cancel any existing request
+
+      // Cancel any existing in-flight request before starting a new one
       if (currentAbortController) {
         currentAbortController.abort();
       }
-      
-      // Create new abort controller for this request
       currentAbortController = new AbortController();
-      
+
       try {
-        const limit = parseInt(document.getElementById('reviewLimit')?.value, 10) || 5;
         const limit = parseInt(document.getElementById('reviewLimit')?.value, 10) || 5;
         // Get current page from URL or default to 1
         const urlParams = new URLSearchParams(window.location.search);
         const currentPage = parseInt(urlParams.get('page')) || 1;
-        
-        // Build API URL with page parameter for proper pagination
+
+        // Build API URL; include page param only for paginated views
         let apiUrl = `/api/reviews?limit=${limit}`;
-        
-        // Include page parameter for paginated views (limit > 25)
         if (limit > 25 && currentPage > 1) {
           apiUrl += `&page=${currentPage}`;
         }
-        
-        // Call frontend proxy route instead of backend directly to avoid CORS issues
+
+        console.log(`[HOME] Auto-refresh polling: ${apiUrl}`);
+
         const response = await fetch(apiUrl, {
           method: 'GET',
-          headers: {
-            'Accept': 'application/json'
-          },
+          headers: { 'Accept': 'application/json' },
           credentials: 'same-origin',
           signal: currentAbortController.signal
-        })
-        
+        });
+
         if (!response.ok) {
-          // Do NOT stop auto-refresh on a transient error - just skip this cycle
-          // Do NOT stop auto-refresh on a transient error - just skip this cycle
+          // Transient error - skip this cycle, keep the interval running
+          console.warn(`[HOME] Auto-refresh got non-OK response: ${response.status} - will retry`);
           return;
         }
-        
+
         const data = await response.json();
-        
+        console.log(`[HOME] Auto-refresh received ${(data.reviews || []).length} reviews`);
+
         // Normalize review data for client-side rendering
         const normalized = (data.reviews || []).map(r => {
-          let displayFilename = r.fileName || r.filename || 'Text Content';
-          let displayFilename = r.fileName || r.filename || 'Text Content';
+          const displayFilename = r.fileName || r.filename || 'Text Content';
           return {
             ...r,
             filename: displayFilename,
-            // Use lastModified (S3 LastModified) for most accurate timestamp
+            // Prefer lastModified (S3 LastModified) for most accurate timestamp
             uploadedAt: r.lastModified || r.updatedAt || r.createdAt || null
           };
         });
 
-        // For paginated views (limit > 25), backend already returns the correct page
-        // For non-paginated views (limit <= 25), show all items
-        const pagedReviews = normalized;
-        const pagedReviews = normalized;
+        // Check DOM for client-side pending rows BEFORE updating the table.
+        // This ensures that rows added immediately after form submission (before the
+        // backend has confirmed them) are counted, preventing premature stop of auto-refresh.
+        const domPendingRowsBefore = document.querySelectorAll(
+          '#reviewHistoryBody tr .govuk-tag--yellow, #reviewHistoryBody tr .govuk-tag--blue'
+        );
+        const hadDomPendingRows = domPendingRowsBefore.length > 0;
 
-        // Update the table with the review data
-        updateReviewTable(pagedReviews);
-        
+        // Update the table with the normalized review data
+        updateReviewTable(normalized);
+
         // Update pagination info message
         updatePaginationInfo(data, normalized.length, limit, currentPage);
-        
-        // Check if there are still active reviews (pending or processing)
-        const activeInApi = normalized.filter(r => {
-        // Check if there are still active reviews (pending or processing)
+
+        // Check if there are still active (pending/processing) reviews in the API response
         const activeInApi = normalized.filter(r => {
           const status = (r.status || '').toLowerCase();
           return status === 'pending' || status === 'processing';
         });
 
-        // Also check the DOM table for any pending/processing rows not yet in the API response
-        const domPendingRows = document.querySelectorAll(
+        // Also check the DOM after table update for any remaining pending/processing rows
+        const domPendingRowsAfter = document.querySelectorAll(
           '#reviewHistoryBody tr .govuk-tag--yellow, #reviewHistoryBody tr .govuk-tag--blue'
         );
 
-        const hasActiveReviews = activeInApi.length > 0 || domPendingRows.length > 0;
+        // Keep auto-refresh active if:
+        // - API returned pending/processing reviews, OR
+        // - DOM had pending rows before the update (in-flight, not yet in backend), OR
+        // - DOM still has pending rows after the update
+        const hasActiveReviews = activeInApi.length > 0 || hadDomPendingRows || domPendingRowsAfter.length > 0;
+        console.log(`[HOME] Auto-refresh - API active: ${activeInApi.length}, DOM before: ${domPendingRowsBefore.length}, DOM after: ${domPendingRowsAfter.length}, keepRunning: ${hasActiveReviews}`);
 
-        // Also check the DOM table for any pending/processing rows not yet in the API response
-        const domPendingRows = document.querySelectorAll(
-          '#reviewHistoryBody tr .govuk-tag--yellow, #reviewHistoryBody tr .govuk-tag--blue'
-        );
-
-        const hasActiveReviews = activeInApi.length > 0 || domPendingRows.length > 0;
-        
-        // Hide success message if no active reviews (all completed)
-        if (!hasActiveReviews && uploadSuccess) {
-          uploadSuccess.hidden = true;
+        // Hide the server-rendered upload success banner once all reviews are settled
+        const uploadSuccessEl = document.getElementById('uploadSuccess');
+        if (!hasActiveReviews && uploadSuccessEl) {
+          uploadSuccessEl.hidden = true;
         }
-        
-        // Stop auto-refresh if no active reviews
+
+        // Stop auto-refresh only when there are no active reviews remaining
         if (!hasActiveReviews && autoRefreshInterval) {
+          console.log('[HOME] No active reviews - stopping auto-refresh');
           clearInterval(autoRefreshInterval);
           autoRefreshInterval = null;
         } else if (hasActiveReviews && !autoRefreshInterval) {
+          // Restart if somehow the interval was cleared while reviews are still active
           startAutoRefresh();
         }
-        
+
       } catch (error) {
-        // Only log error if it's not an abort (which happens during navigation)
         if (error.name !== 'AbortError') {
           console.error('[HOME] Error updating review history:', error);
-          // Do NOT stop auto-refresh on network error - just skip this cycle and retry next interval
+          // Keep the interval running - network errors are transient
         }
-        // Silently ignore AbortError - it's expected during page navigation
+        // AbortError is expected during page navigation; ignore silently
       } finally {
         isRefreshing = false;
         currentAbortController = null;
@@ -831,7 +825,6 @@
         const response = await fetch(`/api/reviews/${reviewId}`, {
           method: 'DELETE',
           headers: { 'Accept': 'application/json' },
-          headers: { 'Accept': 'application/json' },
           credentials: 'same-origin'
         });
         
@@ -1010,41 +1003,27 @@
       // Check if there are any active reviews on page load
       const tableRows = document.querySelectorAll('#reviewHistoryBody tr');
       let hasActiveReviews = false;
-      let activeStatuses = [];
-      
+
       tableRows.forEach(row => {
         const statusCell = row.querySelector('.govuk-tag');
         if (statusCell) {
-          const statusText = statusCell.textContent.trim().toLowerCase();
-          // Only check for pending or processing statuses (not grey/unknown)
           if (statusCell.classList.contains('govuk-tag--blue') ||
               statusCell.classList.contains('govuk-tag--yellow')) {
             hasActiveReviews = true;
-            activeStatuses.push(statusText);
           }
         }
       });
-      
+
+      console.log(`[HOME] Page load - active reviews in DOM: ${hasActiveReviews}`);
+
       // Always do an immediate refresh on page load to get latest server-side status.
       // This ensures anonymous users see their history even if the table was empty
       // at initial render (e.g. session cookie arrived after server-side render).
       updateReviewHistory();
-      
-      // Start auto-refresh unconditionally so pending/processing reviews are tracked.
-      // The interval will self-stop only when there are no active reviews left.
-      if (hasActiveReviews) {
-        console.log('[HOME] Active reviews detected on page load:', {
-          count: activeStatuses.length,
-          statuses: activeStatuses
-        });
-        startAutoRefresh();
-      } else {
-        // Still start auto-refresh even with no visible active reviews.
-        // The user may have submitted a review in a previous request whose session
-        // cookie wasn't yet set when the page was server-rendered.
-        console.log('[HOME] No active reviews on initial render - starting auto-refresh anyway to catch any in-flight reviews');
-        startAutoRefresh();
-      }
+
+      // Always start auto-refresh unconditionally so any pending/processing reviews
+      // are tracked. The interval self-stops when no active reviews remain.
+      startAutoRefresh();
     }
     
     // Clean up interval when page is unloaded
