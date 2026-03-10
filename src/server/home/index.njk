@@ -81,12 +81,11 @@
             <div class="govuk-hint" id="more-detail-int">
               Do not include personal or financial information, like your National Insurance number or credit card details
             </div>
-            <div class="govuk-error-summary__body" id="uploadError" hidden>
-              <p class="govuk-error-message app-error-message" id="errorMessage"></p>
+            <!-- Dynamic error message shown by JS -->
+            <div id="uploadErrorContainer" hidden>
               <p class="govuk-error-message app-error-message" id="errorMessage"></p>
             </div>
             {% if errorMessage %}
-              <p id="text-content-error" class="govuk-error-message app-error-message">
               <p id="text-content-error" class="govuk-error-message app-error-message">
                 <span class="govuk-visually-hidden">Error:</span> {{ errorMessage }}
               </p>
@@ -132,12 +131,9 @@
           </div>
           <div class="govuk-grid-column-one-half app-review-history__header">
             <form id="reviewLimitForm" method="get" class="govuk-form-group app-review-limit-form">
-          <div class="govuk-grid-column-one-half app-review-history__header">
-            <form id="reviewLimitForm" method="get" class="govuk-form-group app-review-limit-form">
               <label class="govuk-label govuk-!-margin-bottom-1" for="reviewLimit">
                 Show latest
               </label>
-              <select class="govuk-select app-review-limit-select" id="reviewLimit" name="limit">
               <select class="govuk-select app-review-limit-select" id="reviewLimit" name="limit">
                 <option value="5" {% if (currentLimit == 5) %}selected{% endif %}>5 reviews</option>
                 <option value="10" {% if (currentLimit == 10) %}selected{% endif %}>10 reviews</option>
@@ -328,7 +324,6 @@
     function getCurrentLimit() {
       const limitSelect = document.getElementById('reviewLimit');
       return parseInt(limitSelect?.value, 10);
-      return parseInt(limitSelect?.value, 10);
     }
     
     // Add event listener to dropdown
@@ -356,7 +351,7 @@
 
       try {
         const limit = parseInt(document.getElementById('reviewLimit')?.value, 10) || 5;
-        const limit = parseInt(document.getElementById('reviewLimit')?.value, 10) || 5;
+
         // Get current page from URL or default to 1
         const urlParams = new URLSearchParams(window.location.search);
         const currentPage = parseInt(urlParams.get('page')) || 1;
@@ -534,32 +529,7 @@
       const tbody = document.getElementById('reviewHistoryBody');
       
       if (!reviews || reviews.length === 0) {
-        // Only clear the table if there are no client-side pending rows to preserve
-        const existingActiveRows = tbody.querySelectorAll('tr[data-review-id]');
-        let hasClientSideActive = false;
-        existingActiveRows.forEach(row => {
-          const statusTag = row.querySelector('.govuk-tag');
-          if (statusTag && (statusTag.classList.contains('govuk-tag--yellow') || statusTag.classList.contains('govuk-tag--blue'))) {
-            hasClientSideActive = true;
-          }
-        });
-        if (!hasClientSideActive) {
-          // Safe to show "no reviews" message only if there are no pending client rows
-          while (tbody.firstChild) { tbody.removeChild(tbody.firstChild); }
-          const emptyRow = document.createElement('tr');
-          emptyRow.className = 'govuk-table__row';
-          const emptyCell = document.createElement('td');
-          emptyCell.className = 'govuk-table__cell';
-          emptyCell.setAttribute('colspan', '5');
-          const emptyP = document.createElement('p');
-          emptyP.className = 'govuk-body';
-          emptyP.textContent = 'No review history available.';
-          emptyCell.appendChild(emptyP);
-          emptyRow.appendChild(emptyCell);
-          tbody.appendChild(emptyRow);
-        }
-        // Only clear the table if there are no client-side pending rows to preserve
-        const existingActiveRows = tbody.querySelectorAll('tr[data-review-id]');
+       const existingActiveRows = tbody.querySelectorAll('tr[data-review-id]');
         let hasClientSideActive = false;
         existingActiveRows.forEach(row => {
           const statusTag = row.querySelector('.govuk-tag');
@@ -589,14 +559,8 @@
       const placeholderRow = tbody.querySelector('tr:not([data-review-id])');
       if (placeholderRow) {
         placeholderRow.remove();
-      }
-      
-      // Remove the "no reviews" placeholder row if it exists
-      const placeholderRow = tbody.querySelector('tr:not([data-review-id])');
-      if (placeholderRow) {
-        placeholderRow.remove();
-      }
-      
+      }      
+     
       // Build a Map of existing rows for quick lookup, keyed by reviewId
       const existingRows = new Map();
       Array.from(tbody.querySelectorAll('tr[data-review-id]')).forEach(row => {
@@ -653,10 +617,7 @@
       // IMPORTANT: Keep any pending/processing rows that were added client-side and
       // are not yet confirmed by the backend (S3 propagation delay or userId mismatch
       // on first request before session cookie was established).
-      // Remove rows that are no longer in the server response.
-      // IMPORTANT: Keep any pending/processing rows that were added client-side and
-      // are not yet confirmed by the backend (S3 propagation delay or userId mismatch
-      // on first request before session cookie was established).
+
       existingRows.forEach((row, reviewId) => {
         const statusCell = row.querySelector('.govuk-tag');
         const isPending = statusCell && statusCell.classList.contains('govuk-tag--yellow');
@@ -858,7 +819,6 @@
         const response = await fetch(`/api/reviews/${reviewId}`, {
           method: 'DELETE',
           headers: { 'Accept': 'application/json' },
-          headers: { 'Accept': 'application/json' },
           credentials: 'same-origin'
         });
         
@@ -888,26 +848,9 @@
       notification.className = 'govuk-notification-banner govuk-notification-banner--success';
       notification.setAttribute('role', 'alert');
       notification.setAttribute('aria-labelledby', 'notification-title');
-      notification.setAttribute('data-module', 'govuk-notification-banner');
-      
-      const header = document.createElement('div');
-      header.className = 'govuk-notification-banner__header';
-      const title = document.createElement('h2');
-      title.className = 'govuk-notification-banner__title';
-      title.id = 'notification-title';
-      title.textContent = 'Success';
-      header.appendChild(title);
-      
-      const content = document.createElement('div');
-      content.className = 'govuk-notification-banner__content';
-      const heading = document.createElement('p');
-      heading.className = 'govuk-notification-banner__heading';
-      heading.textContent = message;
-      content.appendChild(heading);
-      
-      notification.appendChild(header);
-      notification.appendChild(content);
-      
+      notification.setAttribute('data-module', 'govuk-notification-banner');    
+
+     
       const header = document.createElement('div');
       header.className = 'govuk-notification-banner__header';
       const title = document.createElement('h2');
@@ -944,20 +887,6 @@
       notification.setAttribute('aria-labelledby', 'error-summary-title');
       notification.setAttribute('data-module', 'govuk-error-summary');
       
-      const title = document.createElement('h2');
-      title.className = 'govuk-error-summary__title';
-      title.id = 'error-summary-title';
-      title.textContent = 'There is a problem';
-      
-      const body = document.createElement('div');
-      body.className = 'govuk-error-summary__body';
-      const p = document.createElement('p');
-      p.className = 'govuk-body';
-      p.textContent = message;
-      body.appendChild(p);
-      
-      notification.appendChild(title);
-      notification.appendChild(body);
       
       const title = document.createElement('h2');
       title.className = 'govuk-error-summary__title';
