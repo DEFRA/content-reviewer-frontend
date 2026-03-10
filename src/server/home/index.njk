@@ -34,7 +34,7 @@
         <div class="govuk-error-summary__body">
           <ul class="govuk-list govuk-error-summary__list">
             <li>
-              <a href="#text-content">{{ errorMessage }}</a>
+              <a href="#text-content">{{ uploadError }}</a>
             </li>
           </ul>
         </div>
@@ -48,11 +48,8 @@
       <!-- Content Review Form -->
       <div class="govuk-!-margin-bottom-6">
         <form id="uploadForm" enctype="multipart/form-data">
-          
-          <!-- Upload Error Message (Dynamic) -->
 
-
-          <!-- Upload Success Message (Dynamic) -->
+          <!-- Dynamic success banner (shown by JS after submission) -->
           <div id="uploadSuccess" class="govuk-notification-banner govuk-notification-banner--success" role="alert" hidden>
             <div class="govuk-notification-banner__header">
               <h2 class="govuk-notification-banner__title">Success</h2>
@@ -77,31 +74,30 @@
           </div> -->
 
           <!-- Text Content Option -->
-          <div class="govuk-form-group{% if errorMessage %} govuk-form-group--error{% endif %}" id="textFormGroup">
+          <div class="govuk-form-group" id="textFormGroup">
             <label class="govuk-label govuk-label--s" for="text-content">
               Type or paste your content for review
             </label>
             <div class="govuk-hint" id="more-detail-int">
               Do not include personal or financial information, like your National Insurance number or credit card details
             </div>
-            <div class="govuk-error-summary__body" id="uploadError" hidden>
-              <p class="govuk-error-message app-error-message" id="errorMessage"></p>
+            <!-- Dynamic error message shown by JS -->
+            <div id="uploadErrorContainer" hidden>
               <p class="govuk-error-message app-error-message" id="errorMessage"></p>
             </div>
             {% if errorMessage %}
-              <p id="text-content-error" class="govuk-error-message app-error-message">
               <p id="text-content-error" class="govuk-error-message app-error-message">
                 <span class="govuk-visually-hidden">Error:</span> {{ errorMessage }}
               </p>
             {% endif %}
             <textarea 
-              class="govuk-textarea{% if errorMessage %} govuk-textarea--error{% endif %}" 
+              class="govuk-textarea" 
               id="text-content" 
               name="textContent" 
               rows="8" 
               placeholder="Type or paste content here..."
-              aria-describedby="more-detail-int{% if errorMessage %} text-content-error{% endif %}"
-            >{{ textContent }}</textarea>
+              aria-describedby="more-detail-int"
+            ></textarea>
             <div id="characterCountMessage" class="govuk-hint govuk-!-margin-top-2" aria-live="polite"></div>
           </div>
           
@@ -135,12 +131,9 @@
           </div>
           <div class="govuk-grid-column-one-half app-review-history__header">
             <form id="reviewLimitForm" method="get" class="govuk-form-group app-review-limit-form">
-          <div class="govuk-grid-column-one-half app-review-history__header">
-            <form id="reviewLimitForm" method="get" class="govuk-form-group app-review-limit-form">
               <label class="govuk-label govuk-!-margin-bottom-1" for="reviewLimit">
                 Show latest
               </label>
-              <select class="govuk-select app-review-limit-select" id="reviewLimit" name="limit">
               <select class="govuk-select app-review-limit-select" id="reviewLimit" name="limit">
                 <option value="5" {% if (currentLimit == 5) %}selected{% endif %}>5 reviews</option>
                 <option value="10" {% if (currentLimit == 10) %}selected{% endif %}>10 reviews</option>
@@ -358,6 +351,7 @@
 
       try {
         const limit = parseInt(document.getElementById('reviewLimit')?.value, 10) || 5;
+
         // Get current page from URL or default to 1
         const urlParams = new URLSearchParams(window.location.search);
         const currentPage = parseInt(urlParams.get('page')) || 1;
@@ -535,8 +529,7 @@
       const tbody = document.getElementById('reviewHistoryBody');
       
       if (!reviews || reviews.length === 0) {
-        // Only clear the table if there are no client-side pending rows to preserve
-        const existingActiveRows = tbody.querySelectorAll('tr[data-review-id]');
+       const existingActiveRows = tbody.querySelectorAll('tr[data-review-id]');
         let hasClientSideActive = false;
         existingActiveRows.forEach(row => {
           const statusTag = row.querySelector('.govuk-tag');
@@ -566,8 +559,8 @@
       const placeholderRow = tbody.querySelector('tr:not([data-review-id])');
       if (placeholderRow) {
         placeholderRow.remove();
-      }
-      
+      }      
+     
       // Build a Map of existing rows for quick lookup, keyed by reviewId
       const existingRows = new Map();
       Array.from(tbody.querySelectorAll('tr[data-review-id]')).forEach(row => {
@@ -624,6 +617,7 @@
       // IMPORTANT: Keep any pending/processing rows that were added client-side and
       // are not yet confirmed by the backend (S3 propagation delay or userId mismatch
       // on first request before session cookie was established).
+
       existingRows.forEach((row, reviewId) => {
         const statusCell = row.querySelector('.govuk-tag');
         const isPending = statusCell && statusCell.classList.contains('govuk-tag--yellow');
@@ -854,8 +848,9 @@
       notification.className = 'govuk-notification-banner govuk-notification-banner--success';
       notification.setAttribute('role', 'alert');
       notification.setAttribute('aria-labelledby', 'notification-title');
-      notification.setAttribute('data-module', 'govuk-notification-banner');
-      
+      notification.setAttribute('data-module', 'govuk-notification-banner');    
+
+     
       const header = document.createElement('div');
       header.className = 'govuk-notification-banner__header';
       const title = document.createElement('h2');
@@ -891,6 +886,7 @@
       notification.setAttribute('role', 'alert');
       notification.setAttribute('aria-labelledby', 'error-summary-title');
       notification.setAttribute('data-module', 'govuk-error-summary');
+      
       
       const title = document.createElement('h2');
       title.className = 'govuk-error-summary__title';
@@ -957,7 +953,6 @@
       });
       
       deleteHandlersAttached = true;
-      console.log('[HOME] Delete handlers attached using event delegation');
     }
     
     // Attach handlers on page load
@@ -966,23 +961,17 @@
     // Start auto-refresh
     function startAutoRefresh() {
       if (autoRefreshInterval) {
-        console.log('[HOME] Auto-refresh already running');
         return; // Already running
       }
-      
-      console.log('[HOME] Starting auto-refresh');
       autoRefreshInterval = setInterval(updateReviewHistory, 5000);
     }
     
     // Force start auto-refresh (restarts if already running)
     function forceStartAutoRefresh() {
       if (autoRefreshInterval) {
-        console.log('[HOME] Stopping existing auto-refresh before restart');
         clearInterval(autoRefreshInterval);
         autoRefreshInterval = null;
       }
-      
-      console.log('[HOME] Force starting auto-refresh');
       autoRefreshInterval = setInterval(updateReviewHistory, 5000);
     }
     
@@ -994,9 +983,7 @@
     // Check if we just submitted a review (flag set by upload-handler before reload)
     const justSubmitted = sessionStorage.getItem('reviewJustSubmitted');
     if (justSubmitted) {
-      console.log('[HOME] Review was just submitted - forcing auto-refresh start');
       sessionStorage.removeItem('reviewJustSubmitted');
-      // Force start auto-refresh immediately
       updateReviewHistory();
       forceStartAutoRefresh();
     } else {
@@ -1046,7 +1033,6 @@
     // This ensures review history stays up-to-date in the background
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && !isPageUnloading) {
-        console.log('[HOME] Page visible - triggering immediate update');
         // Trigger an immediate update when page becomes visible again
         if (autoRefreshInterval) {
           updateReviewHistory();
