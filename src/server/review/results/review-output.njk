@@ -110,30 +110,7 @@
       {%- set content = reviewData.reviewedContent.plainText | trim -%}
       {%- set issues = reviewData.reviewedContent.issues -%}
       {%- if issues and issues.length > 0 -%}
-        {%- set highlightedContent = content -%}
-        {%- for issue in issues -%}
-          {%- set issueText = issue.text -%}
-          {%- set categoryClass = 'highlight-' + issue.category -%}
-          {%- set matchedIndex = 0 -%}
-          {%- for improvement in reviewData.improvements -%}
-            {%- if matchedIndex == 0 and improvement.current and improvement.current == issueText -%}
-              {%- set matchedIndex = loop.index -%}
-            {%- endif -%}
-          {%- endfor -%}
-          {%- if matchedIndex == 0 -%}
-            {%- for improvement in reviewData.improvements -%}
-              {%- if matchedIndex == 0 and improvement.current and issueText in improvement.current -%}
-                {%- set matchedIndex = loop.index -%}
-              {%- endif -%}
-            {%- endfor -%}
-          {%- endif -%}
-          {%- set anchorId = 'improvement-' + (matchedIndex if matchedIndex > 0 else loop.index) -%}
-          {%- if issueText and issueText | trim -%}
-            {%- set markedText = '<a href="#' + anchorId + '" class="highlight-link"><mark class="' + categoryClass + '">' + issueText + '</mark></a>' -%}
-            {%- set highlightedContent = highlightedContent | replace(issueText, markedText) -%}
-          {%- endif -%}
-        {%- endfor -%}
-    <div class="content-body">{{ highlightedContent | trim | safe }}</div>
+    <div class="content-body">{{ content | highlightContent(issues, reviewData.improvements) | safe }}</div>
       {%- else -%}
     <div class="content-body">{{ content }}</div>
       {%- endif -%}
