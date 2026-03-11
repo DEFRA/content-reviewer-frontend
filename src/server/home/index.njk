@@ -356,10 +356,15 @@
         const urlParams = new URLSearchParams(window.location.search);
         const currentPage = parseInt(urlParams.get('page')) || 1;
 
-        // Build API URL; include page param only for paginated views
-        let apiUrl = `/api/reviews?limit=${limit}`;
-        if (limit > 25 && currentPage > 1) {
-          apiUrl += `&page=${currentPage}`;
+        // Build API URL; when limit > pageSize, paginate in pageSize chunks
+        // to match the server-side home controller behaviour.
+        const pageSize = 25;
+        let apiUrl;
+        if (limit > pageSize) {
+          const skip = (currentPage - 1) * pageSize;
+          apiUrl = `/api/reviews?limit=${pageSize}&skip=${skip}&page=${currentPage}`;
+        } else {
+          apiUrl = `/api/reviews?limit=${limit}`;
         }
 
         console.log(`[HOME] Auto-refresh polling: ${apiUrl}`);
