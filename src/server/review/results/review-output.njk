@@ -128,8 +128,10 @@
             {%- endfor -%}
           {%- endif -%}
           {%- set anchorId = 'improvement-' + (matchedIndex if matchedIndex > 0 else loop.index) -%}
-          {%- set markedText = '<a href="#' + anchorId + '" class="highlight-link"><mark class="' + categoryClass + '">' + issueText + '</mark></a>' -%}
-          {%- set highlightedContent = highlightedContent | replace(issueText, markedText) -%}
+          {%- if issueText and issueText | trim -%}
+            {%- set markedText = '<a href="#' + anchorId + '" class="highlight-link"><mark class="' + categoryClass + '">' + issueText + '</mark></a>' -%}
+            {%- set highlightedContent = highlightedContent | replace(issueText, markedText) -%}
+          {%- endif -%}
         {%- endfor -%}
     <div class="content-body">{{ highlightedContent | trim | safe }}</div>
       {%- else -%}
