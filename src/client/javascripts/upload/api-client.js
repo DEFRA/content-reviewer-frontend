@@ -1,10 +1,7 @@
 // API client for upload and review operations
-/* global sessionStorage */
 import {
   PROGRESS_INITIAL,
   PROGRESS_PROCESSING,
-  RELOAD_DELAY,
-  REDIRECT_DELAY,
   HISTORY_UPDATE_DELAY,
   PREVIEW_WORDS_LIMIT,
   PREVIEW_CHARS_LIMIT
@@ -92,8 +89,10 @@ export async function submitTextReview(textContent) {
 }
 
 export async function submitFileUpload(file) {
+  const elements = getElements()
+  const fileInputEl = getFileInput()
   try {
-    showProgress('Uploading to server...', PROGRESS_INITIAL)
+    showProgress('Uploading document...', PROGRESS_INITIAL)
     const formData = new FormData()
     formData.append('file', file)
     const response = await fetch('/api/upload', {
@@ -109,37 +108,40 @@ export async function submitFileUpload(file) {
     const data = await response.json()
     console.log('[UPLOAD-HANDLER] File uploaded successfully:', data)
     hideProgress()
-    const fileInputEl = getFileInput()
+
+    // Clear the file input and reset mutual exclusion
     if (fileInputEl) {
       fileInputEl.value = ''
     }
     updateMutualExclusion()
+
+    // Add a pending row immediately for instant visual feedback
+    addReviewToHistory({
+      id: data.reviewId || data.id,
+      fileName: file.name,
+      timestamp: Date.now(),
+      status: 'pending'
+    })
+
+    // Trigger a history refresh after a short delay, then start auto-refresh
     if (typeof globalThis.updateReviewHistory === 'function') {
-      setTimeout(() => globalThis.updateReviewHistory(), REDIRECT_DELAY)
-    } else {
-      addReviewToHistory({
-        id: data.reviewId || data.id,
-        fileName: file.name,
-        timestamp: Date.now(),
-        status: 'pending'
-      })
+      setTimeout(() => globalThis.updateReviewHistory(), HISTORY_UPDATE_DELAY)
     }
-    // Start auto-refresh to track review status
-    if (typeof globalThis.startAutoRefresh === 'function') {
-      globalThis.startAutoRefresh()
-    }
-    // Set flag so page reload will start auto-refresh
-    sessionStorage.setItem('reviewJustSubmitted', 'true')
-    setTimeout(() => {
-      globalThis.location.reload()
-    }, RELOAD_DELAY)
+    startAutoRefresh()
+
     return data
   } catch (error) {
     console.error('[UPLOAD-HANDLER] Upload error:', error)
     showError(`Upload failed: ${error.message}`)
-    const elements = getElements()
+    // Re-enable both inputs so the user can try again
+    if (fileInputEl) {
+      fileInputEl.disabled = false
+    }
     if (elements.textContentInput) {
       elements.textContentInput.disabled = false
+    }
+    if (elements.uploadButton) {
+      elements.uploadButton.disabled = false
     }
     throw error
   }

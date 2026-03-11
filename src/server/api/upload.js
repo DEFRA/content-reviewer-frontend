@@ -2,6 +2,7 @@ import FormData from 'form-data'
 import { Agent, fetch as undiciFetch } from 'undici'
 import { config } from '../../config/config.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
+import { getUserIdentifier } from '../common/helpers/get-user-identifier.js'
 
 const logger = createLogger()
 
@@ -94,7 +95,7 @@ function validateFileType(file, fileInfo, h) {
       .response({
         success: false,
         message:
-          'Invalid file type. Please upload a PDF or Word document (.pdf, .doc, .docx).'
+          'Invalid file type. Please upload a PDF (.pdf) or Word document (.docx).'
       })
       .code(HTTP_STATUS_BAD_REQUEST)
   }
@@ -126,20 +127,25 @@ async function sendFileToBackend(file, fileInfo, request) {
   const formData = createUploadFormData(file)
   const backendRequestStart = Date.now()
 
+  // Pass authenticated user ID so the backend stores it on the review record.
+  // Anonymous users send no x-user-id header (reviews visible to everyone).
+  const userId = getUserIdentifier(request)
+  const extraHeaders = userId ? { 'x-user-id': userId } : {}
+
   logger.info('Initiating backend upload request', {
     filename: fileInfo.filename,
     size: fileInfo.sizeMB + 'MB',
-    backendEndpoint: `${backendUrl}/api/upload`
+    backendEndpoint: `${backendUrl}/api/review/file`
   })
 
   request.logger.info(
     `Uploading file to backend: ${file.hapi.filename} (${file.bytes} bytes)`
   )
 
-  const response = await undiciFetch(`${backendUrl}/api/upload`, {
+  const response = await undiciFetch(`${backendUrl}/api/review/file`, {
     method: 'POST',
     body: formData,
-    headers: formData.getHeaders(),
+    headers: { ...formData.getHeaders(), ...extraHeaders },
     dispatcher: keepAliveAgent
   })
 

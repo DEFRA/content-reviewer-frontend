@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { uploadApiController } from './upload.js'
 
 const BACKEND_URL = 'http://localhost:4000'
-const UPLOAD_ENDPOINT = `${BACKEND_URL}/api/upload`
+const UPLOAD_ENDPOINT = `${BACKEND_URL}/api/review/file`
 const TEST_FILENAME = 'document.pdf'
 const TEST_CONTENT_TYPE = 'application/pdf'
 const TEST_REVIEW_ID = 'review-upload-001'
