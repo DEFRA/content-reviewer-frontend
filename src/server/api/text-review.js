@@ -1,9 +1,16 @@
-import fetch from 'node-fetch'
 import { config } from '../../config/config.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
 import { getUserIdentifier } from '../common/helpers/get-user-identifier.js'
+import { Agent } from 'undici'
 
 const logger = createLogger()
+
+// Reuse a single undici Agent with keep-alive for all text review backend calls
+const keepAliveAgent = new Agent({
+  keepAliveTimeout: 30_000,
+  keepAliveMaxTimeout: 300_000,
+  connections: 5
+})
 
 const HTTP_STATUS = {
   OK: 200,
@@ -50,8 +57,8 @@ function generateTitle(textContent, title) {
 
 /**
  * Submit to backend
- * Passes the authenticated user's ID as x-user-id header so the backend
- * can store it on the review record for per-user filtering.
+ * For authenticated users, passes their ID as x-user-id so the backend can
+ * store it for per-user filtering. Anonymous users send no x-user-id header.
  */
 async function submitToBackend(textContent, finalTitle, request) {
   const backendUrl = config.get('backendUrl')
@@ -59,9 +66,8 @@ async function submitToBackend(textContent, finalTitle, request) {
     `Requesting text review from backend: ${backendUrl}/api/review/text`
   )
 
-  // Prefer the SSO-authenticated user ID from the session cookie over any
-  // client-supplied header, so it cannot be spoofed.
-  // For anonymous users, use session ID for consistent tracking.
+  // Only send x-user-id for authenticated users. Anonymous users have no
+  // userId so the backend stores null and the review is visible to everyone.
   const userId = getUserIdentifier(request)
 
   const backendRequestStart = Date.now()
@@ -75,7 +81,8 @@ async function submitToBackend(textContent, finalTitle, request) {
     body: JSON.stringify({
       content: textContent,
       title: finalTitle
-    })
+    }),
+    dispatcher: keepAliveAgent
   })
 
   const backendRequestEnd = Date.now()

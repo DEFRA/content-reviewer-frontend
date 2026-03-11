@@ -14,7 +14,7 @@ export const serveStaticFiles = {
             auth: false,
             cache: {
               expiresIn: config.get('staticCacheTimeout'),
-              privacy: 'private'
+              privacy: 'public'
             }
           },
           method: 'GET',
@@ -28,7 +28,7 @@ export const serveStaticFiles = {
             auth: false,
             cache: {
               expiresIn: config.get('staticCacheTimeout'),
-              privacy: 'private'
+              privacy: 'public'
             }
           },
           method: 'GET',

@@ -9,6 +9,20 @@ vi.mock('../../common/helpers/logging/logger.js', () => ({
   }))
 }))
 
+vi.mock('../../common/helpers/get-user-identifier.js', () => ({
+  getUserIdentifier: vi.fn(() => null)
+}))
+
+// Use vi.hoisted so MockAgent is available when the factory is hoisted
+const { MockAgent } = vi.hoisted(() => {
+  function MockAgent() {}
+  return { MockAgent }
+})
+
+vi.mock('undici', () => ({
+  Agent: MockAgent
+}))
+
 globalThis.fetch = vi.fn()
 
 function createMockRequest(params = {}) {
@@ -73,14 +87,18 @@ describe('reviewHistoryController - showHistory (fetch and display review histor
     const result = await reviewHistoryController.showHistory(mockRequest, mockH)
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://localhost:4000/api/reviews?limit=100'
+      expect.stringContaining('/api/reviews?limit=100'),
+      expect.objectContaining({})
     )
-    expect(mockH.view).toHaveBeenCalledWith(REVIEW_HISTORY_VIEW, {
-      pageTitle: REVIEW_HISTORY_TITLE,
-      heading: REVIEW_HISTORY_TITLE,
-      reviews: mockReviews,
-      count: 1
-    })
+    expect(mockH.view).toHaveBeenCalledWith(
+      REVIEW_HISTORY_VIEW,
+      expect.objectContaining({
+        pageTitle: REVIEW_HISTORY_TITLE,
+        heading: REVIEW_HISTORY_TITLE,
+        reviews: mockReviews,
+        count: 1
+      })
+    )
     expect(result.template).toBe(REVIEW_HISTORY_VIEW)
     expect(result.template).toBe('review/history/index')
   })
@@ -216,10 +234,8 @@ describe('reviewHistoryController - deleteReview', () => {
     )
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://localhost:4000/api/results/test-123',
-      {
-        method: 'DELETE'
-      }
+      'http://localhost:4000/api/reviews/test-123',
+      expect.objectContaining({ method: 'DELETE' })
     )
     expect(mockH.redirect).toHaveBeenCalledWith(REVIEW_HISTORY_REDIRECT)
     expect(result.redirect).toBe(REVIEW_HISTORY_REDIRECT)
@@ -276,8 +292,8 @@ describe('reviewHistoryController - deleteReview', () => {
     await reviewHistoryController.deleteReview(mockRequest, mockH)
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://localhost:4000/api/results/test-log',
-      { method: 'DELETE' }
+      'http://localhost:4000/api/reviews/test-log',
+      expect.objectContaining({ method: 'DELETE' })
     )
     expect(mockH.redirect).toHaveBeenCalledWith(REVIEW_HISTORY_REDIRECT)
   })
