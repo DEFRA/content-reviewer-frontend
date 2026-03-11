@@ -113,7 +113,8 @@ export async function getReviewsController(request, h) {
   const startTime = Date.now()
   const requestLogger = request.logger
   const { limit, page, skip } = calculatePagination(request.query)
-  // Use session ID for anonymous users to ensure consistent review history
+  // For authenticated users, scope results to their own reviews.
+  // For anonymous users, userId is null and no filter is applied — all reviews are returned.
   const userId = getUserIdentifier(request)
 
   try {

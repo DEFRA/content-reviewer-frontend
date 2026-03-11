@@ -200,7 +200,8 @@ export const homeController = {
     const config = request.server.app.config
     const backendUrl = config.get('backendUrl')
 
-    // Use session ID for anonymous users to ensure consistent review history per-session
+    // For authenticated users, scope review history to their own reviews.
+    // For anonymous users, userId is null and no filter is applied — all reviews are returned.
     const userId = getUserIdentifier(request)
 
     const { limit, pageSize, currentPage, skip } = getPaginationParams(request)
