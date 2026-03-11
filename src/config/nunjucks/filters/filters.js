@@ -15,3 +15,4 @@ export const min = (arr) => {
 export { assign }
 export { formatDate } from './format-date.js'
 export { formatCurrency } from './format-currency.js'
+export { highlightContent } from './highlight-content.js'
