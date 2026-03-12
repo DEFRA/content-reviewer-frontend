@@ -13,6 +13,7 @@ import {
 
 const ERROR_GROUP_CLASS = 'govuk-form-group--error'
 const ERROR_TEXTAREA_CLASS = 'govuk-textarea--error'
+const TEXT_CONTENT_ID = 'text-content'
 const PROGRESS_PERCENTAGE_HALF = 50
 const PROGRESS_PERCENTAGE_DECIMAL = 45.7
 const PROGRESS_PERCENTAGE_ROUNDED = '46'
@@ -90,7 +91,7 @@ describe('upload/ui-feedback - showError', () => {
   })
 
   it('should add error class to textarea', () => {
-    const textarea = document.getElementById('text-content')
+    const textarea = document.getElementById(TEXT_CONTENT_ID)
 
     showError('Test error')
 
@@ -125,7 +126,7 @@ describe('upload/ui-feedback - showError', () => {
   })
 
   it('should focus the textarea when showing an error', () => {
-    const textarea = document.getElementById('text-content')
+    const textarea = document.getElementById(TEXT_CONTENT_ID)
     let focused = false
     textarea.focus = () => {
       focused = true
@@ -168,7 +169,7 @@ describe('upload/ui-feedback - hideError', () => {
   })
 
   it('should remove error class from textarea', () => {
-    const textarea = document.getElementById('text-content')
+    const textarea = document.getElementById(TEXT_CONTENT_ID)
     textarea.classList.add(ERROR_TEXTAREA_CLASS)
 
     hideError()

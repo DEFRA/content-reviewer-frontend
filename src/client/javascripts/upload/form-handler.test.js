@@ -25,6 +25,8 @@ vi.mock('./ui-feedback.js', () => ({
 const VALID_TEXT =
   'This is some valid content that is long enough to submit for review purposes.'
 
+const TEXT_CONTENT_ID = 'text-content'
+
 function buildDom() {
   document.body.innerHTML = `
     <div id="errorSummary" hidden><a id="errorSummaryMessage"></a></div>
@@ -69,7 +71,7 @@ describe('upload/form-handler - hideError before valid submit', () => {
       return Promise.resolve({ reviewId: 'abc' })
     })
 
-    const textarea = document.getElementById('text-content')
+    const textarea = document.getElementById(TEXT_CONTENT_ID)
     textarea.value = VALID_TEXT
 
     const event = makeSubmitEvent()
@@ -83,7 +85,7 @@ describe('upload/form-handler - hideError before valid submit', () => {
   })
 
   it('should call showError when no text and no file', async () => {
-    const textarea = document.getElementById('text-content')
+    const textarea = document.getElementById(TEXT_CONTENT_ID)
     textarea.value = ''
 
     const event = makeSubmitEvent()
@@ -94,7 +96,7 @@ describe('upload/form-handler - hideError before valid submit', () => {
 
   it('should call hideError at the start of every submission', async () => {
     submitTextReview.mockResolvedValue({ reviewId: 'xyz' })
-    const textarea = document.getElementById('text-content')
+    const textarea = document.getElementById(TEXT_CONTENT_ID)
     textarea.value = VALID_TEXT
 
     const event = makeSubmitEvent()

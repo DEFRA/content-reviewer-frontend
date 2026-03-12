@@ -9,6 +9,8 @@ vi.mock('./character-counter.js', () => ({
   updateCharacterCount: vi.fn()
 }))
 
+const CLEAR_BUTTON_SELECTOR = '.app-clear-button'
+
 function buildDom() {
   document.body.innerHTML = `
     <div id="errorSummary" hidden>
@@ -46,7 +48,7 @@ describe('upload/input-controls', () => {
   describe('initializeTextInput', () => {
     it('should add a Clear text button next to the textarea', () => {
       initializeTextInput()
-      const btn = document.querySelector('.app-clear-button')
+      const btn = document.querySelector(CLEAR_BUTTON_SELECTOR)
       expect(btn).not.toBeNull()
       expect(btn.textContent).toBe('Clear text')
     })
@@ -56,7 +58,7 @@ describe('upload/input-controls', () => {
       const textarea = document.getElementById('text-content')
       textarea.value = 'Some content'
 
-      const btn = document.querySelector('.app-clear-button')
+      const btn = document.querySelector(CLEAR_BUTTON_SELECTOR)
       btn.click()
 
       expect(textarea.value).toBe('')
@@ -67,7 +69,7 @@ describe('upload/input-controls', () => {
       const uploadError = document.getElementById('uploadError')
       uploadError.hidden = false
 
-      const btn = document.querySelector('.app-clear-button')
+      const btn = document.querySelector(CLEAR_BUTTON_SELECTOR)
       btn.click()
 
       expect(uploadError.hidden).toBe(true)
@@ -80,7 +82,7 @@ describe('upload/input-controls', () => {
       textFormGroup.classList.add('govuk-form-group--error')
       textarea.classList.add('govuk-textarea--error')
 
-      const btn = document.querySelector('.app-clear-button')
+      const btn = document.querySelector(CLEAR_BUTTON_SELECTOR)
       btn.click()
 
       expect(textFormGroup.classList.contains('govuk-form-group--error')).toBe(
@@ -93,7 +95,7 @@ describe('upload/input-controls', () => {
       initializeTextInput()
       initializeTextInput()
 
-      const btns = document.querySelectorAll('.app-clear-button')
+      const btns = document.querySelectorAll(CLEAR_BUTTON_SELECTOR)
       expect(btns.length).toBe(1)
     })
 

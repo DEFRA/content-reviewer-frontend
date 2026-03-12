@@ -16,7 +16,7 @@ function addClearButton(input, label, onClear) {
   btn.type = 'button'
   btn.textContent = label
   btn.className = 'govuk-button govuk-button--secondary app-clear-button'
-  btn.setAttribute('data-module', 'govuk-button')
+  btn.dataset.module = 'govuk-button'
   btn.addEventListener('click', onClear)
   input.parentNode.appendChild(btn)
   return btn
