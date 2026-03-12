@@ -7,6 +7,7 @@ import {
 } from './constants.js'
 import { getElements, getFileInput } from './dom-elements.js'
 import { updateCharacterCount } from './character-counter.js'
+import { hideError } from './ui-feedback.js'
 
 let fileClearBtn, textClearBtn
 
@@ -14,8 +15,8 @@ function addClearButton(input, label, onClear) {
   const btn = document.createElement('button')
   btn.type = 'button'
   btn.textContent = label
-  btn.className =
-    'govuk-button govuk-button--secondary govuk-!-margin-left-2 app-clear-button'
+  btn.className = 'govuk-button govuk-button--secondary app-clear-button'
+  btn.setAttribute('data-module', 'govuk-button')
   btn.addEventListener('click', onClear)
   input.parentNode.appendChild(btn)
   return btn
@@ -50,17 +51,18 @@ export function initializeTextInput() {
     elements.textContentInput.disabled = false
     updateMutualExclusion()
     updateCharacterCount()
+    hideError()
   })
-  if (
-    elements.characterCountMessage &&
-    textClearBtn &&
-    elements.characterCountMessage.parentNode ===
-      elements.textContentInput.parentNode
-  ) {
-    elements.characterCountMessage.parentNode.insertBefore(
-      textClearBtn,
-      elements.characterCountMessage.nextSibling
-    )
+  // Place the Clear button after the character count message so the order is:
+  // textarea → character count → Clear button
+  if (elements.characterCountMessage && textClearBtn) {
+    const countParent = elements.characterCountMessage.parentNode
+    if (countParent) {
+      countParent.insertBefore(
+        textClearBtn,
+        elements.characterCountMessage.nextSibling
+      )
+    }
   }
   if (textClearBtn) {
     textClearBtn.disabled = false

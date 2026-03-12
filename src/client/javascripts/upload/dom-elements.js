@@ -14,6 +14,10 @@ export function initializeElements() {
   elements.uploadError = document.getElementById('uploadError')
   elements.uploadSuccess = document.getElementById('uploadSuccess')
   elements.errorMessage = document.getElementById('errorMessage')
+  elements.errorSummary = document.getElementById('errorSummary')
+  elements.errorSummaryMessage = document.getElementById('errorSummaryMessage')
+  elements.textFormGroup = document.getElementById('textFormGroup')
+  elements.textFieldWrapper = document.getElementById('textFieldWrapper')
   elements.form = document.getElementById('uploadForm')
 }
 

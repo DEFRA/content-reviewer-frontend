@@ -6,6 +6,18 @@
   color: #d4351c;
 }
 
+// The red left-border (govuk-form-group--error) is applied to .app-text-form-group
+// so the bar starts at the label "Type or paste your content for review".
+// characterCountMessage is outside .app-text-form-group so the form group ends at
+// the textarea bottom — padding-bottom:0 ensures no extra space below.
+.app-text-form-group.govuk-form-group--error {
+  padding-bottom: 0;
+
+  .govuk-textarea {
+    margin-bottom: 0;
+  }
+}
+
 // Review history header row: align limit selector to the right
 .app-review-history__header {
   text-align: right;
