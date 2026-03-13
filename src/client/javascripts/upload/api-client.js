@@ -12,7 +12,12 @@ import {
 import { getElements, getFileInput } from './dom-elements.js'
 import { updateCharacterCount } from './character-counter.js'
 import { updateMutualExclusion } from './input-controls.js'
-import { showProgress, hideProgress, showError } from './ui-feedback.js'
+import {
+  showProgress,
+  hideProgress,
+  showError,
+  hideError
+} from './ui-feedback.js'
 import { addReviewToHistory } from './review-history.js'
 
 function getPreviewText(textContent) {
@@ -72,6 +77,7 @@ export async function submitTextReview(textContent) {
     const data = await response.json()
     console.log('[UPLOAD-HANDLER] Text review submitted successfully:', data)
     hideProgress()
+    hideError()
     elements.textContentInput.value = ''
     updateMutualExclusion()
     updateCharacterCount()
