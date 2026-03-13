@@ -35,19 +35,19 @@ vi.mock('../common/helpers/logging/logger.js', () => ({
   }))
 }))
 
+function _mockAgent() {}
+
 // Use vi.hoisted so all references are available when factories are hoisted
-const { MockAgent, undiciFetchMock, FormDataMock } = vi.hoisted(() => {
-  function MockAgent() {}
+const { undiciFetchMock, FormDataMock } = vi.hoisted(() => {
   const undiciFetchMock = vi.fn()
   function FormDataMock() {
     this.append = vi.fn()
     this.getHeaders = vi.fn(() => ({ 'content-type': 'multipart/form-data' }))
   }
-  return { MockAgent, undiciFetchMock, FormDataMock }
+  return { undiciFetchMock, FormDataMock }
 })
-
 vi.mock('undici', () => ({
-  Agent: MockAgent,
+  Agent: _mockAgent,
   fetch: undiciFetchMock
 }))
 
