@@ -13,17 +13,6 @@
   margin-right: 15px;
 }
 
-// Position header navigation items on the right
-.app-header .govuk-header__navigation {
-  margin-left: auto;
-}
-
-.app-header .govuk-header__navigation-list {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
 // Style for username text (non-clickable)
 .app-header-user-name {
   color: govuk-colour('white');
