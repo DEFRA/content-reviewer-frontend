@@ -35,6 +35,7 @@ export async function handleFormSubmit(e) {
         )
         return
       }
+      hideError()
       await submitTextReview(textContent)
       return
     }

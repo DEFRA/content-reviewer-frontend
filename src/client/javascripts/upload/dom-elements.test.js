@@ -11,8 +11,17 @@ import {
 describe('upload/dom-elements', () => {
   beforeEach(() => {
     document.body.innerHTML = `
+      <div id="errorSummary" hidden>
+        <a id="errorSummaryMessage"></a>
+      </div>
       <form id="uploadForm">
-        <textarea id="text-content"></textarea>
+        <div id="textFormGroup">
+          <div id="textFieldWrapper">
+            <textarea id="text-content"></textarea>
+            <div id="errorMessage"></div>
+            <div id="uploadError"></div>
+          </div>
+        </div>
         <div id="characterCountMessage"></div>
         <input type="file" id="file-upload" />
         <button id="uploadButton" type="submit">Upload</button>
@@ -20,9 +29,7 @@ describe('upload/dom-elements', () => {
         <div id="progressBar"></div>
         <div id="uploadStatusText"></div>
         <div id="uploadProgressText"></div>
-        <div id="uploadError"></div>
         <div id="uploadSuccess"></div>
-        <div id="errorMessage"></div>
       </form>
     `
   })
@@ -41,6 +48,9 @@ describe('upload/dom-elements', () => {
     expect(elements.uploadError).toBeDefined()
     expect(elements.uploadSuccess).toBeDefined()
     expect(elements.errorMessage).toBeDefined()
+    expect(elements.errorSummary).toBeDefined()
+    expect(elements.errorSummaryMessage).toBeDefined()
+    expect(elements.textFieldWrapper).toBeDefined()
     expect(elements.form).toBeDefined()
   })
 

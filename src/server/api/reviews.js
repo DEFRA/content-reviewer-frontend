@@ -28,7 +28,10 @@ const keepAliveAgent = new Agent({
 function calculatePagination(query) {
   const page = Number.parseInt(query.page) || 1
   const limit = Number.parseInt(query.limit) || PAGE_SIZE
-  const skip = (page - 1) * limit
+  // When limit exceeds PAGE_SIZE, paginate in PAGE_SIZE chunks so each page
+  // returns exactly PAGE_SIZE records (matching what the SSR home controller does).
+  const effectivePageSize = Math.min(limit, PAGE_SIZE)
+  const skip = (page - 1) * effectivePageSize
   return { limit, page, skip }
 }
 

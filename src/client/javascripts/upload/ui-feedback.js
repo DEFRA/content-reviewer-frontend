@@ -5,21 +5,48 @@ export function showError(message) {
   hideSuccess()
   hideProgress()
   const elements = getElements()
+  if (elements.errorSummary) {
+    elements.errorSummary.hidden = false
+  }
+  if (elements.errorSummaryMessage) {
+    elements.errorSummaryMessage.textContent = message
+  }
   if (elements.uploadError) {
     elements.uploadError.hidden = false
   }
   if (elements.errorMessage) {
     elements.errorMessage.textContent = message
   }
+  if (elements.textFormGroup) {
+    elements.textFormGroup.classList.add('govuk-form-group--error')
+  }
+  if (elements.textContentInput) {
+    elements.textContentInput.classList.add('govuk-textarea--error')
+  }
   if (elements.uploadButton) {
     elements.uploadButton.disabled = false
+  }
+  if (elements.textContentInput) {
+    elements.textContentInput.focus()
   }
 }
 
 export function hideError() {
   const elements = getElements()
+  if (elements.errorSummary) {
+    elements.errorSummary.hidden = true
+  }
   if (elements.uploadError) {
     elements.uploadError.hidden = true
+  }
+  if (elements.errorMessage) {
+    elements.errorMessage.textContent = ''
+  }
+  if (elements.textFormGroup) {
+    elements.textFormGroup.classList.remove('govuk-form-group--error')
+  }
+  if (elements.textContentInput) {
+    elements.textContentInput.classList.remove('govuk-textarea--error')
   }
 }
 
@@ -31,6 +58,7 @@ export function hideSuccess() {
 }
 
 export function showProgress(statusText, percentage) {
+  hideError()
   const elements = getElements()
   if (elements.uploadStatusText) {
     elements.uploadStatusText.textContent = statusText
