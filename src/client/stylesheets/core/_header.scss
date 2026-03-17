@@ -19,6 +19,14 @@
   font-weight: normal;
   text-decoration: none;
   pointer-events: none;
+
+  // Add divider after username
+  &::after {
+    content: '|';
+    margin-left: 1rem;
+    margin-right: 1rem;
+    color: govuk-colour('white');
+  }
 }
 
 @media (min-width: 40.0625em) {
