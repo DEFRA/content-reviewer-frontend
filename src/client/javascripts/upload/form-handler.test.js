@@ -19,7 +19,23 @@ vi.mock('./ui-feedback.js', () => ({
   hideError: vi.fn(),
   hideSuccess: vi.fn(),
   showProgress: vi.fn(),
-  hideProgress: vi.fn()
+  hideProgress: vi.fn(),
+  showUrlError: vi.fn(),
+  hideUrlError: vi.fn(),
+  showRadioError: vi.fn(),
+  hideRadioError: vi.fn()
+}))
+
+// Mock radio-handler — default to null (no selection)
+vi.mock('./radio-handler.js', () => ({
+  getSelectedAction: vi.fn(() => null),
+  initializeRadioHandler: vi.fn()
+}))
+
+// Mock url-extractor
+vi.mock('./url-extractor.js', () => ({
+  parseGovUkUrl: vi.fn(),
+  extractGovspeakText: vi.fn()
 }))
 
 const VALID_TEXT =
@@ -31,7 +47,18 @@ function buildDom() {
   document.body.innerHTML = `
     <div id="errorSummary" hidden><a id="errorSummaryMessage"></a></div>
     <form id="uploadForm">
-      <div id="textFormGroup">
+      <div class="govuk-form-group" id="actionSelectionGroup">
+        <p id="actionOptionError" hidden><span id="actionOptionErrorMessage"></span></p>
+        <div id="actionRadios">
+          <input class="govuk-radios__input" id="action-url" name="actionOption" type="radio" value="url">
+          <input class="govuk-radios__input" id="action-text" name="actionOption" type="radio" value="text">
+        </div>
+      </div>
+      <div id="urlFormGroup" hidden>
+        <p id="urlError" hidden><span id="urlErrorMessage"></span></p>
+        <input id="url-input" type="text">
+      </div>
+      <div id="textFormGroup" hidden>
         <div id="textFieldWrapper">
           <p id="uploadError" hidden>
             <span id="errorMessage"></span>
@@ -57,10 +84,38 @@ function makeSubmitEvent() {
   return { preventDefault: vi.fn() }
 }
 
-describe('upload/form-handler - hideError before valid submit', () => {
-  beforeEach(() => {
+describe('upload/form-handler - no radio selected', () => {
+  let showRadioError
+
+  beforeEach(async () => {
     buildDom()
     vi.clearAllMocks()
+    const radioMod = await import('./radio-handler.js')
+    radioMod.getSelectedAction.mockReturnValue(null)
+    const feedbackMod = await import('./ui-feedback.js')
+    showRadioError = feedbackMod.showRadioError
+  })
+
+  it('should show radio error when no option is selected', async () => {
+    const event = makeSubmitEvent()
+    await handleFormSubmit(event)
+    expect(showRadioError).toHaveBeenCalledWith('Select an option to proceed')
+  })
+
+  it('should not call submitTextReview when no option is selected', async () => {
+    const event = makeSubmitEvent()
+    await handleFormSubmit(event)
+    expect(submitTextReview).not.toHaveBeenCalled()
+  })
+})
+
+describe('upload/form-handler - hideError before valid submit', () => {
+  beforeEach(async () => {
+    buildDom()
+    vi.clearAllMocks()
+    // Set action to 'text' so text-submit path is exercised
+    const radioMod = await import('./radio-handler.js')
+    radioMod.getSelectedAction.mockReturnValue('text')
   })
 
   it('should call hideError before submitTextReview when text is valid', async () => {
@@ -105,5 +160,78 @@ describe('upload/form-handler - hideError before valid submit', () => {
     // hideError is called at least twice: once at top of handleFormSubmit,
     // once explicitly before submitTextReview
     expect(hideError).toHaveBeenCalled()
+  })
+})
+
+describe('upload/form-handler - URL action', () => {
+  let getSelectedAction
+  let showUrlError
+
+  beforeEach(async () => {
+    buildDom()
+    vi.clearAllMocks()
+    const radioMod = await import('./radio-handler.js')
+    getSelectedAction = radioMod.getSelectedAction
+    const feedbackMod = await import('./ui-feedback.js')
+    showUrlError = feedbackMod.showUrlError
+    // Set radio to URL action
+    getSelectedAction.mockReturnValue('url')
+  })
+
+  it('should show empty-URL error when url input is blank', async () => {
+    const event = makeSubmitEvent()
+    await handleFormSubmit(event)
+
+    expect(showUrlError).toHaveBeenCalledWith('Enter URL for content review')
+  })
+
+  it('should show invalid-URL error when URL is not a gov.uk URL', async () => {
+    const { parseGovUkUrl } = await import('./url-extractor.js')
+    parseGovUkUrl.mockReturnValue(null)
+
+    const urlInput = document.getElementById('url-input')
+    urlInput.value = 'https://example.com/page'
+
+    const event = makeSubmitEvent()
+    await handleFormSubmit(event)
+
+    expect(showUrlError).toHaveBeenCalledWith('Enter valid URL for review')
+  })
+
+  it('should extract govspeak and log content for valid gov.uk URL', async () => {
+    const { parseGovUkUrl, extractGovspeakText } =
+      await import('./url-extractor.js')
+    parseGovUkUrl.mockReturnValue(new URL('https://www.gov.uk/test'))
+    extractGovspeakText.mockResolvedValue('Extracted content')
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+    const urlInput = document.getElementById('url-input')
+    urlInput.value = 'https://www.gov.uk/test'
+
+    const event = makeSubmitEvent()
+    await handleFormSubmit(event)
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      '[URL-EXTRACTOR] Extracted govspeak content:',
+      'Extracted content'
+    )
+    consoleSpy.mockRestore()
+  })
+
+  it('should show fetch-failed error when gov.uk URL fetch throws a network error', async () => {
+    const { parseGovUkUrl, extractGovspeakText } =
+      await import('./url-extractor.js')
+    parseGovUkUrl.mockReturnValue(new URL('https://www.gov.uk/test'))
+    extractGovspeakText.mockRejectedValue(new Error('NetworkError'))
+
+    const urlInput = document.getElementById('url-input')
+    urlInput.value = 'https://www.gov.uk/test'
+
+    const event = makeSubmitEvent()
+    await handleFormSubmit(event)
+
+    expect(showUrlError).toHaveBeenCalledWith(
+      'Could not retrieve content from that URL'
+    )
   })
 })

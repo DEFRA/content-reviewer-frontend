@@ -13,6 +13,7 @@ import {
 } from './upload/input-controls.js'
 import { hideError, hideProgress, hideSuccess } from './upload/ui-feedback.js'
 import { handleFormSubmit } from './upload/form-handler.js'
+import { initializeRadioHandler } from './upload/radio-handler.js'
 
 /**
  * Initialize the upload form handler
@@ -21,6 +22,9 @@ import { handleFormSubmit } from './upload/form-handler.js'
 function initialize() {
   // Initialize DOM element references
   initializeElements()
+
+  // Initialize radio button handler
+  initializeRadioHandler()
 
   const elements = getElements()
 
