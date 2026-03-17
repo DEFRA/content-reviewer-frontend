@@ -87,10 +87,9 @@ export function buildExtractedHtml(html, sourceUrl) {
   }
 
   const bodyContent = sections.join('\n\n')
-  const totalChars = bodyContent
-    .replaceAll(/<[^>]*>/g, '')
-    .replaceAll(/\s+/g, ' ')
-    .trim().length
+  const tempDiv = doc.createElement('div')
+  tempDiv.innerHTML = bodyContent
+  const totalChars = tempDiv.textContent.replaceAll(/\s+/g, ' ').trim().length
 
   if (totalChars > MAX_EXTRACTED_CHARS) {
     throw new Error(
