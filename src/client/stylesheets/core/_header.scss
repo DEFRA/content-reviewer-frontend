@@ -19,14 +19,14 @@
   font-weight: normal;
   text-decoration: none;
   pointer-events: none;
+}
 
-  // Add divider after username
-  &::after {
-    content: '|';
-    margin-left: 1rem;
-    margin-right: 1rem;
-    color: govuk-colour('white');
-  }
+// Add divider after username navigation item
+.app-header .govuk-header__navigation-item:has(.app-header-user-name)::after {
+  content: '|';
+  margin-left: 1rem;
+  margin-right: 1rem;
+  color: govuk-colour('white');
 }
 
 @media (min-width: 40.0625em) {

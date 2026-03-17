@@ -2,7 +2,7 @@
 
 {% from "govuk/components/button/macro.njk" import govukButton %}
 
-{% block pageTitle %}You have been successfully logged out – Content Review Tool – GOV.UK{% endblock %}
+{% block pageTitle %}You have been successfully signed out – Content Review Tool – GOV.UK{% endblock %}
 
 {% block head %}
   <link href="{{ getAssetPath('stylesheets/application.scss') }}" rel="stylesheet">
@@ -26,7 +26,7 @@
       {# GOV.UK green confirmation panel – standard pattern for completed actions #}
       <div class="govuk-panel govuk-panel--confirmation">
         <h1 class="govuk-panel__title">
-          You have been successfully logged out
+          You have been successfully signed out
         </h1>
         <div class="govuk-panel__body">
           Content Review Tool
