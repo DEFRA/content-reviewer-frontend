@@ -89,7 +89,12 @@ export async function submitTextReview(textContent) {
     return data
   } catch (error) {
     console.error('[UPLOAD-HANDLER] Text review error:', error)
-    showError(error.message)
+    const userMessage =
+      error.message.includes('not valid JSON') ||
+      error.message.includes('Unexpected token')
+        ? 'Please enter a valid input'
+        : error.message
+    showError(userMessage)
     if (elements.textContentInput) {
       elements.textContentInput.disabled = false
     }
@@ -142,7 +147,12 @@ export async function submitFileUpload(file) {
     return data
   } catch (error) {
     console.error('[UPLOAD-HANDLER] Upload error:', error)
-    showError(`Upload failed: ${error.message}`)
+    const userMessage =
+      error.message.includes('not valid JSON') ||
+      error.message.includes('Unexpected token')
+        ? 'Please enter a valid input'
+        : error.message
+    showError(`Upload failed: ${userMessage}`)
     const elements = getElements()
     if (elements.textContentInput) {
       elements.textContentInput.disabled = false
