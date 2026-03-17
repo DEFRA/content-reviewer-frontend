@@ -3,6 +3,10 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
+vi.mock('./upload/radio-handler.js', () => ({
+  initializeRadioHandler: vi.fn()
+}))
+
 describe('upload-handler DOM setup', () => {
   let form
   let textInput
