@@ -7,7 +7,7 @@ import {
 } from './constants.js'
 import { getElements, getFileInput } from './dom-elements.js'
 import { updateCharacterCount } from './character-counter.js'
-import { hideError } from './ui-feedback.js'
+import { hideError, hideUrlError } from './ui-feedback.js'
 
 let fileClearBtn, textClearBtn
 
@@ -49,9 +49,14 @@ export function initializeTextInput() {
   textClearBtn = addClearButton(elements.textContentInput, 'Clear text', () => {
     elements.textContentInput.value = ''
     elements.textContentInput.disabled = false
+    // Also clear the URL input if present
+    if (elements.urlInput) {
+      elements.urlInput.value = ''
+    }
     updateMutualExclusion()
     updateCharacterCount()
     hideError()
+    hideUrlError()
   })
   // Place the Clear button after the character count message so the order is:
   // textarea → character count → Clear button

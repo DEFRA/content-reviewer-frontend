@@ -19,6 +19,23 @@ export function initializeElements() {
   elements.textFormGroup = document.getElementById('textFormGroup')
   elements.textFieldWrapper = document.getElementById('textFieldWrapper')
   elements.form = document.getElementById('uploadForm')
+  // URL input elements
+  elements.urlInput = document.getElementById('url-input')
+  elements.urlFormGroup = document.getElementById('urlFormGroup')
+  elements.urlError = document.getElementById('urlError')
+  elements.urlErrorMessage = document.getElementById('urlErrorMessage')
+  // Radio buttons
+  elements.actionRadioUrl = document.getElementById('action-url')
+  elements.actionRadioText = document.getElementById('action-text')
+  elements.actionRadioDocument = document.getElementById('action-document')
+  // Radio selection error elements
+  elements.actionSelectionGroup = document.getElementById(
+    'actionSelectionGroup'
+  )
+  elements.actionOptionError = document.getElementById('actionOptionError')
+  elements.actionOptionErrorMessage = document.getElementById(
+    'actionOptionErrorMessage'
+  )
 }
 
 export function getElements() {

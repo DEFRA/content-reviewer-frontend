@@ -31,3 +31,9 @@ export const HISTORY_UPDATE_DELAY = 500
 // Preview limits
 export const PREVIEW_WORDS_LIMIT = 3
 export const PREVIEW_CHARS_LIMIT = 50
+
+// Fetch options
+export const CREDENTIALS_SAME_ORIGIN = 'same-origin'
+
+// URL slug generation
+export const SLUG_MAX_LENGTH = 80
