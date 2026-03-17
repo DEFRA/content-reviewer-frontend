@@ -9,7 +9,7 @@ const HTTP_STATUS = {
 }
 
 const ALLOWED_HOSTNAME = 'www.gov.uk'
-const FETCH_TIMEOUT_MS = 10_000
+const FETCH_TIMEOUT_MS = 25_000
 
 /**
  * Validates the supplied URL string.

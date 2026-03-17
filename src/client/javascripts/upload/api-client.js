@@ -67,20 +67,18 @@ export async function submitUrlReview(htmlContent, sourceUrl) {
       .replaceAll(/-+/g, '-')
       .substring(0, SLUG_MAX_LENGTH)
     const fileName = `${slug}.html`
-    const blob = new Blob([htmlContent], { type: 'text/html' })
-    const file = new File([blob], fileName, { type: 'text/html' })
-    const formData = new FormData()
-    formData.append('file', file)
-    const response = await fetch('/api/upload', {
+    const response = await fetch('/api/review/text', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       credentials: CREDENTIALS_SAME_ORIGIN,
-      body: formData
+      body: JSON.stringify({ textContent: htmlContent, title: fileName })
     })
     showProgress('Processing upload...', PROGRESS_PROCESSING)
     if (!response.ok) {
       const errorData = await response.json()
       throw new Error(errorData.message || 'URL review upload failed')
     }
+    showProgress('Processing review...', PROGRESS_PROCESSING)
     const data = await response.json()
     hideProgress()
     handleReviewHistory(data, fileName)

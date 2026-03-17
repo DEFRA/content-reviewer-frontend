@@ -86,7 +86,10 @@ export const router = {
         path: '/api/fetch-url',
         handler: fetchUrlController.handler,
         options: {
-          auth: false
+          auth: false,
+          timeout: {
+            socket: 30_000 // Allow up to 30s for gov.uk pages to respond
+          }
         }
       })
 
