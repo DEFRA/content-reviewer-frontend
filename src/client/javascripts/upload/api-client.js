@@ -7,7 +7,9 @@ import {
   REDIRECT_DELAY,
   HISTORY_UPDATE_DELAY,
   PREVIEW_WORDS_LIMIT,
-  PREVIEW_CHARS_LIMIT
+  PREVIEW_CHARS_LIMIT,
+  CREDENTIALS_SAME_ORIGIN,
+  SLUG_MAX_LENGTH
 } from './constants.js'
 import { getElements, getFileInput } from './dom-elements.js'
 import { updateCharacterCount } from './character-counter.js'
@@ -55,6 +57,45 @@ function startAutoRefresh() {
   }
 }
 
+export async function submitUrlReview(htmlContent, sourceUrl) {
+  const elements = getElements()
+  try {
+    showProgress('Uploading extracted content...', PROGRESS_INITIAL)
+    const slug = sourceUrl
+      .replace(/^https?:\/\//, '')
+      .replaceAll(/[^a-z0-9]/gi, '-')
+      .replaceAll(/-+/g, '-')
+      .substring(0, SLUG_MAX_LENGTH)
+    const fileName = `${slug}.html`
+    const blob = new Blob([htmlContent], { type: 'text/html' })
+    const file = new File([blob], fileName, { type: 'text/html' })
+    const formData = new FormData()
+    formData.append('file', file)
+    const response = await fetch('/api/upload', {
+      method: 'POST',
+      credentials: CREDENTIALS_SAME_ORIGIN,
+      body: formData
+    })
+    showProgress('Processing upload...', PROGRESS_PROCESSING)
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.message || 'URL review upload failed')
+    }
+    const data = await response.json()
+    hideProgress()
+    handleReviewHistory(data, fileName)
+    startAutoRefresh()
+    return data
+  } catch (error) {
+    console.error('[UPLOAD-HANDLER] URL review upload error:', error)
+    showError(error.message)
+    if (elements.uploadButton) {
+      elements.uploadButton.disabled = false
+    }
+    throw error
+  }
+}
+
 export async function submitTextReview(textContent) {
   const elements = getElements()
   try {
@@ -66,7 +107,7 @@ export async function submitTextReview(textContent) {
     const response = await fetch('/api/review/text', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin',
+      credentials: CREDENTIALS_SAME_ORIGIN,
       body: JSON.stringify({ textContent })
     })
     if (!response.ok) {
@@ -104,7 +145,7 @@ export async function submitFileUpload(file) {
     formData.append('file', file)
     const response = await fetch('/api/upload', {
       method: 'POST',
-      credentials: 'same-origin',
+      credentials: CREDENTIALS_SAME_ORIGIN,
       body: formData
     })
     showProgress('Processing upload...', PROGRESS_PROCESSING)

@@ -4,13 +4,14 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { initializeElements } from './dom-elements.js'
 import { handleFormSubmit } from './form-handler.js'
-import { submitTextReview } from './api-client.js'
+import { submitTextReview, submitUrlReview } from './api-client.js'
 import { hideError, showError } from './ui-feedback.js'
 
 // Mock api-client so we control when submitTextReview resolves
 vi.mock('./api-client.js', () => ({
   submitTextReview: vi.fn(),
-  submitFileUpload: vi.fn()
+  submitFileUpload: vi.fn(),
+  submitUrlReview: vi.fn()
 }))
 
 // Mock ui-feedback so we can spy on hideError / showError
@@ -42,6 +43,7 @@ const VALID_TEXT =
   'This is some valid content that is long enough to submit for review purposes.'
 
 const TEXT_CONTENT_ID = 'text-content'
+const GOVUK_TEST_URL = 'https://www.gov.uk/test'
 
 function buildDom() {
   document.body.innerHTML = `
@@ -163,7 +165,7 @@ describe('upload/form-handler - hideError before valid submit', () => {
   })
 })
 
-describe('upload/form-handler - URL action', () => {
+describe('upload/form-handler - URL action validation', () => {
   let getSelectedAction
   let showUrlError
 
@@ -174,7 +176,6 @@ describe('upload/form-handler - URL action', () => {
     getSelectedAction = radioMod.getSelectedAction
     const feedbackMod = await import('./ui-feedback.js')
     showUrlError = feedbackMod.showUrlError
-    // Set radio to URL action
     getSelectedAction.mockReturnValue('url')
   })
 
@@ -195,43 +196,100 @@ describe('upload/form-handler - URL action', () => {
     const event = makeSubmitEvent()
     await handleFormSubmit(event)
 
-    expect(showUrlError).toHaveBeenCalledWith('Enter valid URL for review')
+    expect(showUrlError).toHaveBeenCalledWith('Enter a valid GOV.UK URL')
   })
 
-  it('should extract govspeak and log content for valid gov.uk URL', async () => {
+  it('should accept the root https://www.gov.uk/ URL without showing an error', async () => {
     const { parseGovUkUrl, extractGovspeakText } =
       await import('./url-extractor.js')
-    parseGovUkUrl.mockReturnValue(new URL('https://www.gov.uk/test'))
-    extractGovspeakText.mockResolvedValue('Extracted content')
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    const GOVUK_ROOT_URL = 'https://www.gov.uk/'
+    parseGovUkUrl.mockReturnValue(new URL(GOVUK_ROOT_URL))
+    extractGovspeakText.mockResolvedValue('<html><body>Home</body></html>')
+    submitUrlReview.mockResolvedValue(undefined)
 
     const urlInput = document.getElementById('url-input')
-    urlInput.value = 'https://www.gov.uk/test'
+    urlInput.value = GOVUK_ROOT_URL
 
     const event = makeSubmitEvent()
     await handleFormSubmit(event)
 
-    expect(consoleSpy).toHaveBeenCalledWith(
-      '[URL-EXTRACTOR] Extracted govspeak content:',
-      'Extracted content'
+    expect(showUrlError).not.toHaveBeenCalled()
+    expect(submitUrlReview).toHaveBeenCalledWith(
+      '<html><body>Home</body></html>',
+      GOVUK_ROOT_URL
     )
-    consoleSpy.mockRestore()
+  })
+})
+
+describe('upload/form-handler - URL action submission', () => {
+  let getSelectedAction
+  let showUrlError
+
+  beforeEach(async () => {
+    buildDom()
+    vi.clearAllMocks()
+    const radioMod = await import('./radio-handler.js')
+    getSelectedAction = radioMod.getSelectedAction
+    const feedbackMod = await import('./ui-feedback.js')
+    showUrlError = feedbackMod.showUrlError
+    getSelectedAction.mockReturnValue('url')
+  })
+
+  it('should call submitUrlReview with extracted HTML for valid gov.uk URL', async () => {
+    const { parseGovUkUrl, extractGovspeakText } =
+      await import('./url-extractor.js')
+    parseGovUkUrl.mockReturnValue(new URL(GOVUK_TEST_URL))
+    extractGovspeakText.mockResolvedValue(
+      '<html><body>Extracted content</body></html>'
+    )
+    submitUrlReview.mockResolvedValue(undefined)
+
+    const urlInput = document.getElementById('url-input')
+    urlInput.value = GOVUK_TEST_URL
+
+    const event = makeSubmitEvent()
+    await handleFormSubmit(event)
+
+    expect(submitUrlReview).toHaveBeenCalledWith(
+      '<html><body>Extracted content</body></html>',
+      GOVUK_TEST_URL
+    )
   })
 
   it('should show fetch-failed error when gov.uk URL fetch throws a network error', async () => {
     const { parseGovUkUrl, extractGovspeakText } =
       await import('./url-extractor.js')
-    parseGovUkUrl.mockReturnValue(new URL('https://www.gov.uk/test'))
+    parseGovUkUrl.mockReturnValue(new URL(GOVUK_TEST_URL))
     extractGovspeakText.mockRejectedValue(new Error('NetworkError'))
 
     const urlInput = document.getElementById('url-input')
-    urlInput.value = 'https://www.gov.uk/test'
+    urlInput.value = GOVUK_TEST_URL
 
     const event = makeSubmitEvent()
     await handleFormSubmit(event)
 
     expect(showUrlError).toHaveBeenCalledWith(
       'Could not retrieve content from that URL'
+    )
+  })
+
+  it('should show error when extracted text exceeds the character limit', async () => {
+    const { parseGovUkUrl, extractGovspeakText } =
+      await import('./url-extractor.js')
+    parseGovUkUrl.mockReturnValue(new URL(GOVUK_TEST_URL))
+    const limitError = new Error(
+      'Extracted text is too long. Maximum 100000 characters. The webpage has 120000 characters'
+    )
+    extractGovspeakText.mockRejectedValue(limitError)
+
+    const urlInput = document.getElementById('url-input')
+    urlInput.value = GOVUK_TEST_URL
+
+    const event = makeSubmitEvent()
+    await handleFormSubmit(event)
+
+    expect(showUrlError).toHaveBeenCalledWith(
+      'Extracted text is too long. Maximum 100000 characters. The webpage has 120000 characters'
     )
   })
 })

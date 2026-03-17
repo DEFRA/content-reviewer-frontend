@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { fetchUrlController } from './fetch-url.js'
 
+const HTTP_STATUS_OK = 200
+const HTTP_STATUS_BAD_REQUEST = 400
+const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500
+
 // Helper to build a minimal Hapi-style request / response toolkit pair
 function buildRequestAndH(url) {
   const responses = []
@@ -8,7 +12,7 @@ function buildRequestAndH(url) {
     response: vi.fn((body) => {
       const chain = {
         _body: body,
-        _code: 200,
+        _code: HTTP_STATUS_OK,
         _type: 'application/json',
         code(c) {
           this._code = c
@@ -22,7 +26,7 @@ function buildRequestAndH(url) {
       responses.push(chain)
       return chain
     }),
-    lastResponse: () => responses[responses.length - 1]
+    lastResponse: () => responses.at(-1)
   }
   const request = { query: { url } }
   return { request, h }
@@ -32,21 +36,21 @@ describe('fetchUrlController - invalid / missing URLs', () => {
   it('should return 400 when no url query param is supplied', async () => {
     const { request, h } = buildRequestAndH(undefined)
     const result = await fetchUrlController.handler(request, h)
-    expect(result._code).toBe(400)
+    expect(result._code).toBe(HTTP_STATUS_BAD_REQUEST)
     expect(result._body.success).toBe(false)
   })
 
   it('should return 400 for a non-gov.uk URL', async () => {
     const { request, h } = buildRequestAndH('https://example.com/page')
     const result = await fetchUrlController.handler(request, h)
-    expect(result._code).toBe(400)
+    expect(result._code).toBe(HTTP_STATUS_BAD_REQUEST)
     expect(result._body.success).toBe(false)
   })
 
   it('should return 400 for a completely invalid URL string', async () => {
     const { request, h } = buildRequestAndH('not-a-url')
     const result = await fetchUrlController.handler(request, h)
-    expect(result._code).toBe(400)
+    expect(result._code).toBe(HTTP_STATUS_BAD_REQUEST)
   })
 })
 
@@ -69,7 +73,7 @@ describe('fetchUrlController - valid gov.uk URLs', () => {
   it('should return 200 with HTML body for a valid gov.uk URL', async () => {
     const { request, h } = buildRequestAndH(GOVUK_URL)
     const result = await fetchUrlController.handler(request, h)
-    expect(result._code).toBe(200)
+    expect(result._code).toBe(HTTP_STATUS_OK)
     expect(result._body).toBe(MOCK_HTML)
     expect(result._type).toBe('text/html')
   })
@@ -87,7 +91,7 @@ describe('fetchUrlController - valid gov.uk URLs', () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network failure'))
     const { request, h } = buildRequestAndH(GOVUK_URL)
     const result = await fetchUrlController.handler(request, h)
-    expect(result._code).toBe(500)
+    expect(result._code).toBe(HTTP_STATUS_INTERNAL_SERVER_ERROR)
     expect(result._body.success).toBe(false)
   })
 
@@ -95,6 +99,6 @@ describe('fetchUrlController - valid gov.uk URLs', () => {
     globalThis.fetch = vi.fn().mockResolvedValue({ ok: false, status: 503 })
     const { request, h } = buildRequestAndH(GOVUK_URL)
     const result = await fetchUrlController.handler(request, h)
-    expect(result._code).toBe(500)
+    expect(result._code).toBe(HTTP_STATUS_INTERNAL_SERVER_ERROR)
   })
 })

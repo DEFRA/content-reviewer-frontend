@@ -13,6 +13,11 @@ function showUrlPanel() {
   if (elements.textFormGroup) {
     elements.textFormGroup.hidden = true
   }
+  if (elements.characterCountMessage) {
+    elements.characterCountMessage.textContent = ''
+    elements.characterCountMessage.style.display = 'none'
+    elements.characterCountMessage.classList.remove('govuk-error-message')
+  }
   hideError()
 }
 

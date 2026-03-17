@@ -10,13 +10,17 @@ import {
   showRadioError,
   hideRadioError
 } from './ui-feedback.js'
-import { submitTextReview, submitFileUpload } from './api-client.js'
+import {
+  submitTextReview,
+  submitFileUpload,
+  submitUrlReview
+} from './api-client.js'
 import { parseGovUkUrl, extractGovspeakText } from './url-extractor.js'
 import { getSelectedAction } from './radio-handler.js'
 
 const ERROR_ENTER_TEXT = 'Enter text content for review'
 const ERROR_ENTER_URL = 'Enter URL for content review'
-const ERROR_INVALID_URL = 'Enter valid URL for review'
+const ERROR_INVALID_URL = 'Enter a valid GOV.UK URL'
 const ERROR_NO_OPTION = 'Select an option to proceed'
 const ERROR_FETCH_FAILED = 'Could not retrieve content from that URL'
 
@@ -52,12 +56,15 @@ async function handleUrlSubmit(elements) {
   }
   try {
     hideUrlError()
-    const extractedText = await extractGovspeakText(urlValue)
-    console.log('[URL-EXTRACTOR] Extracted govspeak content:', extractedText)
+    const htmlContent = await extractGovspeakText(urlValue)
+    await submitUrlReview(htmlContent, urlValue)
     enableSubmit(elements)
   } catch (error) {
-    console.error('[URL-EXTRACTOR] Failed to extract content:', error)
-    showUrlError(ERROR_FETCH_FAILED)
+    console.error('[UPLOAD-HANDLER] Failed to extract content:', error)
+    const message = error.message?.startsWith('Extracted text is too long')
+      ? error.message
+      : ERROR_FETCH_FAILED
+    showUrlError(message)
     enableSubmit(elements)
   }
 }

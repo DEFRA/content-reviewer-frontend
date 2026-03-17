@@ -5,18 +5,20 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
   parseGovUkUrl,
   extractGovspeakText,
-  parseGovspeakFromHtml
+  buildExtractedHtml
 } from './url-extractor.js'
 
 const GOVUK_URL = 'https://www.gov.uk/test-page'
 const NON_GOVUK_URL = 'https://example.com/page'
 const INVALID_URL = 'not-a-url'
+const MAX_EXTRACTED_CHARS = 100_000
+const GOVUK_HOSTNAME = 'www.gov.uk'
 
 describe('upload/url-extractor - parseGovUkUrl', () => {
   it('should return a URL object for a valid gov.uk URL', () => {
     const result = parseGovUkUrl(GOVUK_URL)
     expect(result).toBeInstanceOf(URL)
-    expect(result.hostname).toBe('www.gov.uk')
+    expect(result.hostname).toBe(GOVUK_HOSTNAME)
   })
 
   it('should return null for a non-gov.uk URL', () => {
@@ -40,62 +42,116 @@ describe('upload/url-extractor - parseGovUkUrl', () => {
     )
     expect(result).toBeInstanceOf(URL)
   })
+
+  it('should accept the root https://www.gov.uk/ URL', () => {
+    const result = parseGovUkUrl('https://www.gov.uk/')
+    expect(result).toBeInstanceOf(URL)
+    expect(result.hostname).toBe(GOVUK_HOSTNAME)
+  })
+
+  it('should accept https://www.gov.uk without trailing slash', () => {
+    const result = parseGovUkUrl('https://www.gov.uk')
+    expect(result).toBeInstanceOf(URL)
+    expect(result.hostname).toBe(GOVUK_HOSTNAME)
+  })
+
+  it('should return null for a URL with gov.uk in the path but wrong hostname', () => {
+    const result = parseGovUkUrl('https://example.com/gov.uk/page')
+    expect(result).toBeNull()
+  })
 })
 
-describe('upload/url-extractor - parseGovspeakFromHtml', () => {
-  it('should extract text from govspeak divs', () => {
+describe('upload/url-extractor - buildExtractedHtml content extraction', () => {
+  it('should extract content from div[data-module="govspeak"]', () => {
     const html = `
       <html><body>
         <header>Header content</header>
-        <div data-module="govspeak">First govspeak block</div>
-        <div data-module="govspeak">Second govspeak block</div>
+        <div data-module="govspeak"><p>Govspeak content</p></div>
         <footer>Footer content</footer>
       </body></html>
     `
-    const result = parseGovspeakFromHtml(html)
-    expect(result).toContain('First govspeak block')
-    expect(result).toContain('Second govspeak block')
+    const result = buildExtractedHtml(html, GOVUK_URL)
+    expect(result).toContain('Govspeak content')
   })
 
-  it('should not include header or footer text', () => {
+  it('should extract content from .govuk-grid-column-two-thirds selector', () => {
+    const html = `
+      <html><body>
+        <div class="govuk-grid-column-two-thirds"><p>Main column content</p></div>
+      </body></html>
+    `
+    const result = buildExtractedHtml(html, GOVUK_URL)
+    expect(result).toContain('Main column content')
+  })
+
+  it('should not include header or footer content', () => {
     const html = `
       <html><body>
         <header>Should be removed</header>
-        <div data-module="govspeak">Keep this</div>
+        <div data-module="govspeak"><p>Keep this</p></div>
         <footer>Should be removed</footer>
       </body></html>
     `
-    const result = parseGovspeakFromHtml(html)
+    const result = buildExtractedHtml(html, GOVUK_URL)
     expect(result).not.toContain('Should be removed')
     expect(result).toContain('Keep this')
   })
 
-  it('should return empty string when no govspeak divs exist', () => {
-    const html = '<html><body><p>No govspeak here</p></body></html>'
-    const result = parseGovspeakFromHtml(html)
-    expect(result).toBe('')
-  })
-
-  it('should join multiple govspeak blocks with double newline', () => {
+  it('should skip selectors that are absent without throwing', () => {
     const html = `
       <html><body>
-        <div data-module="govspeak">Block one</div>
-        <div data-module="govspeak">Block two</div>
+        <div data-module="govspeak"><p>Only govspeak present</p></div>
       </body></html>
     `
-    const result = parseGovspeakFromHtml(html)
-    expect(result).toBe('Block one\n\nBlock two')
+    expect(() => buildExtractedHtml(html, GOVUK_URL)).not.toThrow()
+    const result = buildExtractedHtml(html, GOVUK_URL)
+    expect(result).toContain('Only govspeak present')
   })
+})
 
-  it('should ignore empty govspeak divs', () => {
+describe('upload/url-extractor - buildExtractedHtml output format and limits', () => {
+  it('should return a valid HTML document string', () => {
     const html = `
       <html><body>
-        <div data-module="govspeak">  </div>
-        <div data-module="govspeak">Real content</div>
+        <div data-module="govspeak"><p>Content</p></div>
       </body></html>
     `
-    const result = parseGovspeakFromHtml(html)
-    expect(result).toBe('Real content')
+    const result = buildExtractedHtml(html, GOVUK_URL)
+    expect(result).toContain('<!DOCTYPE html>')
+    expect(result).toContain('<html')
+    expect(result).toContain('</html>')
+  })
+
+  it('should embed the source URL as a meta tag', () => {
+    const html = `
+      <html><body>
+        <div data-module="govspeak"><p>Content</p></div>
+      </body></html>
+    `
+    const result = buildExtractedHtml(html, GOVUK_URL)
+    expect(result).toContain(GOVUK_URL)
+  })
+
+  it('should throw when extracted text exceeds the maximum character limit', () => {
+    const longText = 'a'.repeat(MAX_EXTRACTED_CHARS + 1)
+    const html = `
+      <html><body>
+        <div data-module="govspeak"><p>${longText}</p></div>
+      </body></html>
+    `
+    expect(() => buildExtractedHtml(html, GOVUK_URL)).toThrow(
+      /Extracted text is too long\. Maximum 100000 characters\. The webpage has \d+ characters/
+    )
+  })
+
+  it('should not throw when extracted text is exactly the maximum character limit', () => {
+    const exactText = 'a'.repeat(MAX_EXTRACTED_CHARS)
+    const html = `
+      <html><body>
+        <div data-module="govspeak"><p>${exactText}</p></div>
+      </body></html>
+    `
+    expect(() => buildExtractedHtml(html, GOVUK_URL)).not.toThrow()
   })
 })
 
@@ -104,10 +160,10 @@ describe('upload/url-extractor - extractGovspeakText', () => {
     vi.restoreAllMocks()
   })
 
-  it('should call the proxy endpoint and return extracted govspeak text', async () => {
+  it('should call the proxy endpoint and return extracted HTML string', async () => {
     const mockHtml = `
       <html><body>
-        <div data-module="govspeak">Fetched content</div>
+        <div data-module="govspeak"><p>Fetched content</p></div>
       </body></html>
     `
     globalThis.fetch = vi.fn().mockResolvedValue({
@@ -117,6 +173,7 @@ describe('upload/url-extractor - extractGovspeakText', () => {
 
     const result = await extractGovspeakText(GOVUK_URL)
     expect(result).toContain('Fetched content')
+    expect(result).toContain('<!DOCTYPE html>')
     expect(globalThis.fetch).toHaveBeenCalledWith(
       `/api/fetch-url?url=${encodeURIComponent(GOVUK_URL)}`
     )

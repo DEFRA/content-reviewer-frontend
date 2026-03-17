@@ -12,6 +12,9 @@ vi.mock('./ui-feedback.js', () => ({
   hideRadioError: vi.fn()
 }))
 
+const ACTION_URL_ID = 'action-url'
+const ACTION_TEXT_ID = 'action-text'
+
 function buildDom() {
   document.body.innerHTML = `
     <form id="uploadForm">
@@ -68,7 +71,7 @@ describe('upload/radio-handler - initializeRadioHandler', () => {
 
   it('should show URL panel when URL radio is selected', () => {
     initializeRadioHandler()
-    const urlRadio = document.getElementById('action-url')
+    const urlRadio = document.getElementById(ACTION_URL_ID)
     urlRadio.checked = true
     urlRadio.dispatchEvent(new Event('change'))
 
@@ -78,7 +81,7 @@ describe('upload/radio-handler - initializeRadioHandler', () => {
 
   it('should show text panel when text radio is selected', () => {
     initializeRadioHandler()
-    const textRadio = document.getElementById('action-text')
+    const textRadio = document.getElementById(ACTION_TEXT_ID)
     textRadio.checked = true
     textRadio.dispatchEvent(new Event('change'))
 
@@ -88,7 +91,7 @@ describe('upload/radio-handler - initializeRadioHandler', () => {
 
   it('should call hideRadioError when a radio button is changed', () => {
     initializeRadioHandler()
-    const urlRadio = document.getElementById('action-url')
+    const urlRadio = document.getElementById(ACTION_URL_ID)
     urlRadio.checked = true
     urlRadio.dispatchEvent(new Event('change'))
     expect(hideRadioError).toHaveBeenCalled()
@@ -109,12 +112,12 @@ describe('upload/radio-handler - getSelectedAction', () => {
   })
 
   it('should return "url" when URL radio is checked', () => {
-    document.getElementById('action-url').checked = true
+    document.getElementById(ACTION_URL_ID).checked = true
     expect(getSelectedAction()).toBe('url')
   })
 
   it('should return "text" when text radio is checked', () => {
-    document.getElementById('action-text').checked = true
+    document.getElementById(ACTION_TEXT_ID).checked = true
     expect(getSelectedAction()).toBe('text')
   })
 })

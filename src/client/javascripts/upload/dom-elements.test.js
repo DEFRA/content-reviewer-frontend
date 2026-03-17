@@ -8,7 +8,7 @@ import {
   getFileInput
 } from './dom-elements.js'
 
-describe('upload/dom-elements', () => {
+describe('upload/dom-elements - element initialization', () => {
   beforeEach(() => {
     document.body.innerHTML = `
       <div id="errorSummary" hidden>
@@ -82,6 +82,18 @@ describe('upload/dom-elements', () => {
     expect(elements.textContentInput.id).toBe('text-content')
     expect(elements.form.id).toBe('uploadForm')
     expect(elements.uploadButton.id).toBe('uploadButton')
+  })
+})
+
+describe('upload/dom-elements - file input and edge cases', () => {
+  beforeEach(() => {
+    document.body.innerHTML = `
+      <form id="uploadForm">
+        <input type="file" id="file-upload" />
+        <textarea id="text-content"></textarea>
+        <button id="uploadButton" type="submit">Upload</button>
+      </form>
+    `
   })
 
   it('should get file input element', () => {
