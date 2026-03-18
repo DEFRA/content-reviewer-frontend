@@ -25,7 +25,7 @@
       navigationClasses: "govuk-header__navigation--end",
       navigation: [
         {
-          text: user.displayName or user.email or user.name or 'User',
+          text: (user.displayName or user.email or user.name or 'User') + ' | ',
           classes: "app-header-user-name"
         },
         {
