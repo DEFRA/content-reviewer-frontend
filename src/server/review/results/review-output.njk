@@ -1,52 +1,49 @@
 {# 
   Review Output Component
-  Renders structured review data from Bedrock into HTML
-  
+  Renders structured review data from result/{reviewId}.json
+
   Data structure (passed as 'reviewData'):
   {
     scores: {
-      "Plain English": { score: 4, note: "Good use of simple language" },
-      ...
+      "Accessibility": { score: 4, note: "" },
+      "Style":         { score: 3, note: "" },
+      "Tone":          { score: 5, note: "" },
+      "Overall":       { score: 4, note: "" }
     },
     reviewedContent: {
-      plainText: "User's original text",
+      annotatedSections: [
+        { text: "The department should ", issueIdx: null, category: null },
+        { text: "utilise",               issueIdx: 0,    category: "plain-english" },
+        { text: " all resources",         issueIdx: null, category: null }
+      ],
       issues: [
-        { category: "plain-english", text: "utilize", position: 123 },
-        ...
+        { issueId, absStart, absEnd, category, severity, why, suggested, evidence }
       ]
     },
     improvements: [
-      {
-        severity: "high",
-        category: "Plain English",
-        issue: "Use of complex jargon",
-        why: "Creates barriers for users",
-        current: "utilize",
-        suggested: "use"
-      },
-      ...
+      { issueId, severity, category, issue, why, current, suggested }
     ]
   }
 #}
 
 <div class="review-output">
-  
-  {# Scores Section - Using GOV.UK Accordion without "Show all sections" #}
+
+  {# ── Scorecard ────────────────────────────────────────────────────────── #}
   {% if reviewData.scores %}
-    <div class="govuk-accordion" data-module="govuk-accordion" data-show-all-sections="false" id="accordion-scores">
+    <div class="govuk-accordion" data-module="govuk-accordion" id="accordion-scores">
       <div class="govuk-accordion__section govuk-accordion__section--expanded">
         <div class="govuk-accordion__section-header">
           <h2 class="govuk-accordion__section-heading">
-            <button type="button" id="accordion-scores-heading-1" 
-                    aria-controls="accordion-scores-content-1" 
-                    class="govuk-accordion__section-button" 
+            <button type="button" id="accordion-scores-heading-1"
+                    aria-controls="accordion-scores-content-1"
+                    class="govuk-accordion__section-button"
                     aria-expanded="true">
               Content scorecard
             </button>
           </h2>
         </div>
-        <div id="accordion-scores-content-1" 
-             class="govuk-accordion__section-content" 
+        <div id="accordion-scores-content-1"
+             class="govuk-accordion__section-content"
              aria-labelledby="accordion-scores-heading-1">
           <dl class="govuk-summary-list">
             {% for category, scoreData in reviewData.scores %}
@@ -54,8 +51,10 @@
                 <dt class="govuk-summary-list__key">{{ category }}</dt>
                 <dd class="govuk-summary-list__value">
                   <span class="score-value">{{ scoreData.score }}/5</span>
-                  <span class="score-separator"> - </span>
-                  <span class="score-note">{{ scoreData.note }}</span>
+                  {% if scoreData.note %}
+                    <span class="score-separator"> — </span>
+                    <span class="score-note">{{ scoreData.note }}</span>
+                  {% endif %}
                 </dd>
               </div>
             {% endfor %}
@@ -65,35 +64,23 @@
     </div>
 
     <style>
-      /* Hide the "Show all sections" control at the top of accordion */
-      #accordion-scores .govuk-accordion__show-all {
-        display: none !important;
-      }
+      #accordion-scores .govuk-accordion__show-all { display: none !important; }
 
-      .score-separator {
-        color: #505a5f;
-        font-weight: normal;
-      }
+      .score-separator { color: #505a5f; font-weight: normal; }
 
-      /* Highlighted issue links - preserve mark styling, remove default link appearance */
-      a.highlight-link {
-        text-decoration: none;
-        color: inherit;
-      }
+      /* Highlight colours per category */
+      mark.highlight-plain-english  { background: #fff0c8; }
+      mark.highlight-govuk-style    { background: #d4edff; }
+      mark.highlight-accessibility  { background: #ffe0e0; }
+      mark.highlight-tone           { background: #e0ffe0; }
+      mark.highlight-general        { background: #f0e0ff; }
 
+      a.highlight-link { text-decoration: none; color: inherit; }
       a.highlight-link:hover mark,
-      a.highlight-link:focus mark {
-        outline: 3px solid #ffdd00;
-        outline-offset: 1px;
-        cursor: pointer;
-      }
+      a.highlight-link:focus mark  { outline: 3px solid #ffdd00; outline-offset: 1px; cursor: pointer; }
 
-      /* Smooth scroll for anchor navigation */
-      html {
-        scroll-behavior: smooth;
-      }
+      html { scroll-behavior: smooth; }
 
-      /* Highlight the improvement item when navigated to */
       .improvement-item:target {
         outline: 3px solid #1d70b8;
         outline-offset: 4px;
@@ -102,61 +89,60 @@
       }
     </style>
   {% endif %}
-  
-  {# Reviewed Content Section with Highlights #}
-  <section class="reviewed-content">
-    <h2>Your Content (with issues highlighted)</h2>
-    {%- if reviewData.reviewedContent and reviewData.reviewedContent.plainText -%}
-      {%- set content = reviewData.reviewedContent.plainText | trim -%}
-      {%- set issues = reviewData.reviewedContent.issues -%}
-      {%- if issues and issues.length > 0 -%}
-        {%- set highlightedContent = content -%}
-        {%- for issue in issues -%}
-          {%- set issueText = issue.text -%}
-          {%- set categoryClass = 'highlight-' + issue.category -%}
-          {%- set matchedIndex = 0 -%}
-          {%- for improvement in reviewData.improvements -%}
-            {%- if matchedIndex == 0 and improvement.current and improvement.current == issueText -%}
-              {%- set matchedIndex = loop.index -%}
-            {%- endif -%}
-          {%- endfor -%}
-          {%- if matchedIndex == 0 -%}
-            {%- for improvement in reviewData.improvements -%}
-              {%- if matchedIndex == 0 and improvement.current and issueText in improvement.current -%}
-                {%- set matchedIndex = loop.index -%}
-              {%- endif -%}
-            {%- endfor -%}
+
+  {# ── Annotated content ───────────────────────────────────────────────── #}
+  <section class="reviewed-content govuk-!-margin-top-6">
+    <h2 class="govuk-heading-m">Your content (issues highlighted)</h2>
+
+    {%- if reviewData.reviewedContent and reviewData.reviewedContent.annotatedSections
+          and reviewData.reviewedContent.annotatedSections.length > 0 -%}
+      <div class="content-body govuk-body">
+        {%- for section in reviewData.reviewedContent.annotatedSections -%}
+          {%- if section.issueIdx is not null and section.issueIdx is not undefined -%}
+            {%- set categoryClass = 'highlight-' + (section.category | lower | replace(' ', '-')) -%}
+            <a href="#improvement-{{ section.issueIdx }}" class="highlight-link"><mark class="{{ categoryClass }}">{{ section.text }}</mark></a>
+          {%- else -%}
+            {{ section.text }}
           {%- endif -%}
-          {%- set anchorId = 'improvement-' + (matchedIndex if matchedIndex > 0 else loop.index) -%}
-          {%- set markedText = '<a href="#' + anchorId + '" class="highlight-link"><mark class="' + categoryClass + '">' + issueText + '</mark></a>' -%}
-          {%- set highlightedContent = highlightedContent | replace(issueText, markedText) -%}
         {%- endfor -%}
-    <div class="content-body">{{ highlightedContent | trim | safe }}</div>
-      {%- else -%}
-    <div class="content-body">{{ content }}</div>
-      {%- endif -%}
+      </div>
+    {%- elif reviewData.reviewedContent and reviewData.reviewedContent.issues
+            and reviewData.reviewedContent.issues.length > 0 -%}
+      {# Fallback: no annotatedSections but issues exist — list evidence spans only #}
+      <div class="content-body govuk-body">
+        {% for issue in reviewData.reviewedContent.issues %}
+          <a href="#improvement-{{ loop.index0 }}" class="highlight-link">
+            <mark class="highlight-{{ issue.category | lower | replace(' ', '-') }}">{{ issue.evidence }}</mark>
+          </a>{{ ' ' }}
+        {% endfor %}
+      </div>
     {%- else -%}
-    <div class="content-body"><p>No content available</p></div>
+      <div class="content-body govuk-body"><p>No content available for annotation.</p></div>
     {%- endif -%}
   </section>
 
-  {# Priority Improvements Section #}
-  <section class="example-improvements">
-    <h2>Priority Improvements</h2>
+  {# ── Priority Improvements ───────────────────────────────────────────── #}
+  <section class="example-improvements govuk-!-margin-top-6">
+    <h2 class="govuk-heading-m">Priority improvements</h2>
     {% if reviewData.improvements and reviewData.improvements.length > 0 %}
-      <ol class="improvement-list">
+      <ol class="improvement-list govuk-list govuk-list--number">
         {% for improvement in reviewData.improvements %}
-          <li id="improvement-{{ loop.index }}" class="improvement-item severity-{{ improvement.severity }}">
-            <span class="category-badge">{{ improvement.category }}</span>
-            <strong class="issue-title">{{ improvement.issue }}</strong>
-            <p class="issue-description">{{ improvement.why }}</p>
+          <li id="improvement-{{ loop.index0 }}"
+              class="improvement-item severity-{{ improvement.severity }} govuk-!-margin-bottom-4">
+            <span class="govuk-tag govuk-tag--blue govuk-!-margin-right-2">{{ improvement.category }}</span>
+            <strong class="issue-title govuk-body-l">{{ improvement.issue }}</strong>
+            <p class="issue-description govuk-body">{{ improvement.why }}</p>
             {% if improvement.current or improvement.suggested %}
-              <div class="issue-example">
+              <div class="issue-example govuk-inset-text">
                 {% if improvement.current %}
-                  <p class="before-text"><strong>Current:</strong> {{ improvement.current }}</p>
+                  <p class="before-text govuk-body">
+                    <strong>Current:</strong> {{ improvement.current }}
+                  </p>
                 {% endif %}
                 {% if improvement.suggested %}
-                  <p class="after-text"><strong>Suggested:</strong> {{ improvement.suggested }}</p>
+                  <p class="after-text govuk-body">
+                    <strong>Suggested:</strong> {{ improvement.suggested }}
+                  </p>
                 {% endif %}
               </div>
             {% endif %}
@@ -164,7 +150,7 @@
         {% endfor %}
       </ol>
     {% else %}
-      <p>No improvements suggested</p>
+      <p class="govuk-body">No improvements suggested.</p>
     {% endif %}
   </section>
 
