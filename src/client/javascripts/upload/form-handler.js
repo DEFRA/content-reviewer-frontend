@@ -41,6 +41,13 @@ function handleTextError(message, elements) {
   enableSubmit(elements)
 }
 
+function clearAndRefocusUrlInput(elements) {
+  if (elements.urlInput) {
+    elements.urlInput.value = ''
+    elements.urlInput.focus()
+  }
+}
+
 async function handleUrlSubmit(elements) {
   const urlValue = elements.urlInput?.value?.trim()
   if (!urlValue) {
@@ -58,6 +65,7 @@ async function handleUrlSubmit(elements) {
     hideUrlError()
     const htmlContent = await extractGovspeakText(urlValue)
     await submitUrlReview(htmlContent, urlValue)
+    clearAndRefocusUrlInput(elements)
     enableSubmit(elements)
   } catch (error) {
     console.error('[UPLOAD-HANDLER] Failed to extract content:', error)
