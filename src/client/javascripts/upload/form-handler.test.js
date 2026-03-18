@@ -293,3 +293,63 @@ describe('upload/form-handler - URL action submission', () => {
     )
   })
 })
+
+describe('upload/form-handler - URL clear and refocus after success', () => {
+  let getSelectedAction
+
+  beforeEach(async () => {
+    buildDom()
+    vi.clearAllMocks()
+    const radioMod = await import('./radio-handler.js')
+    getSelectedAction = radioMod.getSelectedAction
+    getSelectedAction.mockReturnValue('url')
+  })
+
+  it('should clear the URL input after a successful URL review submission', async () => {
+    const { parseGovUkUrl, extractGovspeakText } =
+      await import('./url-extractor.js')
+    parseGovUkUrl.mockReturnValue(new URL(GOVUK_TEST_URL))
+    extractGovspeakText.mockResolvedValue('<html><body>Content</body></html>')
+    submitUrlReview.mockResolvedValue(undefined)
+
+    const urlInput = document.getElementById('url-input')
+    urlInput.value = GOVUK_TEST_URL
+
+    const event = makeSubmitEvent()
+    await handleFormSubmit(event)
+
+    expect(urlInput.value).toBe('')
+  })
+
+  it('should set focus back to the URL input after a successful URL review submission', async () => {
+    const { parseGovUkUrl, extractGovspeakText } =
+      await import('./url-extractor.js')
+    parseGovUkUrl.mockReturnValue(new URL(GOVUK_TEST_URL))
+    extractGovspeakText.mockResolvedValue('<html><body>Content</body></html>')
+    submitUrlReview.mockResolvedValue(undefined)
+
+    const urlInput = document.getElementById('url-input')
+    urlInput.value = GOVUK_TEST_URL
+    const focusSpy = vi.spyOn(urlInput, 'focus')
+
+    const event = makeSubmitEvent()
+    await handleFormSubmit(event)
+
+    expect(focusSpy).toHaveBeenCalledOnce()
+  })
+
+  it('should NOT clear the URL input when URL review throws an error', async () => {
+    const { parseGovUkUrl, extractGovspeakText } =
+      await import('./url-extractor.js')
+    parseGovUkUrl.mockReturnValue(new URL(GOVUK_TEST_URL))
+    extractGovspeakText.mockRejectedValue(new Error('NetworkError'))
+
+    const urlInput = document.getElementById('url-input')
+    urlInput.value = GOVUK_TEST_URL
+
+    const event = makeSubmitEvent()
+    await handleFormSubmit(event)
+
+    expect(urlInput.value).toBe(GOVUK_TEST_URL)
+  })
+})
