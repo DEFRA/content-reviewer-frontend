@@ -21,6 +21,15 @@
   pointer-events: none;
 }
 
+// Add visual divider before Sign out link
+.app-header-sign-out::before {
+  content: '|';
+  padding-right: 0.75em;
+  padding-left: 0.5em;
+  color: govuk-colour('white');
+  font-size: 1.1em;
+}
+
 @media (min-width: 40.0625em) {
   .app-header .govuk-width-container {
     margin-left: 30px;
