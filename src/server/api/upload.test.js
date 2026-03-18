@@ -35,23 +35,25 @@ vi.mock('../common/helpers/logging/logger.js', () => ({
   }))
 }))
 
+function _mockAgent() {
+  // Intentional empty mock for undici Agent
+}
+
 // Use vi.hoisted so all references are available when factories are hoisted
-const { MockAgent, undiciFetchMock, FormDataMock } = vi.hoisted(() => {
-  function MockAgent() {}
-  const undiciFetchMock = vi.fn()
-  function FormDataMock() {
+const { undiciFetchMock, formDataMock } = vi.hoisted(() => {
+  const fetchMock = vi.fn()
+  function formDataConstructor() {
     this.append = vi.fn()
     this.getHeaders = vi.fn(() => ({ 'content-type': 'multipart/form-data' }))
   }
-  return { MockAgent, undiciFetchMock, FormDataMock }
+  return { undiciFetchMock: fetchMock, formDataMock: formDataConstructor }
 })
-
 vi.mock('undici', () => ({
-  Agent: MockAgent,
+  Agent: _mockAgent,
   fetch: undiciFetchMock
 }))
 
-vi.mock('form-data', () => ({ default: FormDataMock }))
+vi.mock('form-data', () => ({ default: formDataMock }))
 
 function createMockFile(
   filename = TEST_FILENAME,

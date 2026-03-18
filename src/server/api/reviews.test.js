@@ -25,10 +25,13 @@ vi.mock('../common/helpers/get-user-identifier.js', () => ({
 }))
 
 // Use vi.hoisted so MockAgent is available when the factory is hoisted
-const { MockAgent } = vi.hoisted(() => {
-  function MockAgent() {}
-  return { MockAgent }
-})
+const { MockAgent } = vi.hoisted(() => ({
+  MockAgent: class {
+    dispatch() {
+      return this
+    }
+  }
+}))
 
 vi.mock('undici', () => ({
   Agent: MockAgent
@@ -164,6 +167,48 @@ describe('getReviewsController - Custom Pagination', () => {
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
       'http://localhost:4000/api/reviews?limit=10&skip=10',
+      expect.objectContaining({})
+    )
+  })
+
+  it('should use pageSize as effective limit when limit exceeds pageSize', async () => {
+    const query = {
+      page: '2',
+      limit: '50'
+    }
+    mockRequest = createMockRequest(query)
+    const mockReviews = []
+
+    globalThis.fetch.mockResolvedValueOnce(
+      createSuccessResponse(mockReviews, null)
+    )
+
+    await getReviewsController(mockRequest, mockH)
+
+    // limit=50 > PAGE_SIZE=25, so effectivePageSize=25, skip=(2-1)*25=25
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'http://localhost:4000/api/reviews?limit=50&skip=25',
+      expect.objectContaining({})
+    )
+  })
+
+  it('should use skip=0 for page 1 when limit exceeds pageSize', async () => {
+    const query = {
+      page: '1',
+      limit: '50'
+    }
+    mockRequest = createMockRequest(query)
+    const mockReviews = [createMockReview()]
+
+    globalThis.fetch.mockResolvedValueOnce(
+      createSuccessResponse(mockReviews, null)
+    )
+
+    await getReviewsController(mockRequest, mockH)
+
+    // limit=50 > PAGE_SIZE=25, so effectivePageSize=25, skip=(1-1)*25=0
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'http://localhost:4000/api/reviews?limit=50&skip=0',
       expect.objectContaining({})
     )
   })

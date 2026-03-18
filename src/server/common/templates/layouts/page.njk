@@ -15,53 +15,58 @@
 {% endblock %}
 
 {% block header %}
-  {{ govukHeader({
-    homepageUrl: "https://www.gov.uk/",
-    classes: "app-header",
-    containerClasses: "govuk-width-container",
-    useTudorCrown: true
-  }) }}
-
-  {# GOV.UK Service Navigation with authentication - Username and Sign in/out buttons in top right #}
+  {# GOV.UK Header with authentication in top right #}
   {% if user %}
-    {{ govukServiceNavigation({
-      serviceUrl: "/",
+    {{ govukHeader({
+      homepageUrl: "https://www.gov.uk/",
+      classes: "app-header",
+      containerClasses: "govuk-width-container",
+      useTudorCrown: true,
+      navigationClasses: "govuk-header__navigation--end",
       navigation: [
         {
-          href: "/",
-          text: "Home",
-          active: true if pageTitle == 'Home' else false
+          text: (user.displayName or user.email or user.name or 'User'),
+          classes: "app-header-user-name"
         },
         {
-          href: "/about",
-          text: "About",
-          active: true if pageTitle == 'About' else false
+          href: "/auth/logout",
+          text: "Sign out",
+          classes: "app-header-sign-out"
         }
-      ],
-      slots: {
-        navigationEnd: '<li class="govuk-service-navigation__item app-service-navigation__item--auth"><span class="govuk-service-navigation__text">' + (user.displayName or user.email or user.name or 'User') + '</span></li><li class="govuk-service-navigation__item app-service-navigation__item--auth"><a class="govuk-service-navigation__link" href="/auth/logout">Sign out</a></li>'
-      }
+      ]
     }) }}
   {% else %}
-    {{ govukServiceNavigation({
-      serviceUrl: "/",
+    {{ govukHeader({
+      homepageUrl: "https://www.gov.uk/",
+      classes: "app-header",
+      containerClasses: "govuk-width-container",
+      useTudorCrown: true,
+      navigationClasses: "govuk-header__navigation--end",
       navigation: [
         {
-          href: "/",
-          text: "Home",
-          active: true if pageTitle == 'Home' else false
-        },
-        {
-          href: "/about",
-          text: "About",
-          active: true if pageTitle == 'About' else false
+          href: "/auth/login-page",
+          text: "Sign in (Optional)"
         }
-      ],
-      slots: {
-        navigationEnd: '<li class="govuk-service-navigation__item app-service-navigation__item--auth"><a class="govuk-service-navigation__link" href="/auth/login-page">Sign in (Optional)</a></li>'
-      }
+      ]
     }) }}
   {% endif %}
+
+  {# GOV.UK Service Navigation - Home and About links #}
+  {{ govukServiceNavigation({
+    serviceUrl: "/",
+    navigation: [
+      {
+        href: "/",
+        text: "Home",
+        active: true if pageTitle == 'Home' else false
+      },
+      {
+        href: "/about",
+        text: "About",
+        active: true if pageTitle == 'About' else false
+      }
+    ]
+  }) }}
 {% endblock %}
 
 {% block pageTitle %}

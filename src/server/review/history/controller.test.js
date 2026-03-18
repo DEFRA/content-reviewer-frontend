@@ -13,10 +13,14 @@ vi.mock('../../common/helpers/get-user-identifier.js', () => ({
   getUserIdentifier: vi.fn(() => null)
 }))
 
-// Use vi.hoisted so MockAgent is available when the factory is hoisted
+// Define mockAgent function in the outer scope to avoid redeclaration and naming issues
+function mockAgent() {
+  // Intentional empty mock for undici Agent
+}
+
+// Use vi.hoisted so mockAgent is available when the factory is hoisted
 const { MockAgent } = vi.hoisted(() => {
-  function MockAgent() {}
-  return { MockAgent }
+  return { MockAgent: mockAgent }
 })
 
 vi.mock('undici', () => ({

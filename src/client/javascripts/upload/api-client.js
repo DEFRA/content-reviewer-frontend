@@ -7,12 +7,19 @@ import {
   REDIRECT_DELAY,
   HISTORY_UPDATE_DELAY,
   PREVIEW_WORDS_LIMIT,
-  PREVIEW_CHARS_LIMIT
+  PREVIEW_CHARS_LIMIT,
+  CREDENTIALS_SAME_ORIGIN,
+  SLUG_MAX_LENGTH
 } from './constants.js'
 import { getElements, getFileInput } from './dom-elements.js'
 import { updateCharacterCount } from './character-counter.js'
 import { updateMutualExclusion } from './input-controls.js'
-import { showProgress, hideProgress, showError } from './ui-feedback.js'
+import {
+  showProgress,
+  hideProgress,
+  showError,
+  hideError
+} from './ui-feedback.js'
 import { addReviewToHistory } from './review-history.js'
 
 function getPreviewText(textContent) {
@@ -50,6 +57,43 @@ function startAutoRefresh() {
   }
 }
 
+export async function submitUrlReview(htmlContent, sourceUrl) {
+  const elements = getElements()
+  try {
+    showProgress('Uploading extracted content...', PROGRESS_INITIAL)
+    const slug = sourceUrl
+      .replace(/^https?:\/\//, '')
+      .replaceAll(/[^a-z0-9]/gi, '-')
+      .replaceAll(/-+/g, '-')
+      .substring(0, SLUG_MAX_LENGTH)
+    const fileName = `${slug}.html`
+    const response = await fetch('/api/review/text', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: CREDENTIALS_SAME_ORIGIN,
+      body: JSON.stringify({ textContent: htmlContent, title: fileName })
+    })
+    showProgress('Processing upload...', PROGRESS_PROCESSING)
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.message || 'URL review upload failed')
+    }
+    showProgress('Processing review...', PROGRESS_PROCESSING)
+    const data = await response.json()
+    hideProgress()
+    handleReviewHistory(data, fileName)
+    startAutoRefresh()
+    return data
+  } catch (error) {
+    console.error('[UPLOAD-HANDLER] URL review upload error:', error)
+    showError(error.message)
+    if (elements.uploadButton) {
+      elements.uploadButton.disabled = false
+    }
+    throw error
+  }
+}
+
 export async function submitTextReview(textContent) {
   const elements = getElements()
   try {
@@ -61,7 +105,7 @@ export async function submitTextReview(textContent) {
     const response = await fetch('/api/review/text', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin',
+      credentials: CREDENTIALS_SAME_ORIGIN,
       body: JSON.stringify({ textContent })
     })
     if (!response.ok) {
@@ -72,6 +116,7 @@ export async function submitTextReview(textContent) {
     const data = await response.json()
     console.log('[UPLOAD-HANDLER] Text review submitted successfully:', data)
     hideProgress()
+    hideError()
     elements.textContentInput.value = ''
     updateMutualExclusion()
     updateCharacterCount()
@@ -83,7 +128,12 @@ export async function submitTextReview(textContent) {
     return data
   } catch (error) {
     console.error('[UPLOAD-HANDLER] Text review error:', error)
-    showError(error.message)
+    const userMessage =
+      error.message.includes('not valid JSON') ||
+      error.message.includes('Unexpected token')
+        ? 'Please enter a valid input'
+        : error.message
+    showError(userMessage)
     if (elements.textContentInput) {
       elements.textContentInput.disabled = false
     }
@@ -98,7 +148,7 @@ export async function submitFileUpload(file) {
     formData.append('file', file)
     const response = await fetch('/api/upload', {
       method: 'POST',
-      credentials: 'same-origin',
+      credentials: CREDENTIALS_SAME_ORIGIN,
       body: formData
     })
     showProgress('Processing upload...', PROGRESS_PROCESSING)
@@ -136,7 +186,12 @@ export async function submitFileUpload(file) {
     return data
   } catch (error) {
     console.error('[UPLOAD-HANDLER] Upload error:', error)
-    showError(`Upload failed: ${error.message}`)
+    const userMessage =
+      error.message.includes('not valid JSON') ||
+      error.message.includes('Unexpected token')
+        ? 'Please enter a valid input'
+        : error.message
+    showError(`Upload failed: ${userMessage}`)
     const elements = getElements()
     if (elements.textContentInput) {
       elements.textContentInput.disabled = false

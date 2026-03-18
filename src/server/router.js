@@ -13,6 +13,7 @@ import { uploadApiController } from './api/upload.js'
 import { textReviewApiController } from './api/text-review.js'
 import { getReviewsController } from './api/reviews.js'
 import { deleteReviewRoute } from './api/delete-review.js'
+import { fetchUrlController } from './api/fetch-url.js'
 import { serveStaticFiles } from './common/helpers/serve-static-files.js'
 import { loginController } from './auth/login/controller.js'
 
@@ -76,6 +77,18 @@ export const router = {
           payload: {
             parse: true,
             allow: 'application/json'
+          }
+        }
+      })
+
+      server.route({
+        method: 'GET',
+        path: '/api/fetch-url',
+        handler: fetchUrlController.handler,
+        options: {
+          auth: false,
+          timeout: {
+            socket: 30_000 // Allow up to 30s for gov.uk pages to respond
           }
         }
       })

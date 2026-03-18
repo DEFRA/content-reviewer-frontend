@@ -17,21 +17,36 @@ const EXTRA_ROWS = 7
 function setupDOM() {
   document.body.innerHTML = `
     <form id="uploadForm">
-      <div class="govuk-form-group">
-        <input id="${FILE_UPLOAD_ID}" type="file" />
+      <div class="govuk-form-group" id="actionSelectionGroup">
+        <p id="actionOptionError" hidden><span id="actionOptionErrorMessage"></span></p>
+        <div id="actionRadios">
+          <input id="action-url" name="actionOption" type="radio" value="url">
+          <input id="action-text" name="actionOption" type="radio" value="text" checked>
+        </div>
       </div>
-      <div class="govuk-form-group">
-        <textarea id="text-content"></textarea>
-        <span id="characterCountMessage"></span>
+      <div id="urlFormGroup" hidden>
+        <p id="urlError" hidden><span id="urlErrorMessage"></span></p>
+        <input id="url-input" type="text">
+      </div>
+      <div id="textFormGroup" hidden>
+        <div class="govuk-form-group">
+          <input id="${FILE_UPLOAD_ID}" type="file" />
+        </div>
+        <div class="govuk-form-group">
+          <textarea id="text-content"></textarea>
+          <span id="characterCountMessage"></span>
+        </div>
+        <div id="uploadError" hidden></div>
+        <span id="errorMessage"></span>
+        <div id="textFieldWrapper"></div>
       </div>
       <button id="uploadButton" type="submit">Upload</button>
       <div id="uploadProgress" hidden></div>
       <div id="progressBar" data-progress="0"></div>
       <span id="uploadStatusText"></span>
       <span id="uploadProgressText"></span>
-      <div id="uploadError" hidden></div>
-      <span id="errorMessage"></span>
       <div id="uploadSuccess" hidden></div>
+      <div id="errorSummary" hidden><a id="errorSummaryMessage"></a></div>
     </form>
     <table>
       <tbody id="${REVIEW_HISTORY_BODY_ID}"></tbody>

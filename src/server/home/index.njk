@@ -4,8 +4,30 @@
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-full">
       
-      <h1 class="govuk-heading-l">Content Review Assistant</h1>
-      
+      <h1 class="govuk-heading-xl">Content Review Assistant</h1>
+
+      <!-- Dynamic error summary shown by JS -->
+      <div
+        class="govuk-error-summary"
+        id="errorSummary"
+        aria-labelledby="error-summary-title"
+        role="alert"
+        tabindex="-1"
+        data-module="govuk-error-summary"
+        hidden
+      >
+        <h2 class="govuk-error-summary__title" id="error-summary-title">
+          There is a problem
+        </h2>
+        <div class="govuk-error-summary__body">
+          <ul class="govuk-list govuk-error-summary__list">
+            <li>
+              <a href="#text-content" id="errorSummaryMessage"></a>
+            </li>
+          </ul>
+        </div>
+      </div>
+
       <!-- Upload Success Message -->
       {% if uploadSuccess %}
       <div class="govuk-notification-banner govuk-notification-banner--success" role="alert" aria-labelledby="upload-success-title" data-module="govuk-notification-banner">
@@ -42,7 +64,7 @@
       {% endif %}
 
       <p class="govuk-body">
-        Type or paste content below for review. The content will be analyzed for clarity, formatting and compliance with GOV.UK standards.
+        Add your content below for review. The content will be analysed for clarity, formatting and compliance with GOV.UK standards.
       </p>
 
       <!-- Content Review Form -->
@@ -73,42 +95,130 @@
             </div>
           </div> -->
 
-          <!-- Text Content Option -->
-          <div class="govuk-form-group" id="textFormGroup">
-            <label class="govuk-label govuk-label--s" for="text-content">
-              Type or paste your content for review
-            </label>
+          <!-- Action selection: URL or Text content -->
+          <div class="govuk-form-group" id="actionSelectionGroup">
+            <fieldset class="govuk-fieldset" aria-describedby="actionOption-error">
+              <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">
+                <h2 class="govuk-fieldset__heading">Select how you would like to add your content</h2>
+              </legend>
+              <!-- Dynamic radio error message shown by JS -->
+              <p class="govuk-error-message" id="actionOptionError" hidden>
+                <span class="govuk-visually-hidden">Error:</span>
+                <span id="actionOptionErrorMessage"></span>
+              </p>
+              <div class="govuk-radios" data-module="govuk-radios" id="actionRadios">
+                <div class="govuk-radios__item">
+                  <input
+                    class="govuk-radios__input"
+                    id="action-text"
+                    name="actionOption"
+                    type="radio"
+                    value="text"
+                  >
+                  <label class="govuk-label govuk-radios__label" for="action-text">
+                    Insert text
+                  </label>
+                </div>
+                <div class="govuk-radios__item">
+                  <input
+                    class="govuk-radios__input"
+                    id="action-url"
+                    name="actionOption"
+                    type="radio"
+                    value="url"
+                  >
+                  <label class="govuk-label govuk-radios__label" for="action-url">
+                    URL upload (WIP)
+                  </label>
+                </div>
+                <!-- Document upload radio - commented out as per requirement -->
+                <!--
+                <div class="govuk-radios__item">
+                  <input
+                    class="govuk-radios__input"
+                    id="action-document"
+                    name="actionOption"
+                    type="radio"
+                    value="document"
+                  >
+                  <label class="govuk-label govuk-radios__label" for="action-document">
+                    Document upload
+                  </label>
+                </div>
+                -->
+              </div>
+            </fieldset>
+          </div>
+
+          <!-- URL input — shown when URL radio is selected -->
+          <div class="govuk-form-group app-url-form-group" id="urlFormGroup" hidden>
+            <h1 class="govuk-label-wrapper">
+              <label class="govuk-label govuk-label--l" for="url-input">
+                Enter URL
+              </label>
+            </h1>
+            <div class="govuk-hint" id="url-input-hint">
+              Only include links to GOV.UK websites
+            </div>
+            <!-- Dynamic URL error message shown by JS -->
+            <p class="govuk-error-message app-error-message" id="urlError" hidden>
+              <span class="govuk-visually-hidden">Error:</span>
+              <span id="urlErrorMessage"></span>
+            </p>
+            <input
+              class="govuk-input govuk-!-width-full"
+              id="url-input"
+              name="urlInput"
+              type="text"
+              autocomplete="url"
+              placeholder="Enter URL..."
+              aria-describedby="url-input-hint"
+            >
+          </div>
+
+          <!-- Text Content Option — hidden until Text content radio is selected -->
+          <div class="govuk-form-group app-text-form-group{% if errorMessage %} govuk-form-group--error{% endif %}" id="textFormGroup" hidden>
+            <h1 class="govuk-label-wrapper">
+              <label class="govuk-label govuk-label--l" for="text-content">
+                Enter text content
+              </label>
+            </h1>
             <div class="govuk-hint" id="more-detail-int">
               Do not include personal or financial information, like your National Insurance number or credit card details
             </div>
-            <!-- Dynamic error message shown by JS -->
-            <div id="uploadErrorContainer" hidden>
-              <p class="govuk-error-message app-error-message" id="errorMessage"></p>
-            </div>
-            {% if errorMessage %}
-              <p id="text-content-error" class="govuk-error-message app-error-message">
-                <span class="govuk-visually-hidden">Error:</span> {{ errorMessage }}
+            <div id="textFieldWrapper">
+              <!-- Dynamic error message shown by JS -->
+              <p class="govuk-error-message app-error-message" id="uploadError" hidden>
+                <span class="govuk-visually-hidden">Error:</span>
+                <span id="errorMessage"></span>
               </p>
-            {% endif %}
-            <textarea 
-              class="govuk-textarea" 
-              id="text-content" 
-              name="textContent" 
-              rows="8" 
-              placeholder="Type or paste content here..."
-              aria-describedby="more-detail-int"
-            ></textarea>
-            <div id="characterCountMessage" class="govuk-hint govuk-!-margin-top-2" aria-live="polite"></div>
+              {% if errorMessage %}
+                <p id="text-content-error" class="govuk-error-message app-error-message">
+                  <span class="govuk-visually-hidden">Error:</span> {{ errorMessage }}
+                </p>
+              {% endif %}
+              <textarea 
+                class="govuk-textarea{% if errorMessage %} govuk-textarea--error{% endif %}" 
+                id="text-content" 
+                name="textContent" 
+                rows="8" 
+                placeholder="Type or paste content here..."
+                aria-describedby="more-detail-int uploadError"
+              ></textarea>
+            </div>
           </div>
+          <div id="characterCountMessage" class="govuk-hint govuk-!-margin-top-2" aria-live="polite"></div>
           
-          <button 
-            type="submit" 
-            class="govuk-button"
-            data-module="govuk-button"
-            id="uploadButton"
-          >
-            Review content
-          </button>
+          <div class="govuk-!-margin-top-4">
+            <button 
+              type="submit" 
+              class="govuk-button"
+              data-module="govuk-button"
+              id="uploadButton"
+            >
+              Review content
+            </button>
+          </div>
 
           <!-- Upload Progress Indicator -->
           <div id="uploadProgress" class="govuk-!-margin-top-4" hidden>
@@ -356,10 +466,15 @@
         const urlParams = new URLSearchParams(window.location.search);
         const currentPage = parseInt(urlParams.get('page')) || 1;
 
-        // Build API URL; include page param only for paginated views
-        let apiUrl = `/api/reviews?limit=${limit}`;
-        if (limit > 25 && currentPage > 1) {
-          apiUrl += `&page=${currentPage}`;
+        // Build API URL; when limit > pageSize, paginate in pageSize chunks
+        // to match the server-side home controller behaviour.
+        const pageSize = 25;
+        let apiUrl;
+        if (limit > pageSize) {
+          const skip = (currentPage - 1) * pageSize;
+          apiUrl = `/api/reviews?limit=${pageSize}&skip=${skip}&page=${currentPage}`;
+        } else {
+          apiUrl = `/api/reviews?limit=${limit}`;
         }
 
         console.log(`[HOME] Auto-refresh polling: ${apiUrl}`);

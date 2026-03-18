@@ -1,5 +1,5 @@
 // ── GOV.UK Service Navigation Customization ────────────────────────────────
-// Custom styles to position authentication controls (Sign in/Sign out) 
+// Custom styles to position authentication controls (Sign in/Sign out)
 // on the right side of the service navigation bar
 
 .govuk-service-navigation__wrapper {
@@ -7,20 +7,24 @@
 }
 
 .govuk-service-navigation__list {
-  display: flex;
+  display: flex !important;
   align-items: center;
   width: 100%;
-  
+  flex-wrap: nowrap;
+
   // Push authentication items to the right using custom class
   .app-service-navigation__item--auth:first-of-type {
-    margin-left: auto;
+    margin-left: auto !important;
   }
 }
 
 // Ensure proper spacing for authentication items on the right
 .app-service-navigation__item--auth {
+  flex-shrink: 0;
+
   .govuk-service-navigation__link,
   .govuk-service-navigation__text {
     padding-left: 1rem;
+    white-space: nowrap;
   }
 }
