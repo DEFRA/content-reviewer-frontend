@@ -95,13 +95,6 @@ describe('resultsController - completed review fetch and display', () => {
   it('should fetch and display completed review results', async () => {
     const mockRequest = createMockRequest({ id: 'test-123' })
     const mockH = createMockH()
-    const mockResult = {
-      reviewData: { score: 85 },
-      rawResponse: 'Test response',
-      guardrailAssessment: null,
-      stopReason: 'end_turn',
-      completedAt: '2026-02-25T10:00:00Z'
-    }
 
     globalThis.fetch.mockResolvedValueOnce({
       ok: true,
@@ -110,10 +103,11 @@ describe('resultsController - completed review fetch and display', () => {
         success: true,
         data: {
           id: 'test-123',
-          jobId: 'job-456',
           status: 'completed',
-          result: mockResult,
-          completedAt: '2026-02-25T10:00:00Z'
+          scores: {},
+          annotatedSections: [],
+          issues: [],
+          improvements: []
         }
       })
     })
@@ -121,7 +115,7 @@ describe('resultsController - completed review fetch and display', () => {
     const result = await resultsController.handler(mockRequest, mockH)
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://localhost:4000/api/results/test-123'
+      'http://localhost:4000/api/result/test-123'
     )
     expect(mockH.view).toHaveBeenCalledWith(
       'review/results/index',
@@ -149,15 +143,12 @@ describe('resultsController - completed review transform backend data', () => {
         success: true,
         data: {
           id: TRANSFORM_TEST_ID,
-          jobId: 'job-789',
           status: 'completed',
-          result: {
-            reviewData: { category: 'approved' },
-            rawResponse: 'Raw content',
-            guardrailAssessment: 'passed',
-            stopReason: 'end_turn'
-          },
-          completedAt: '2026-02-25T11:00:00Z'
+          processedAt: '2026-02-25T11:00:00Z',
+          scores: { overall: 80 },
+          annotatedSections: [],
+          issues: [],
+          improvements: []
         }
       })
     })
@@ -167,9 +158,8 @@ describe('resultsController - completed review transform backend data', () => {
     expect(result.data.results).toEqual(
       expect.objectContaining({
         id: TRANSFORM_TEST_ID,
-        jobId: 'job-789',
         status: 'completed',
-        completedAt: '2026-02-25T11:00:00Z'
+        processedAt: '2026-02-25T11:00:00Z'
       })
     )
   })
@@ -188,8 +178,10 @@ describe('resultsController - completed review log performance metrics', () => {
         success: true,
         data: {
           status: 'completed',
-          result: {},
-          completedAt: '2026-02-25T12:00:00Z'
+          scores: {},
+          annotatedSections: [],
+          issues: [],
+          improvements: []
         }
       })
     })
@@ -200,7 +192,7 @@ describe('resultsController - completed review log performance metrics', () => {
       expect.objectContaining({
         reviewId: 'perf-test'
       }),
-      expect.stringContaining('[FRONTEND] Requesting review results')
+      expect.stringContaining('[FRONTEND] Results page rendered')
     )
   })
 })
@@ -218,9 +210,8 @@ describe('resultsController - pending review scenarios', () => {
       json: async () => ({
         success: true,
         data: {
-          reviewId: PENDING_REVIEW_ID,
-          status: 'processing',
-          progress: 50
+          documentId: PENDING_REVIEW_ID,
+          status: 'processing'
         }
       })
     })
@@ -250,8 +241,8 @@ describe('resultsController - pending review scenarios', () => {
       json: async () => ({
         success: true,
         data: {
-          reviewId: 'pending-456',
-          status: 'queued'
+          documentId: 'pending-456',
+          status: 'pending'
         }
       })
     })
@@ -297,7 +288,7 @@ describe('resultsController - error handling scenarios', () => {
       expect.objectContaining({
         reviewId: 'invalid-123'
       }),
-      'Invalid API response'
+      'Failed to fetch review results'
     )
     expect(result.template).toBe(ERROR_TEMPLATE)
   })
@@ -316,7 +307,6 @@ describe('resultsController - error handling scenarios', () => {
       expect.objectContaining({
         error: 'Network timeout',
         errorName: 'Error',
-        errorCode: 'ETIMEDOUT',
         reviewId: 'network-error'
       }),
       'Failed to fetch review results'
@@ -355,19 +345,23 @@ describe('resultsController - data transformation scenarios', () => {
         success: true,
         data: {
           status: 'completed',
-          completedAt: '2026-02-25T13:00:00Z'
+          processedAt: '2026-02-25T13:00:00Z'
+          // no scores, annotatedSections, issues, improvements
         }
       })
     })
 
     const result = await resultsController.handler(mockRequest, mockH)
 
-    expect(result.data.results.result).toEqual({
-      reviewData: null,
-      reviewContent: null,
-      guardrailAssessment: null,
-      stopReason: null
-    })
+    // New controller returns envelope shape; result.reviewData should be present but empty
+    expect(result.data.results.result.reviewData.scores).toEqual({})
+    expect(
+      result.data.results.result.reviewData.reviewedContent.annotatedSections
+    ).toEqual([])
+    expect(
+      result.data.results.result.reviewData.reviewedContent.issues
+    ).toEqual([])
+    expect(result.data.results.result.reviewData.improvements).toEqual([])
   })
 
   it('should handle legacy API response format', async () => {
@@ -381,9 +375,11 @@ describe('resultsController - data transformation scenarios', () => {
         success: true,
         data: {
           status: 'completed',
-          result: { reviewData: { value: 'test' } },
-          completedAt: '2026-02-25T14:00:00Z',
-          jobId: 'job-legacy'
+          processedAt: '2026-02-25T14:00:00Z',
+          scores: { overall: 60 },
+          annotatedSections: [],
+          issues: [],
+          improvements: []
         }
       })
     })
@@ -392,8 +388,8 @@ describe('resultsController - data transformation scenarios', () => {
 
     expect(result.data.results).toEqual(
       expect.objectContaining({
-        status: 'completed',
-        jobId: 'job-legacy'
+        id: 'legacy-format',
+        status: 'completed'
       })
     )
   })
