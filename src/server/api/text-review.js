@@ -60,7 +60,13 @@ function generateTitle(textContent, title) {
  * For authenticated users, passes their ID as x-user-id so the backend can
  * store it for per-user filtering. Anonymous users send no x-user-id header.
  */
-async function submitToBackend(textContent, finalTitle, request) {
+async function submitToBackend(
+  textContent,
+  finalTitle,
+  request,
+  sourceType,
+  sourceUrl
+) {
   const backendUrl = config.get('backendUrl')
   logger.info(
     `Requesting text review from backend: ${backendUrl}/api/review/text`
@@ -80,7 +86,9 @@ async function submitToBackend(textContent, finalTitle, request) {
     },
     body: JSON.stringify({
       content: textContent,
-      title: finalTitle
+      title: finalTitle,
+      sourceType: sourceType || 'text',
+      sourceUrl: sourceUrl || null
     }),
     dispatcher: keepAliveAgent
   })
@@ -98,7 +106,7 @@ async function reviewText(request, h) {
   const startTime = Date.now()
 
   try {
-    const { textContent, title } = request.payload
+    const { textContent, title, sourceType, sourceUrl } = request.payload
 
     // Validate text content
     const validationError = validateTextContent(textContent, h)
@@ -120,7 +128,9 @@ async function reviewText(request, h) {
     const { response, backendRequestTime } = await submitToBackend(
       textContent,
       finalTitle,
-      request
+      request,
+      sourceType,
+      sourceUrl
     )
 
     if (!response.ok) {
