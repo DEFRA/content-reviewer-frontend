@@ -155,6 +155,81 @@ describe('upload/url-extractor - buildExtractedHtml output format and limits', (
   })
 })
 
+describe('upload/url-extractor - buildExtractedHtml link resolution', () => {
+  it('should resolve relative links to absolute GOV.UK URLs', () => {
+    const html = `
+      <html><body>
+        <div data-module="govspeak">
+          <a href="/guidance/some-page">Link</a>
+        </div>
+      </body></html>
+    `
+    const result = buildExtractedHtml(html, GOVUK_URL)
+    expect(result).toContain('href="https://www.gov.uk/guidance/some-page"')
+  })
+
+  it('should leave already-absolute links unchanged', () => {
+    const html = `
+      <html><body>
+        <div data-module="govspeak">
+          <a href="https://www.gov.uk/absolute-link">Link</a>
+        </div>
+      </body></html>
+    `
+    const result = buildExtractedHtml(html, GOVUK_URL)
+    expect(result).toContain('href="https://www.gov.uk/absolute-link"')
+  })
+
+  it('should leave anchor-only links (#section) unchanged', () => {
+    const html = `
+      <html><body>
+        <div data-module="govspeak">
+          <a href="#section-1">Jump link</a>
+        </div>
+      </body></html>
+    `
+    const result = buildExtractedHtml(html, GOVUK_URL)
+    expect(result).toContain('href="#section-1"')
+  })
+
+  it('should preserve <a> tags in extracted content', () => {
+    const html = `
+      <html><body>
+        <div data-module="govspeak">
+          <p>See the <a href="/guidance/page">guidance page</a> for details.</p>
+        </div>
+      </body></html>
+    `
+    const result = buildExtractedHtml(html, GOVUK_URL)
+    expect(result).toContain('<a href="https://www.gov.uk/guidance/page">')
+    expect(result).toContain('guidance page')
+  })
+
+  it('should strip cookie banner elements', () => {
+    const html = `
+      <html><body>
+        <div data-module="cookie-banner"><p>Cookie notice</p></div>
+        <div data-module="govspeak"><p>Real content</p></div>
+      </body></html>
+    `
+    const result = buildExtractedHtml(html, GOVUK_URL)
+    expect(result).not.toContain('Cookie notice')
+    expect(result).toContain('Real content')
+  })
+
+  it('should strip .gem-c-feedback elements', () => {
+    const html = `
+      <html><body>
+        <div class="gem-c-feedback"><p>Is this page useful?</p></div>
+        <div data-module="govspeak"><p>Real content</p></div>
+      </body></html>
+    `
+    const result = buildExtractedHtml(html, GOVUK_URL)
+    expect(result).not.toContain('Is this page useful?')
+    expect(result).toContain('Real content')
+  })
+})
+
 describe('upload/url-extractor - extractGovspeakText', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
