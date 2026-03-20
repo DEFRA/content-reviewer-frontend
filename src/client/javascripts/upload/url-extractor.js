@@ -14,7 +14,7 @@ const CONTENT_SELECTORS = [
   '.gem-c-heading__text.govuk-heading-xl',
   '.govuk-grid-column-two-thirds',
   String.raw`.gem-c-heading.govuk-\!-margin-bottom-6`,
-  '.gem-c-contents-list-with-body__list-container',
+  '.gem-c-contents-list__list',
   'div[data-module="govspeak"]'
 ]
 
@@ -22,6 +22,10 @@ const CONTENT_SELECTORS = [
  * CSS selectors for structural chrome, banners and page furniture that should
  * be stripped before content extraction.  Removing these ensures that cookie
  * notices, navigation, feedback widgets etc. are not included in the review.
+ *
+ * Also strips GOV.UK heading context spans (e.g. "Guidance" labels) that sit
+ * inside headings as decorative sub-captions — these are not content and
+ * produce garbled text when stripped of their surrounding markup.
  */
 const NOISE_SELECTORS = [
   'header',
@@ -38,7 +42,11 @@ const NOISE_SELECTORS = [
   '.gem-c-contextual-footer',
   '.gem-c-print-link',
   '.gem-c-breadcrumbs',
-  '.gem-c-phase-banner'
+  '.gem-c-phase-banner',
+  '.gem-c-heading__context',
+  '.govuk-caption-xl',
+  '.govuk-caption-l',
+  '.govuk-caption-m'
 ].join(', ')
 
 /**
@@ -109,11 +117,52 @@ function resolveLinks(doc) {
 }
 
 /**
+ * Replace every <a href="URL">anchor text</a> in the given element with a
+ * Markdown-style link placeholder [anchor text](URL).  This is done BEFORE
+ * collecting innerHTML so that when canonical-document strips HTML tags the
+ * link URL and label survive in plain text and are preserved for Bedrock.
+ *
+ * Anchor-only links (#fragment), links with no href, and links whose text
+ * is empty after trimming are converted to plain text only (no parenthesised
+ * URL) to avoid cluttering the canonical document with useless fragment URLs.
+ *
+ * @param {Element} root  - DOM element whose <a> descendants should be converted
+ */
+function convertLinksToMarkdown(root) {
+  root.querySelectorAll('a[href]').forEach((anchor) => {
+    const href = anchor.getAttribute('href') ?? ''
+    const text = anchor.textContent.replaceAll(/\s+/g, ' ').trim()
+
+    let replacement
+    if (!text) {
+      // Empty link — drop entirely
+      replacement = ''
+    } else if (!href || href.startsWith('#')) {
+      // Anchor-only or empty href — keep text only
+      replacement = text
+    } else {
+      // Full link → Markdown format so the URL survives tag stripping
+      replacement = `[${text}](${href})`
+    }
+
+    anchor.replaceWith(replacement)
+  })
+}
+
+/**
  * Parses raw HTML, removes noise elements, resolves relative links to
- * absolute GOV.UK URLs, extracts markup from known content selectors,
- * checks the 100K character limit, and returns a self-contained HTML
- * document string. <a> tags are preserved so links remain clickable in
- * the review results page.
+ * absolute GOV.UK URLs, converts <a> tags to Markdown placeholders so
+ * links survive plain-text processing, extracts markup from known content
+ * selectors, checks the 100K character limit, and returns a self-contained
+ * HTML document string.
+ *
+ * Link preservation strategy
+ * ──────────────────────────
+ * <a href="URL">text</a> is converted to the Markdown form [text](URL) before
+ * section innerHTML is captured.  canonical-document.js strips all remaining
+ * HTML tags, leaving the Markdown links intact in canonicalText.  The results
+ * page template then converts [text](URL) back to <a> elements when rendering.
+ *
  * @param {string} html
  * @param {string} sourceUrl
  * @returns {string} HTML file content
@@ -134,6 +183,10 @@ export function buildExtractedHtml(html, sourceUrl) {
     try {
       const nodes = doc.querySelectorAll(selector)
       nodes.forEach((node) => {
+        // Convert <a> tags to Markdown [text](url) so links survive HTML
+        // stripping in the canonical-document pipeline
+        convertLinksToMarkdown(node)
+
         const text = node.textContent.replaceAll(/\s+/g, ' ').trim()
         if (text) {
           sections.push(`<section>\n${node.innerHTML.trim()}\n</section>`)
@@ -142,6 +195,12 @@ export function buildExtractedHtml(html, sourceUrl) {
     } catch {
       // Invalid selector or element absent — skip and continue
     }
+  }
+
+  if (sections.length === 0) {
+    throw new Error(
+      'Could not extract any content from that URL. The page may use an unsupported layout.'
+    )
   }
 
   const bodyContent = sections.join('\n\n')
@@ -159,7 +218,6 @@ export function buildExtractedHtml(html, sourceUrl) {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Extracted content</title>
   <meta name="source-url" content="${sourceUrl}">
 </head>
 <body>
