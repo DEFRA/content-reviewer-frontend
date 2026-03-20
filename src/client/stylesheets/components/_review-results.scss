@@ -85,8 +85,23 @@
 .highlight-clarity,
 .highlight-accessibility,
 .highlight-govuk-style,
-.highlight-completeness {
+.highlight-completeness,
+.highlight-tone,
+.highlight-general {
   background-color: #d2e2f1;
+}
+
+// Highlight link — wraps a <mark> and scrolls to the matching improvement
+.highlight-link {
+  text-decoration: none;
+  color: inherit;
+
+  &:hover mark,
+  &:focus mark {
+    outline: 3px solid #ffdd00;
+    outline-offset: 1px;
+    cursor: pointer;
+  }
 }
 
 // Example Improvements Section

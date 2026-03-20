@@ -68,17 +68,6 @@
 
       .score-separator { color: #505a5f; font-weight: normal; }
 
-      /* Highlight colours per category */
-      mark.highlight-plain-english  { background: #fff0c8; }
-      mark.highlight-govuk-style    { background: #d4edff; }
-      mark.highlight-accessibility  { background: #ffe0e0; }
-      mark.highlight-tone           { background: #e0ffe0; }
-      mark.highlight-general        { background: #f0e0ff; }
-
-      a.highlight-link { text-decoration: none; color: inherit; }
-      a.highlight-link:hover mark,
-      a.highlight-link:focus mark  { outline: 3px solid #ffdd00; outline-offset: 1px; cursor: pointer; }
-
       html { scroll-behavior: smooth; }
 
       .improvement-item:target {
@@ -122,27 +111,22 @@
   </section>
 
   {# ── Priority Improvements ───────────────────────────────────────────── #}
-  <section class="example-improvements govuk-!-margin-top-6">
-    <h2 class="govuk-heading-m">Priority improvements</h2>
+  <section class="example-improvements">
+    <h2>Priority Improvements</h2>
     {% if reviewData.improvements and reviewData.improvements.length > 0 %}
-      <ol class="improvement-list govuk-list govuk-list--number">
+      <ol class="improvement-list">
         {% for improvement in reviewData.improvements %}
-          <li id="improvement-{{ loop.index0 }}"
-              class="improvement-item severity-{{ improvement.severity }} govuk-!-margin-bottom-4">
-            <span class="govuk-tag govuk-tag--blue govuk-!-margin-right-2">{{ improvement.category }}</span>
-            <strong class="issue-title govuk-body-l">{{ improvement.issue }}</strong>
-            <p class="issue-description govuk-body">{{ improvement.why }}</p>
+          <li id="improvement-{{ loop.index0 }}" class="improvement-item severity-{{ improvement.severity }}">
+            <span class="category-badge">{{ improvement.category }}</span>
+            <strong class="issue-title">{{ improvement.issue }}</strong>
+            <p class="issue-description">{{ improvement.why }}</p>
             {% if improvement.current or improvement.suggested %}
-              <div class="issue-example govuk-inset-text">
+              <div class="issue-example">
                 {% if improvement.current %}
-                  <p class="before-text govuk-body">
-                    <strong>Current:</strong> {{ improvement.current }}
-                  </p>
+                  <p class="before-text"><strong>Current:</strong> {{ improvement.current }}</p>
                 {% endif %}
                 {% if improvement.suggested %}
-                  <p class="after-text govuk-body">
-                    <strong>Suggested:</strong> {{ improvement.suggested }}
-                  </p>
+                  <p class="after-text"><strong>Suggested:</strong> {{ improvement.suggested }}</p>
                 {% endif %}
               </div>
             {% endif %}
