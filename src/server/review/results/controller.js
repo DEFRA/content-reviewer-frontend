@@ -146,7 +146,7 @@ function transformEnvelopeToViewData(envelope, reviewId) {
  * Converts 0-100 values back to 0-5 scale for the "X/5" scorecard display.
  */
 function buildScoresMap(flatScores) {
-  // Five-category schema (preferred)
+  // Five-category schema (preferred) — exactly five categories, no Overall row
   const categoryMap = [
     {
       key: 'plainEnglish',
@@ -168,8 +168,7 @@ function buildScoresMap(flatScores) {
       key: 'completeness',
       noteKey: 'completenessNote',
       label: 'Content Completeness'
-    },
-    { key: 'overall', noteKey: null, label: 'Overall' }
+    }
   ]
 
   const map = {}
