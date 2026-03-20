@@ -91,7 +91,7 @@
             {%- set categoryClass = 'highlight-' + (section.category | lower | replace(' ', '-')) -%}
             <a href="#improvement-{{ section.issueIdx }}" class="highlight-link"><mark class="{{ categoryClass }}">{{ section.text }}</mark></a>
           {%- else -%}
-            {{ section.text }}
+            {{ section.text | safe }}
           {%- endif -%}
         {%- endfor -%}
       </div>
