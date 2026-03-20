@@ -71,7 +71,12 @@ export async function submitUrlReview(htmlContent, sourceUrl) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: CREDENTIALS_SAME_ORIGIN,
-      body: JSON.stringify({ textContent: htmlContent, title: fileName })
+      body: JSON.stringify({
+        textContent: htmlContent,
+        title: fileName,
+        sourceType: 'url',
+        sourceUrl
+      })
     })
     showProgress('Processing upload...', PROGRESS_PROCESSING)
     if (!response.ok) {
