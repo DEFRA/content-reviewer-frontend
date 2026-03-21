@@ -89,9 +89,9 @@
         {%- for section in reviewData.reviewedContent.annotatedSections -%}
           {%- if section.issueIdx is not null and section.issueIdx is not undefined -%}
             {%- set categoryClass = 'highlight-' + (section.category | lower | replace(' ', '-')) -%}
-            <a href="#improvement-{{ section.issueIdx }}" class="highlight-link"><mark class="{{ categoryClass }}">{{ section.text }}</mark></a>
+            <a href="#improvement-{{ section.issueIdx }}" class="highlight-link"><mark class="{{ categoryClass }}">{{ section.text | renderUrlContent | safe }}</mark></a>
           {%- else -%}
-            {{ section.text | safe }}
+            {{ section.text | renderUrlContent | safe }}
           {%- endif -%}
         {%- endfor -%}
       </div>
@@ -101,7 +101,7 @@
       <div class="content-body govuk-body">
         {% for issue in reviewData.reviewedContent.issues %}
           <a href="#improvement-{{ loop.index0 }}" class="highlight-link">
-            <mark class="highlight-{{ issue.category | lower | replace(' ', '-') }}">{{ issue.evidence }}</mark>
+            <mark class="highlight-{{ issue.category | lower | replace(' ', '-') }}">{{ issue.evidence | renderUrlContent | safe }}</mark>
           </a>{{ ' ' }}
         {% endfor %}
       </div>

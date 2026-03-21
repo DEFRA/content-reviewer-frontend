@@ -109,6 +109,51 @@ describe('upload/url-extractor - buildExtractedHtml content extraction', () => {
   })
 })
 
+describe('upload/url-extractor - buildExtractedHtml noise stripping', () => {
+  it('should strip .gem-c-heading__context spans from extracted content', () => {
+    const html = `
+      <html><body>
+        <div data-module="govspeak">
+          <h1>
+            <span class="gem-c-heading__context">Guidance</span>
+            Bovine TB: getting your cattle tested
+          </h1>
+        </div>
+      </body></html>
+    `
+    const result = buildExtractedHtml(html, GOVUK_URL)
+    expect(result).not.toContain('Guidance')
+    expect(result).toContain('Bovine TB')
+  })
+
+  it('should strip .govuk-caption-xl spans from extracted content', () => {
+    const html = `
+      <html><body>
+        <div data-module="govspeak">
+          <h1>
+            <span class="govuk-caption-xl">Policy paper</span>
+            The main heading
+          </h1>
+        </div>
+      </body></html>
+    `
+    const result = buildExtractedHtml(html, GOVUK_URL)
+    expect(result).not.toContain('Policy paper')
+    expect(result).toContain('The main heading')
+  })
+
+  it('should throw when no content matches any selector', () => {
+    const html = `
+      <html><body>
+        <p>Page with no matching selectors</p>
+      </body></html>
+    `
+    expect(() => buildExtractedHtml(html, GOVUK_URL)).toThrow(
+      'Could not extract any content from that URL'
+    )
+  })
+})
+
 describe('upload/url-extractor - buildExtractedHtml output format and limits', () => {
   it('should return a valid HTML document string', () => {
     const html = `
@@ -130,6 +175,17 @@ describe('upload/url-extractor - buildExtractedHtml output format and limits', (
     `
     const result = buildExtractedHtml(html, GOVUK_URL)
     expect(result).toContain(GOVUK_URL)
+  })
+
+  it('should NOT include a <title> element containing "Extracted content"', () => {
+    const html = `
+      <html><body>
+        <div data-module="govspeak"><p>Content</p></div>
+      </body></html>
+    `
+    const result = buildExtractedHtml(html, GOVUK_URL)
+    expect(result).not.toContain('Extracted content')
+    expect(result).not.toMatch(/<title>/i)
   })
 
   it('should throw when extracted text exceeds the maximum character limit', () => {
@@ -155,8 +211,23 @@ describe('upload/url-extractor - buildExtractedHtml output format and limits', (
   })
 })
 
-describe('upload/url-extractor - buildExtractedHtml link resolution', () => {
-  it('should resolve relative links to absolute GOV.UK URLs', () => {
+describe('upload/url-extractor - buildExtractedHtml link handling', () => {
+  it('should convert <a> tags to Markdown [text](url) placeholders', () => {
+    const html = `
+      <html><body>
+        <div data-module="govspeak">
+          <p>See the <a href="https://www.gov.uk/guidance/page">guidance page</a> for details.</p>
+        </div>
+      </body></html>
+    `
+    const result = buildExtractedHtml(html, GOVUK_URL)
+    expect(result).toContain(
+      '[guidance page](https://www.gov.uk/guidance/page)'
+    )
+    expect(result).not.toContain('<a href=')
+  })
+
+  it('should resolve relative links before converting to Markdown', () => {
     const html = `
       <html><body>
         <div data-module="govspeak">
@@ -165,22 +236,10 @@ describe('upload/url-extractor - buildExtractedHtml link resolution', () => {
       </body></html>
     `
     const result = buildExtractedHtml(html, GOVUK_URL)
-    expect(result).toContain('href="https://www.gov.uk/guidance/some-page"')
+    expect(result).toContain('[Link](https://www.gov.uk/guidance/some-page)')
   })
 
-  it('should leave already-absolute links unchanged', () => {
-    const html = `
-      <html><body>
-        <div data-module="govspeak">
-          <a href="https://www.gov.uk/absolute-link">Link</a>
-        </div>
-      </body></html>
-    `
-    const result = buildExtractedHtml(html, GOVUK_URL)
-    expect(result).toContain('href="https://www.gov.uk/absolute-link"')
-  })
-
-  it('should leave anchor-only links (#section) unchanged', () => {
+  it('should convert anchor-only links to plain text (no URL)', () => {
     const html = `
       <html><body>
         <div data-module="govspeak">
@@ -189,20 +248,9 @@ describe('upload/url-extractor - buildExtractedHtml link resolution', () => {
       </body></html>
     `
     const result = buildExtractedHtml(html, GOVUK_URL)
-    expect(result).toContain('href="#section-1"')
-  })
-
-  it('should preserve <a> tags in extracted content', () => {
-    const html = `
-      <html><body>
-        <div data-module="govspeak">
-          <p>See the <a href="/guidance/page">guidance page</a> for details.</p>
-        </div>
-      </body></html>
-    `
-    const result = buildExtractedHtml(html, GOVUK_URL)
-    expect(result).toContain('<a href="https://www.gov.uk/guidance/page">')
-    expect(result).toContain('guidance page')
+    expect(result).toContain('Jump link')
+    expect(result).not.toContain('(#section-1)')
+    expect(result).not.toContain('<a href=')
   })
 
   it('should strip cookie banner elements', () => {
