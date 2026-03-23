@@ -71,9 +71,12 @@ function escapeHtml(str) {
  * Nunjucks filter: renderUrlContent
  *
  * @param {string} text
+ * @param {boolean} [inline=false] - When true, skips paragraph/line-break wrapping
+ *   (step 4). Use for inline contexts such as highlighted <mark> spans where a
+ *   block-level <p> wrapper would produce invalid HTML.
  * @returns {string} HTML string (must be rendered with | safe)
  */
-export function renderUrlContent(text) {
+export function renderUrlContent(text, inline = false) {
   if (!text || typeof text !== 'string') {
     return text ?? ''
   }
@@ -103,7 +106,11 @@ export function renderUrlContent(text) {
     return `<a href="${url}" class="govuk-link" rel="noopener noreferrer">${safeAnchor}</a>`
   })
 
-  // Step 4: convert newlines to HTML structural elements
+  // Step 4: convert newlines to HTML structural elements (skipped in inline mode)
+  if (inline) {
+    return withLinks
+  }
+
   const paragraphs = withLinks.split('\n\n')
   const rendered = paragraphs
     .map((para) => para.replaceAll('\n', '<br>'))
