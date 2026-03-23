@@ -2,6 +2,7 @@
 /* global DOMParser */
 const GOVUK_HOSTNAME = 'www.gov.uk'
 const GOVUK_BASE_URL = 'https://www.gov.uk'
+const GOVUK_BASE_URL = 'https://www.gov.uk'
 const MAX_EXTRACTED_CHARS = 100_000
 
 /**

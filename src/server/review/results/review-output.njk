@@ -123,7 +123,10 @@
   {# ── Priority Improvements ───────────────────────────────────────────── #}
   <section class="example-improvements">
     <h2>Priority Improvements</h2>
+  <section class="example-improvements">
+    <h2>Priority Improvements</h2>
     {% if reviewData.improvements and reviewData.improvements.length > 0 %}
+      <ol class="improvement-list">
       <ol class="improvement-list">
         {% for improvement in reviewData.improvements %}
           {#
@@ -136,10 +139,13 @@
             <p class="issue-description">{{ improvement.why }}</p>
             {% if improvement.current or improvement.suggested %}
               <div class="issue-example">
+              <div class="issue-example">
                 {% if improvement.current %}
+                  <p class="before-text"><strong>Current:</strong> {{ improvement.current }}</p>
                   <p class="before-text"><strong>Current:</strong> {{ improvement.current }}</p>
                 {% endif %}
                 {% if improvement.suggested %}
+                  <p class="after-text"><strong>Suggested:</strong> {{ improvement.suggested }}</p>
                   <p class="after-text"><strong>Suggested:</strong> {{ improvement.suggested }}</p>
                 {% endif %}
               </div>
