@@ -78,12 +78,17 @@ describe('fetchUrlController - valid gov.uk URLs', () => {
     expect(result._type).toBe('text/html')
   })
 
-  it('should call fetch with the validated URL', async () => {
+  it('should call fetch with the validated URL and required headers', async () => {
     const { request, h } = buildRequestAndH(GOVUK_URL)
     await fetchUrlController.handler(request, h)
     expect(globalThis.fetch).toHaveBeenCalledWith(
       GOVUK_URL,
-      expect.objectContaining({ headers: { Accept: 'text/html' } })
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Accept: 'text/html',
+          'User-Agent': expect.stringContaining('GovUK-Content-Reviewer')
+        })
+      })
     )
   })
 

@@ -12,6 +12,14 @@ const ALLOWED_HOSTNAME = 'www.gov.uk'
 const FETCH_TIMEOUT_MS = 25_000
 
 /**
+ * Browser-like User-Agent sent with every GOV.UK proxy request.
+ * Some GOV.UK pages (Fastly CDN) return 403 or a bot-challenge page when the
+ * request has no User-Agent header, causing empty extraction results.
+ */
+const GOVUK_FETCH_USER_AGENT =
+  'Mozilla/5.0 (compatible; GovUK-Content-Reviewer/1.0; +https://www.gov.uk)'
+
+/**
  * Validates the supplied URL string.
  * Returns the parsed URL on success or null if invalid / not gov.uk.
  * @param {string} urlString
@@ -44,7 +52,10 @@ async function fetchGovUkHtml(parsedUrl) {
   try {
     const response = await fetch(parsedUrl.toString(), {
       signal: controller.signal,
-      headers: { Accept: 'text/html' }
+      headers: {
+        Accept: 'text/html',
+        'User-Agent': GOVUK_FETCH_USER_AGENT
+      }
     })
     if (!response.ok) {
       throw new Error(`Upstream responded with ${response.status}`)

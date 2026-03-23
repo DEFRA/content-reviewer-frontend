@@ -173,7 +173,7 @@ function buildScoresMap(flatScores) {
 
   const map = {}
   for (const { key, noteKey, label } of categoryMap) {
-    if (flatScores[key] !== undefined && flatScores[key] > 0) {
+    if (flatScores[key] !== undefined) {
       map[label] = {
         score: Math.round(flatScores[key] / SCORE_DISPLAY_SCALE),
         note: noteKey ? flatScores[noteKey] || '' : ''

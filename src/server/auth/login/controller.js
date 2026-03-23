@@ -23,7 +23,6 @@ export const loginController = {
       pageTitle: 'Sign in – Content Review Tool – GOV.UK',
       heading: 'Sign in',
       serviceName: 'Content Review Tool',
-      breadcrumbs: [{ text: 'Home', href: '/' }, { text: 'Sign in' }],
       errorMessage
     })
   }
