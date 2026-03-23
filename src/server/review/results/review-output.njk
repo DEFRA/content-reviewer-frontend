@@ -88,8 +88,12 @@
       <div class="content-body govuk-body">
         {%- for section in reviewData.reviewedContent.annotatedSections -%}
           {%- if section.issueIdx is not null and section.issueIdx is not undefined -%}
+            {#
+              section.issueIdx is the sequential 0-based index produced by _sortAndAlignPairs.
+              It is guaranteed to match loop.index0 of the improvements list below (1:1).
+            #}
             {%- set categoryClass = 'highlight-' + (section.category | lower | replace(' ', '-')) -%}
-            <a href="#improvement-{{ section.issueIdx }}" class="highlight-link"><mark class="{{ categoryClass }}">{{ section.text | renderUrlContent | safe }}</mark></a>
+            <a href="#improvement-{{ section.issueIdx }}" class="highlight-link" aria-label="Issue {{ section.issueIdx + 1 }}: {{ section.category }}"><mark class="{{ categoryClass }}">{{ section.text | renderUrlContent(true) | safe }}</mark></a>
           {%- else -%}
             {{ section.text | renderUrlContent | safe }}
           {%- endif -%}
@@ -97,11 +101,11 @@
       </div>
     {%- elif reviewData.reviewedContent and reviewData.reviewedContent.issues
             and reviewData.reviewedContent.issues.length > 0 -%}
-      {# Fallback: no annotatedSections but issues exist — list evidence spans only #}
+      {# Fallback: no annotatedSections — render evidence spans using issue chunkIdx #}
       <div class="content-body govuk-body">
         {% for issue in reviewData.reviewedContent.issues %}
-          <a href="#improvement-{{ loop.index0 }}" class="highlight-link">
-            <mark class="highlight-{{ issue.category | lower | replace(' ', '-') }}">{{ issue.evidence | renderUrlContent | safe }}</mark>
+          <a href="#improvement-{{ issue.chunkIdx }}" class="highlight-link" aria-label="Issue {{ loop.index }}: {{ issue.category }}">
+            <mark class="highlight-{{ issue.category | lower | replace(' ', '-') }}">{{ issue.evidence }}</mark>
           </a>{{ ' ' }}
         {% endfor %}
       </div>
@@ -116,6 +120,10 @@
     {% if reviewData.improvements and reviewData.improvements.length > 0 %}
       <ol class="improvement-list">
         {% for improvement in reviewData.improvements %}
+          {#
+            id="improvement-{{ loop.index0 }}" must match href="#improvement-{{ section.issueIdx }}"
+            above. Both use the same sequential 0-based index guaranteed by _sortAndAlignPairs.
+          #}
           <li id="improvement-{{ loop.index0 }}" class="improvement-item severity-{{ improvement.severity }}">
             <span class="category-badge">{{ improvement.category }}</span>
             <strong class="issue-title">{{ improvement.issue }}</strong>

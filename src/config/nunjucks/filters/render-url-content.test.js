@@ -114,6 +114,43 @@ describe('renderUrlContent filter - paragraph and line-break conversion', () => 
   })
 })
 
+describe('renderUrlContent filter - inline mode', () => {
+  it('does not wrap in <p> when inline = true', () => {
+    expect(renderUrlContent('Hello world', true)).toBe('Hello world')
+  })
+
+  it('still escapes HTML special characters in inline mode', () => {
+    expect(renderUrlContent('cats & dogs', true)).toBe('cats &amp; dogs')
+  })
+
+  it('still converts Markdown links to <a> elements in inline mode', () => {
+    const result = renderUrlContent(
+      '[Read the guidance](https://www.gov.uk/guidance/test)',
+      true
+    )
+    expect(result).toContain(
+      '<a href="https://www.gov.uk/guidance/test" class="govuk-link" rel="noopener noreferrer">Read the guidance</a>'
+    )
+    expect(result).not.toContain('<p>')
+  })
+
+  it('does not apply newline conversion in inline mode', () => {
+    expect(renderUrlContent('Line one.\nLine two.', true)).toBe(
+      'Line one.\nLine two.'
+    )
+  })
+
+  it('handles mixed link and plain text without <p> wrapper', () => {
+    const result = renderUrlContent(
+      'use [this service](https://www.gov.uk/service) to apply',
+      true
+    )
+    expect(result).toBe(
+      'use <a href="https://www.gov.uk/service" class="govuk-link" rel="noopener noreferrer">this service</a> to apply'
+    )
+  })
+})
+
 describe('renderUrlContent filter - end-to-end', () => {
   it('correctly renders a paragraph containing a Markdown link', () => {
     const result = renderUrlContent(
