@@ -93,9 +93,9 @@
               It is guaranteed to match loop.index0 of the improvements list below (1:1).
             #}
             {%- set categoryClass = 'highlight-' + (section.category | lower | replace(' ', '-')) -%}
-            <a href="#improvement-{{ section.issueIdx }}" class="highlight-link" aria-label="Issue {{ section.issueIdx + 1 }}: {{ section.category }}"><mark class="{{ categoryClass }}">{{ section.text | escape }}</mark></a>
+            <a href="#improvement-{{ section.issueIdx }}" class="highlight-link" aria-label="Issue {{ section.issueIdx + 1 }}: {{ section.category }}"><mark class="{{ categoryClass }}">{{ section.text | renderUrlContent(true) | safe }}</mark></a>
           {%- else -%}
-            {{ section.text | escape | replace('\n\n', '</p><p class="govuk-body">') | replace('\n', '<br>') | safe }}
+            {{ section.text | renderUrlContent | safe }}
           {%- endif -%}
         {%- endfor -%}
       </div>
