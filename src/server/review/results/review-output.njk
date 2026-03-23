@@ -105,7 +105,7 @@
       <div class="content-body govuk-body">
         {% for issue in reviewData.reviewedContent.issues %}
           <a href="#improvement-{{ issue.chunkIdx }}" class="highlight-link" aria-label="Issue {{ loop.index }}: {{ issue.category }}">
-            <mark class="highlight-{{ issue.category | lower | replace(' ', '-') }}">{{ issue.evidence | renderUrlContent | safe }}</mark>
+            <mark class="highlight-{{ issue.category | lower | replace(' ', '-') }}">{{ issue.evidence | renderUrlContent(true) | safe }}</mark>
           </a>{{ ' ' }}
         {% endfor %}
       </div>
