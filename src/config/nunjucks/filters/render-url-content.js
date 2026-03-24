@@ -118,3 +118,30 @@ export function renderUrlContent(text, inline = false) {
 
   return `<p>${rendered}</p>`
 }
+
+/**
+ * Nunjucks filter: convertNewlines
+ *
+ * Converts newline characters in an already-assembled HTML string into HTML
+ * structural elements, preserving inline markup such as <mark> and <a> tags.
+ *
+ * Use this after assembling all annotated sections in inline mode so that
+ * paragraph/line-break structure is applied to the full output rather than
+ * per-section, which would create invalid block/inline nesting.
+ *
+ *   \n\n → paragraph boundary  </p><p>
+ *   \n   → line break          <br>
+ *
+ * The result is wrapped in a <p>…</p> container.
+ *
+ * @param {string} html - Assembled HTML with raw newline characters
+ * @returns {string} HTML string wrapped in <p> tags (must be rendered with | safe)
+ */
+export function convertNewlines(html) {
+  if (!html || typeof html !== 'string') return html ?? ''
+  const paragraphs = html.split('\n\n')
+  const rendered = paragraphs
+    .map((para) => para.replaceAll('\n', '<br>'))
+    .join('</p><p>')
+  return `<p>${rendered}</p>`
+}
