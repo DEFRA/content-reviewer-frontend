@@ -16,4 +16,4 @@ export { assign }
 export { formatDate } from './format-date.js'
 export { formatCurrency } from './format-currency.js'
 export { highlightContent } from './highlight-content.js'
-export { renderUrlContent } from './render-url-content.js'
+export { renderUrlContent, convertNewlines } from './render-url-content.js'
