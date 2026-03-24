@@ -338,6 +338,28 @@ describe('highlightContent - edge cases', () => {
   })
 })
 
+describe('highlightContent - empty replacements path', () => {
+  it('should return original content when all issues have empty text', () => {
+    const issues = [
+      { text: '', category: CATEGORY_CLARITY },
+      { text: '   ', category: CATEGORY_FORMATTING }
+    ]
+    const result = highlightContent(SAMPLE_CONTENT, issues, [])
+
+    expect(result).toBe(SAMPLE_CONTENT)
+  })
+
+  it('should return original content when all issues have null text', () => {
+    const issues = [
+      { text: null, category: CATEGORY_CLARITY },
+      { text: null, category: CATEGORY_FORMATTING }
+    ]
+    const result = highlightContent(SAMPLE_CONTENT, issues, [])
+
+    expect(result).toBe(SAMPLE_CONTENT)
+  })
+})
+
 describe('highlightContent - HTML generation', () => {
   it('should generate correct anchor structure', () => {
     const issues = [{ text: TEST_ISSUE_TEXT, category: CATEGORY_CLARITY }]
