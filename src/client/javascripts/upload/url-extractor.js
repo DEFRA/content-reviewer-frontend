@@ -178,17 +178,30 @@ export function buildExtractedHtml(html, sourceUrl) {
   resolveLinks(doc)
 
   const sections = []
+  // Keep matched DOM nodes so we can detect ancestor/descendant overlaps
+  const matchedNodes = []
 
   for (const selector of CONTENT_SELECTORS) {
     try {
       const nodes = doc.querySelectorAll(selector)
       nodes.forEach((node) => {
+        // Skip if this node is already covered by a previously matched node
+        // (i.e. it is a descendant of one) or if it would re-include content
+        // already captured inside a narrower match (i.e. it is an ancestor).
+        const overlaps = matchedNodes.some(
+          (matched) => matched.contains(node) || node.contains(matched)
+        )
+        if (overlaps) {
+          return
+        }
+
         // Convert <a> tags to Markdown [text](url) so links survive HTML
         // stripping in the canonical-document pipeline
         convertLinksToMarkdown(node)
 
         const text = node.textContent.replaceAll(/\s+/g, ' ').trim()
         if (text) {
+          matchedNodes.push(node)
           sections.push(`<section>\n${node.innerHTML.trim()}\n</section>`)
         }
       })

@@ -85,7 +85,7 @@
 
     {%- if reviewData.reviewedContent and reviewData.reviewedContent.annotatedSections
           and reviewData.reviewedContent.annotatedSections.length > 0 -%}
-      <div class="content-body govuk-body">
+      {%- set assembledContent -%}
         {%- for section in reviewData.reviewedContent.annotatedSections -%}
           {%- if section.issueIdx is not null and section.issueIdx is not undefined -%}
             {#
@@ -95,9 +95,12 @@
             {%- set categoryClass = 'highlight-' + (section.category | lower | replace(' ', '-')) -%}
             <a href="#improvement-{{ section.issueIdx }}" class="highlight-link" aria-label="Issue {{ section.issueIdx + 1 }}: {{ section.category }}"><mark class="{{ categoryClass }}">{{ section.text | renderUrlContent(true) | safe }}</mark></a>
           {%- else -%}
-            {{ section.text | renderUrlContent | safe }}
+            {{ section.text | renderUrlContent(true) | safe }}
           {%- endif -%}
         {%- endfor -%}
+      {%- endset -%}
+      <div class="content-body govuk-body">
+        {{ assembledContent | convertNewlines | safe }}
       </div>
     {%- elif reviewData.reviewedContent and reviewData.reviewedContent.issues
             and reviewData.reviewedContent.issues.length > 0 -%}
