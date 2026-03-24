@@ -138,7 +138,9 @@ export function renderUrlContent(text, inline = false) {
  * @returns {string} HTML string wrapped in <p> tags (must be rendered with | safe)
  */
 export function convertNewlines(html) {
-  if (!html || typeof html !== 'string') return html ?? ''
+  if (!html || typeof html !== 'string') {
+    return html ?? ''
+  }
   const paragraphs = html.split('\n\n')
   const rendered = paragraphs
     .map((para) => para.replaceAll('\n', '<br>'))
