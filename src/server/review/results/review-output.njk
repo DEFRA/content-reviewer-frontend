@@ -85,7 +85,7 @@
 
     {%- if reviewData.reviewedContent and reviewData.reviewedContent.annotatedSections
           and reviewData.reviewedContent.annotatedSections.length > 0 -%}
-      <div class="content-body govuk-body">
+      {%- set assembledContent -%}
         {%- for section in reviewData.reviewedContent.annotatedSections -%}
           {%- if section.issueIdx is not null and section.issueIdx is not undefined -%}
             {#
@@ -95,9 +95,12 @@
             {%- set categoryClass = 'highlight-' + (section.category | lower | replace(' ', '-')) -%}
             <a href="#improvement-{{ section.issueIdx }}" class="highlight-link" aria-label="Issue {{ section.issueIdx + 1 }}: {{ section.category }}"><mark class="{{ categoryClass }}">{{ section.text | renderUrlContent(true) | safe }}</mark></a>
           {%- else -%}
-            {{ section.text | renderUrlContent | safe }}
+            {{ section.text | renderUrlContent(true) | safe }}
           {%- endif -%}
         {%- endfor -%}
+      {%- endset -%}
+      <div class="content-body govuk-body">
+        {{ assembledContent | convertNewlines | safe }}
       </div>
     {%- elif reviewData.reviewedContent and reviewData.reviewedContent.issues
             and reviewData.reviewedContent.issues.length > 0 -%}
@@ -121,12 +124,22 @@
       <ol class="improvement-list">
         {% for improvement in reviewData.improvements %}
           {#
-            id="improvement-{{ loop.index0 }}" must match href="#improvement-{{ section.issueIdx }}"
-            above. Both use the same sequential 0-based index guaranteed by _sortAndAlignPairs.
+            Matched improvements (unmatched is falsy) have
+            id="improvement-{{ loop.index0 }}" which is the anchor target for
+            href="#improvement-{{ section.issueIdx }}" in the annotated content
+            above. The issueIdx values (0, 1, 2…) correspond to the first N
+            improvements in this list (the matched ones).
+
+            Unmatched improvements (improvement.unmatched is true) are appended
+            after all matched ones. They have no highlight in the text but are
+            still shown here so no feedback is ever silently lost.
           #}
-          <li id="improvement-{{ loop.index0 }}" class="improvement-item severity-{{ improvement.severity }}">
+          <li id="improvement-{{ loop.index0 }}" class="improvement-item severity-{{ improvement.severity }}{% if improvement.unmatched %} improvement-item--unmatched{% endif %}">
             <span class="category-badge">{{ improvement.category }}</span>
             <strong class="issue-title">{{ improvement.issue }}</strong>
+            {% if improvement.unmatched %}
+              <span class="govuk-hint govuk-!-font-size-16">(No highlighted span — the text location could not be identified)</span>
+            {% endif %}
             <p class="issue-description">{{ improvement.why }}</p>
             {% if improvement.current or improvement.suggested %}
               <div class="issue-example">
