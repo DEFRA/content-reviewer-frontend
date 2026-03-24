@@ -124,12 +124,22 @@
       <ol class="improvement-list">
         {% for improvement in reviewData.improvements %}
           {#
-            id="improvement-{{ loop.index0 }}" must match href="#improvement-{{ section.issueIdx }}"
-            above. Both use the same sequential 0-based index guaranteed by _sortAndAlignPairs.
+            Matched improvements (unmatched is falsy) have
+            id="improvement-{{ loop.index0 }}" which is the anchor target for
+            href="#improvement-{{ section.issueIdx }}" in the annotated content
+            above. The issueIdx values (0, 1, 2…) correspond to the first N
+            improvements in this list (the matched ones).
+
+            Unmatched improvements (improvement.unmatched is true) are appended
+            after all matched ones. They have no highlight in the text but are
+            still shown here so no feedback is ever silently lost.
           #}
-          <li id="improvement-{{ loop.index0 }}" class="improvement-item severity-{{ improvement.severity }}">
+          <li id="improvement-{{ loop.index0 }}" class="improvement-item severity-{{ improvement.severity }}{% if improvement.unmatched %} improvement-item--unmatched{% endif %}">
             <span class="category-badge">{{ improvement.category }}</span>
             <strong class="issue-title">{{ improvement.issue }}</strong>
+            {% if improvement.unmatched %}
+              <span class="govuk-hint govuk-!-font-size-16">(No highlighted span — the text location could not be identified)</span>
+            {% endif %}
             <p class="issue-description">{{ improvement.why }}</p>
             {% if improvement.current or improvement.suggested %}
               <div class="issue-example">
