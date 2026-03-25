@@ -223,15 +223,12 @@ describe('upload/form-handler - URL action validation', () => {
 
 describe('upload/form-handler - URL action submission', () => {
   let getSelectedAction
-  let showUrlError
 
   beforeEach(async () => {
     buildDom()
     vi.clearAllMocks()
     const radioMod = await import('./radio-handler.js')
     getSelectedAction = radioMod.getSelectedAction
-    const feedbackMod = await import('./ui-feedback.js')
-    showUrlError = feedbackMod.showUrlError
     getSelectedAction.mockReturnValue('url')
   })
 
@@ -255,6 +252,21 @@ describe('upload/form-handler - URL action submission', () => {
       GOVUK_TEST_URL
     )
   })
+})
+
+describe('upload/form-handler - URL action error handling', () => {
+  let getSelectedAction
+  let showUrlError
+
+  beforeEach(async () => {
+    buildDom()
+    vi.clearAllMocks()
+    const radioMod = await import('./radio-handler.js')
+    getSelectedAction = radioMod.getSelectedAction
+    const feedbackMod = await import('./ui-feedback.js')
+    showUrlError = feedbackMod.showUrlError
+    getSelectedAction.mockReturnValue('url')
+  })
 
   it('should show fetch-failed error when gov.uk URL fetch throws a network error', async () => {
     const { parseGovUkUrl, extractGovspeakText } =
@@ -270,6 +282,27 @@ describe('upload/form-handler - URL action submission', () => {
 
     expect(showUrlError).toHaveBeenCalledWith(
       'Could not retrieve content from that URL'
+    )
+  })
+
+  it('should show unsupported-layout error when extraction finds no matching content', async () => {
+    const { parseGovUkUrl, extractGovspeakText } =
+      await import('./url-extractor.js')
+    parseGovUkUrl.mockReturnValue(new URL(GOVUK_TEST_URL))
+    extractGovspeakText.mockRejectedValue(
+      new Error(
+        'Could not extract any content from that URL. The page may use an unsupported layout.'
+      )
+    )
+
+    const urlInput = document.getElementById('url-input')
+    urlInput.value = GOVUK_TEST_URL
+
+    const event = makeSubmitEvent()
+    await handleFormSubmit(event)
+
+    expect(showUrlError).toHaveBeenCalledWith(
+      'Could not extract content from that URL. The page layout is not supported'
     )
   })
 

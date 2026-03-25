@@ -23,6 +23,8 @@ const ERROR_ENTER_URL = 'Enter URL for content review'
 const ERROR_INVALID_URL = 'Enter a valid GOV.UK URL'
 const ERROR_NO_OPTION = 'Select an option to proceed'
 const ERROR_FETCH_FAILED = 'Could not retrieve content from that URL'
+const ERROR_UNSUPPORTED_LAYOUT =
+  'Could not extract content from that URL. The page layout is not supported'
 
 function disableSubmit(elements) {
   if (elements.uploadButton) {
@@ -69,9 +71,14 @@ async function handleUrlSubmit(elements) {
     enableSubmit(elements)
   } catch (error) {
     console.error('[UPLOAD-HANDLER] Failed to extract content:', error)
-    const message = error.message?.startsWith('Extracted text is too long')
-      ? error.message
-      : ERROR_FETCH_FAILED
+    let message
+    if (error.message?.startsWith('Extracted text is too long')) {
+      message = error.message
+    } else if (error.message?.startsWith('Could not extract any content')) {
+      message = ERROR_UNSUPPORTED_LAYOUT
+    } else {
+      message = ERROR_FETCH_FAILED
+    }
     showUrlError(message)
     enableSubmit(elements)
   }
