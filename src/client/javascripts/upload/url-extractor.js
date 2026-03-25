@@ -14,7 +14,7 @@ const MAX_EXTRACTED_CHARS = 100_000
  * that happen to sit inside the wider container.
  *
  * Page-type coverage:
- *  - h1.gem-c-heading__text                : main page title (all page types)
+ *  - h1.gem-c-title__text                  : main page title (guidance, policy, news)
  *  - .gem-c-lead-paragraph                 : intro/summary paragraph (all page types)
  *  - .gem-c-contents-list__list            : contents list on guidance/policy pages
  *  - div[data-module="govspeak"]            : guidance, policy, news, consultation,
@@ -28,6 +28,7 @@ const MAX_EXTRACTED_CHARS = 100_000
  *                                            not already captured by a finer selector
  */
 const CONTENT_SELECTORS = [
+  'h1.gem-c-title__text',
   'h1.gem-c-heading__text',
   '.gem-c-lead-paragraph',
   '.gem-c-contents-list__list',
