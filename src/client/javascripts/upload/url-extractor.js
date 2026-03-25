@@ -14,27 +14,29 @@ const MAX_EXTRACTED_CHARS = 100_000
  * that happen to sit inside the wider container.
  *
  * Page-type coverage:
+ *  - h1.gem-c-heading__text                : main page title (all page types)
+ *  - .gem-c-lead-paragraph                 : intro/summary paragraph (all page types)
+ *  - .gem-c-contents-list__list            : contents list on guidance/policy pages
  *  - div[data-module="govspeak"]            : guidance, policy, news, consultation,
  *                                             specialist document, HMRC manual
- *  - .gem-c-contents-list__list            : contents list on guidance/policy pages
  *  - .govuk-accordion__section-content     : manual section pages (accordion layout)
  *  - div[data-module="govspeak-html-publication"] : HTML publication full documents
  *  - .gem-c-document-list                  : collection pages, manual index pages
  *  - .govuk-step-nav__panel                : step-by-step navigation pages
+ *  - .gem-c-browse-columns                 : browse/topic index pages
  *  - .govuk-grid-column-two-thirds         : fallback for any two-thirds column page
  *                                            not already captured by a finer selector
  */
 const CONTENT_SELECTORS = [
-  String.raw`.gem-c-heading.govuk-\!-margin-bottom-0`,
-  String.raw`.gem-c-heading--inverse.govuk-\!-margin-bottom-0`,
-  '.gem-c-heading__text.govuk-heading-xl',
-  String.raw`.gem-c-heading.govuk-\!-margin-bottom-6`,
+  'h1.gem-c-heading__text',
+  '.gem-c-lead-paragraph',
   '.gem-c-contents-list__list',
   'div[data-module="govspeak"]',
   '.govuk-accordion__section-content',
   'div[data-module="govspeak-html-publication"]',
   '.gem-c-document-list',
   '.govuk-step-nav__panel',
+  '.gem-c-browse-columns',
   '.govuk-grid-column-two-thirds'
 ]
 
@@ -43,6 +45,11 @@ const CONTENT_SELECTORS = [
  * be stripped before content extraction.  Removing these ensures that cookie
  * notices, navigation, feedback widgets etc. are not included in the review.
  *
+ * Note: 'nav' is intentionally NOT included here because the GOV.UK contents
+ * list is rendered inside a <nav class="gem-c-contents-list"> element — stripping
+ * all <nav> elements would remove the contents list before it can be extracted.
+ * Instead, specific navigation components that are noise are listed explicitly.
+ *
  * Also strips GOV.UK heading context spans (e.g. "Guidance" labels) that sit
  * inside headings as decorative sub-captions — these are not content and
  * produce garbled text when stripped of their surrounding markup.
@@ -50,7 +57,6 @@ const CONTENT_SELECTORS = [
 const NOISE_SELECTORS = [
   'header',
   'footer',
-  'nav',
   'script',
   'style',
   'aside',
@@ -63,6 +69,8 @@ const NOISE_SELECTORS = [
   '.gem-c-print-link',
   '.gem-c-breadcrumbs',
   '.gem-c-phase-banner',
+  '.gem-c-layout-super-navigation-header',
+  '.gem-c-skip-link',
   '.gem-c-heading__context',
   '.govuk-caption-xl',
   '.govuk-caption-l',
