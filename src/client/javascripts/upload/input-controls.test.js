@@ -3,7 +3,11 @@
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { initializeElements } from './dom-elements.js'
-import { initializeTextInput } from './input-controls.js'
+import {
+  initializeTextInput,
+  showTextClearButton,
+  hideTextClearButton
+} from './input-controls.js'
 
 vi.mock('./character-counter.js', () => ({
   updateCharacterCount: vi.fn()
@@ -51,6 +55,27 @@ describe('upload/input-controls', () => {
       const btn = document.querySelector(CLEAR_BUTTON_SELECTOR)
       expect(btn).not.toBeNull()
       expect(btn.textContent).toBe('Clear text')
+    })
+
+    it('should be hidden initially after initialisation', () => {
+      initializeTextInput()
+      const btn = document.querySelector(CLEAR_BUTTON_SELECTOR)
+      expect(btn.hidden).toBe(true)
+    })
+
+    it('showTextClearButton should make the button visible', () => {
+      initializeTextInput()
+      showTextClearButton()
+      const btn = document.querySelector(CLEAR_BUTTON_SELECTOR)
+      expect(btn.hidden).toBe(false)
+    })
+
+    it('hideTextClearButton should hide the button', () => {
+      initializeTextInput()
+      showTextClearButton()
+      hideTextClearButton()
+      const btn = document.querySelector(CLEAR_BUTTON_SELECTOR)
+      expect(btn.hidden).toBe(true)
     })
 
     it('should clear textarea value when Clear text is clicked', () => {

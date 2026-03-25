@@ -5,11 +5,17 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { initializeElements } from './dom-elements.js'
 import { initializeRadioHandler, getSelectedAction } from './radio-handler.js'
 import { hideRadioError } from './ui-feedback.js'
+import { showTextClearButton, hideTextClearButton } from './input-controls.js'
 
 vi.mock('./ui-feedback.js', () => ({
   hideError: vi.fn(),
   hideUrlError: vi.fn(),
   hideRadioError: vi.fn()
+}))
+
+vi.mock('./input-controls.js', () => ({
+  showTextClearButton: vi.fn(),
+  hideTextClearButton: vi.fn()
 }))
 
 const ACTION_URL_ID = 'action-url'
@@ -95,6 +101,27 @@ describe('upload/radio-handler - initializeRadioHandler', () => {
     urlRadio.checked = true
     urlRadio.dispatchEvent(new Event('change'))
     expect(hideRadioError).toHaveBeenCalled()
+  })
+
+  it('should show clear button when text radio is selected', () => {
+    initializeRadioHandler()
+    const textRadio = document.getElementById(ACTION_TEXT_ID)
+    textRadio.checked = true
+    textRadio.dispatchEvent(new Event('change'))
+    expect(showTextClearButton).toHaveBeenCalled()
+  })
+
+  it('should hide clear button when URL radio is selected', () => {
+    initializeRadioHandler()
+    const urlRadio = document.getElementById(ACTION_URL_ID)
+    urlRadio.checked = true
+    urlRadio.dispatchEvent(new Event('change'))
+    expect(hideTextClearButton).toHaveBeenCalled()
+  })
+
+  it('should hide clear button on initialisation', () => {
+    initializeRadioHandler()
+    expect(hideTextClearButton).toHaveBeenCalled()
   })
 
   it('should not throw when radio elements are absent', () => {

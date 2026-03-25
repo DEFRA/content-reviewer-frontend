@@ -218,3 +218,15 @@
     text-decoration: underline;
   }
 }
+
+// Back to top link
+.app-back-to-top {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.app-back-to-top__icon {
+  display: inline-block;
+  vertical-align: middle;
+}
