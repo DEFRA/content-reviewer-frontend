@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { renderUrlContent } from './render-url-content.js'
 
+const HELLO_WORLD = 'Hello world'
+const LINE_ONE_TWO = 'Line one.\nLine two.'
+
 describe('renderUrlContent filter - guard clauses', () => {
   it('returns empty string for null input', () => {
     expect(renderUrlContent(null)).toBe('')
@@ -11,7 +14,7 @@ describe('renderUrlContent filter - guard clauses', () => {
   })
 
   it('returns the input unchanged (wrapped in <p>) for plain text with no special characters', () => {
-    expect(renderUrlContent('Hello world')).toBe('<p>Hello world</p>')
+    expect(renderUrlContent(HELLO_WORLD)).toBe('<p>Hello world</p>')
   })
 })
 
@@ -93,7 +96,7 @@ describe('renderUrlContent filter - paragraph and line-break conversion', () => 
   })
 
   it(String.raw`converts single \n (line break) to <br>`, () => {
-    const result = renderUrlContent('Line one.\nLine two.')
+    const result = renderUrlContent(LINE_ONE_TWO)
     expect(result).toBe('<p>Line one.<br>Line two.</p>')
   })
 
@@ -116,7 +119,7 @@ describe('renderUrlContent filter - paragraph and line-break conversion', () => 
 
 describe('renderUrlContent filter - inline mode', () => {
   it('does not wrap in <p> when inline = true', () => {
-    expect(renderUrlContent('Hello world', true)).toBe('Hello world')
+    expect(renderUrlContent(HELLO_WORLD, true)).toBe('Hello world')
   })
 
   it('still escapes HTML special characters in inline mode', () => {
@@ -135,9 +138,7 @@ describe('renderUrlContent filter - inline mode', () => {
   })
 
   it('does not apply newline conversion in inline mode', () => {
-    expect(renderUrlContent('Line one.\nLine two.', true)).toBe(
-      'Line one.\nLine two.'
-    )
+    expect(renderUrlContent(LINE_ONE_TWO, true)).toBe('Line one.\nLine two.')
   })
 
   it('handles mixed link and plain text without <p> wrapper', () => {
