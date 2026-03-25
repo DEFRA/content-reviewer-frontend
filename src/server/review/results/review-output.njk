@@ -123,8 +123,8 @@
     {% if reviewData.improvements and reviewData.improvements.length > 0 %}
       <ol class="improvement-list">
         {% for improvement in reviewData.improvements %}
-          {# Only render improvements that have a matching highlight in the content #}
-          {% if not improvement.unmatched %}
+          {# Backend enforces 1:1 validity; this guard is a safety net for any legacy stored data #}
+          {% if improvement.suggested and improvement.suggested | trim and improvement.issue | lower != "issue identified" %}
             <li id="improvement-{{ loop.index0 }}" class="improvement-item severity-{{ improvement.severity }}">
               <span class="category-badge">{{ improvement.category }}</span>
               <strong class="issue-title">{{ improvement.issue }}</strong>
