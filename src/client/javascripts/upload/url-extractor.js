@@ -7,15 +7,35 @@ const MAX_EXTRACTED_CHARS = 100_000
 /**
  * Ordered list of CSS selectors to try when extracting content.
  * Each is tried in turn; matching elements are collected from all that match.
+ *
+ * Ordering is significant: more-specific selectors must come before broader
+ * container selectors (e.g. .govuk-grid-column-two-thirds) so that the
+ * ancestor/descendant overlap check does not suppress specific content regions
+ * that happen to sit inside the wider container.
+ *
+ * Page-type coverage:
+ *  - div[data-module="govspeak"]            : guidance, policy, news, consultation,
+ *                                             specialist document, HMRC manual
+ *  - .gem-c-contents-list__list            : contents list on guidance/policy pages
+ *  - .govuk-accordion__section-content     : manual section pages (accordion layout)
+ *  - div[data-module="govspeak-html-publication"] : HTML publication full documents
+ *  - .gem-c-document-list                  : collection pages, manual index pages
+ *  - .govuk-step-nav__panel                : step-by-step navigation pages
+ *  - .govuk-grid-column-two-thirds         : fallback for any two-thirds column page
+ *                                            not already captured by a finer selector
  */
 const CONTENT_SELECTORS = [
   String.raw`.gem-c-heading.govuk-\!-margin-bottom-0`,
   String.raw`.gem-c-heading--inverse.govuk-\!-margin-bottom-0`,
   '.gem-c-heading__text.govuk-heading-xl',
-  '.govuk-grid-column-two-thirds',
   String.raw`.gem-c-heading.govuk-\!-margin-bottom-6`,
   '.gem-c-contents-list__list',
-  'div[data-module="govspeak"]'
+  'div[data-module="govspeak"]',
+  '.govuk-accordion__section-content',
+  'div[data-module="govspeak-html-publication"]',
+  '.gem-c-document-list',
+  '.govuk-step-nav__panel',
+  '.govuk-grid-column-two-thirds'
 ]
 
 /**
