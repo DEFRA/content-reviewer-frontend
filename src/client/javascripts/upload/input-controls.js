@@ -71,6 +71,19 @@ export function initializeTextInput() {
   }
   if (textClearBtn) {
     textClearBtn.disabled = false
+    textClearBtn.hidden = true
+  }
+}
+
+export function showTextClearButton() {
+  if (textClearBtn) {
+    textClearBtn.hidden = false
+  }
+}
+
+export function hideTextClearButton() {
+  if (textClearBtn) {
+    textClearBtn.hidden = true
   }
 }
 
