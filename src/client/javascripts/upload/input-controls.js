@@ -71,19 +71,19 @@ export function initializeTextInput() {
   }
   if (textClearBtn) {
     textClearBtn.disabled = false
-    textClearBtn.hidden = true
+    textClearBtn.style.display = 'none'
   }
 }
 
 export function showTextClearButton() {
   if (textClearBtn) {
-    textClearBtn.hidden = false
+    textClearBtn.style.display = ''
   }
 }
 
 export function hideTextClearButton() {
   if (textClearBtn) {
-    textClearBtn.hidden = true
+    textClearBtn.style.display = 'none'
   }
 }
 

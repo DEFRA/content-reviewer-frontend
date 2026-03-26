@@ -141,9 +141,22 @@ export function convertNewlines(html) {
   if (!html || typeof html !== 'string') {
     return html ?? ''
   }
-  const paragraphs = html.split('\n\n')
-  const rendered = paragraphs
-    .map((para) => para.replaceAll('\n', '<br>'))
-    .join('</p><p>')
-  return `<p>${rendered}</p>`
+  const segments = html
+    .split('\n\n')
+    .map((para) => {
+      const lines = para.split('\n').filter((l) => l.trim())
+      if (lines.length === 0) return ''
+      // If every non-empty line starts with a bullet marker, render as a list.
+      // trimStart() handles any residual leading whitespace from inline assembly.
+      const allBullets = lines.every((l) => l.trimStart().startsWith('• '))
+      if (allBullets) {
+        const items = lines
+          .map((l) => `<li>${l.trimStart().slice(2)}</li>`)
+          .join('')
+        return `<ul class="govuk-list govuk-list--bullet">${items}</ul>`
+      }
+      return `<p>${para.replaceAll('\n', '<br>')}</p>`
+    })
+    .filter(Boolean)
+  return segments.join('')
 }

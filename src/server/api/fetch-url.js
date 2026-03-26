@@ -9,15 +9,23 @@ const HTTP_STATUS = {
 }
 
 const ALLOWED_HOSTNAME = 'www.gov.uk'
-const FETCH_TIMEOUT_MS = 25_000
+const FETCH_TIMEOUT_MS = 30_000
+const FETCH_MAX_RETRIES = 2
 
 /**
- * Browser-like User-Agent sent with every GOV.UK proxy request.
- * Some GOV.UK pages (Fastly CDN) return 403 or a bot-challenge page when the
- * request has no User-Agent header, causing empty extraction results.
+ * Browser-like headers sent with every GOV.UK proxy request.
+ * GOV.UK pages are served via Fastly CDN which inspects request headers.
+ * A minimal but realistic browser profile avoids bot-challenge pages and
+ * 403/503 responses that would otherwise prevent content extraction.
  */
-const GOVUK_FETCH_USER_AGENT =
-  'Mozilla/5.0 (compatible; GovUK-Content-Reviewer/1.0; +https://www.gov.uk)'
+const GOVUK_FETCH_HEADERS = {
+  Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+  'Accept-Language': 'en-GB,en;q=0.9',
+  'Accept-Encoding': 'gzip, deflate, br',
+  'User-Agent':
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+  'Cache-Control': 'no-cache'
+}
 
 /**
  * Validates the supplied URL string.
@@ -43,27 +51,40 @@ function parseAllowedUrl(urlString) {
 
 /**
  * Fetches the HTML for a validated gov.uk URL server-side, avoiding CORS.
+ * Retries up to FETCH_MAX_RETRIES times on transient 5xx / network errors.
  * @param {URL} parsedUrl
  * @returns {Promise<string>}
  */
 async function fetchGovUkHtml(parsedUrl) {
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
-  try {
-    const response = await fetch(parsedUrl.toString(), {
-      signal: controller.signal,
-      headers: {
-        Accept: 'text/html',
-        'User-Agent': GOVUK_FETCH_USER_AGENT
+  let lastError
+  for (let attempt = 0; attempt <= FETCH_MAX_RETRIES; attempt++) {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+    try {
+      const response = await fetch(parsedUrl.toString(), {
+        signal: controller.signal,
+        headers: GOVUK_FETCH_HEADERS
+      })
+      if (!response.ok) {
+        throw new Error(`Upstream responded with ${response.status}`)
       }
-    })
-    if (!response.ok) {
-      throw new Error(`Upstream responded with ${response.status}`)
+      return await response.text()
+    } catch (err) {
+      lastError = err
+      logger.warn(
+        { err, url: parsedUrl.toString(), attempt },
+        `fetch-url: attempt ${attempt + 1} failed`
+      )
+      // Only retry on network errors or 5xx; don't retry 4xx (client error)
+      const status = Number(err.message?.match(/\d{3}/)?.[0])
+      if (status >= 400 && status < 500) {
+        break
+      }
+    } finally {
+      clearTimeout(timer)
     }
-    return await response.text()
-  } finally {
-    clearTimeout(timer)
   }
+  throw lastError
 }
 
 /**
@@ -89,7 +110,10 @@ export const fetchUrlController = {
       const html = await fetchGovUkHtml(parsedUrl)
       return h.response(html).code(HTTP_STATUS.OK).type('text/html')
     } catch (error) {
-      logger.error({ err: error, url }, 'fetch-url: upstream fetch failed')
+      logger.error(
+        { err: error, url, message: error.message },
+        'fetch-url: upstream fetch failed after retries'
+      )
       return h
         .response({
           success: false,
