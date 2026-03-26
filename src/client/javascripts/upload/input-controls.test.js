@@ -60,14 +60,14 @@ describe('upload/input-controls', () => {
     it('should be hidden initially after initialisation', () => {
       initializeTextInput()
       const btn = document.querySelector(CLEAR_BUTTON_SELECTOR)
-      expect(btn.hidden).toBe(true)
+      expect(btn.style.display).toBe('none')
     })
 
     it('showTextClearButton should make the button visible', () => {
       initializeTextInput()
       showTextClearButton()
       const btn = document.querySelector(CLEAR_BUTTON_SELECTOR)
-      expect(btn.hidden).toBe(false)
+      expect(btn.style.display).toBe('')
     })
 
     it('hideTextClearButton should hide the button', () => {
@@ -75,7 +75,7 @@ describe('upload/input-controls', () => {
       showTextClearButton()
       hideTextClearButton()
       const btn = document.querySelector(CLEAR_BUTTON_SELECTOR)
-      expect(btn.hidden).toBe(true)
+      expect(btn.style.display).toBe('none')
     })
 
     it('should clear textarea value when Clear text is clicked', () => {

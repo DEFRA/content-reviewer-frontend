@@ -219,17 +219,12 @@
   }
 }
 
-// Back to top — fixed floater
+// Back to top — fixed link, styled to match GOV.UK design system (no box, no shadow)
 .app-back-to-top-container {
   position: fixed;
   bottom: 2rem;
   left: 2rem;
   z-index: 100;
-  background-color: govuk-colour('white');
-  border: 1px solid govuk-colour('mid-grey');
-  border-radius: 4px;
-  padding: 0.75rem 1rem;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
 .app-back-to-top {
@@ -237,7 +232,6 @@
   align-items: center;
   gap: 0.375rem;
   font-size: 1rem;
-  font-weight: 700;
   white-space: nowrap;
 }
 
