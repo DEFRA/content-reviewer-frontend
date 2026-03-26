@@ -78,32 +78,45 @@ describe('fetchUrlController - valid gov.uk URLs', () => {
     expect(result._type).toBe('text/html')
   })
 
-  it('should call fetch with the validated URL and required headers', async () => {
+  it('should call fetch with a browser-like Accept header and Chrome User-Agent', async () => {
     const { request, h } = buildRequestAndH(GOVUK_URL)
     await fetchUrlController.handler(request, h)
     expect(globalThis.fetch).toHaveBeenCalledWith(
       GOVUK_URL,
       expect.objectContaining({
         headers: expect.objectContaining({
-          Accept: 'text/html',
-          'User-Agent': expect.stringContaining('GovUK-Content-Reviewer')
+          Accept: expect.stringContaining('text/html'),
+          'User-Agent': expect.stringContaining('Chrome')
         })
       })
     )
   })
 
-  it('should return 500 when the upstream fetch fails', async () => {
+  it('should return 500 when the upstream fetch fails (after retries)', async () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network failure'))
     const { request, h } = buildRequestAndH(GOVUK_URL)
     const result = await fetchUrlController.handler(request, h)
     expect(result._code).toBe(HTTP_STATUS_INTERNAL_SERVER_ERROR)
     expect(result._body.success).toBe(false)
+    // Retries up to FETCH_MAX_RETRIES times (3 total attempts)
+    expect(globalThis.fetch).toHaveBeenCalledTimes(3)
   })
 
-  it('should return 500 when upstream responds with a non-ok status', async () => {
+  it('should return 500 when upstream responds with a 5xx status (after retries)', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({ ok: false, status: 503 })
     const { request, h } = buildRequestAndH(GOVUK_URL)
     const result = await fetchUrlController.handler(request, h)
     expect(result._code).toBe(HTTP_STATUS_INTERNAL_SERVER_ERROR)
+    // 5xx triggers retries
+    expect(globalThis.fetch).toHaveBeenCalledTimes(3)
+  })
+
+  it('should return 500 immediately (no retry) when upstream responds with 4xx', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({ ok: false, status: 404 })
+    const { request, h } = buildRequestAndH(GOVUK_URL)
+    const result = await fetchUrlController.handler(request, h)
+    expect(result._code).toBe(HTTP_STATUS_INTERNAL_SERVER_ERROR)
+    // 4xx is not retried — only 1 attempt
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1)
   })
 })

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { renderUrlContent } from './render-url-content.js'
+import { renderUrlContent, convertNewlines } from './render-url-content.js'
 
 const HELLO_WORLD = 'Hello world'
 const LINE_ONE_TWO = 'Line one.\nLine two.'
@@ -149,6 +149,78 @@ describe('renderUrlContent filter - inline mode', () => {
     expect(result).toBe(
       'use <a href="https://www.gov.uk/service" class="govuk-link" rel="noopener noreferrer">this service</a> to apply'
     )
+  })
+})
+
+describe('convertNewlines filter', () => {
+  it('returns empty string for null input', () => {
+    expect(convertNewlines(null)).toBe('')
+  })
+
+  it('returns empty string for undefined input', () => {
+    expect(convertNewlines(undefined)).toBe('')
+  })
+
+  it('wraps plain text in a <p> element', () => {
+    expect(convertNewlines('Hello world')).toBe('<p>Hello world</p>')
+  })
+
+  it(
+    String.raw`converts \n\n (paragraph break) to separate <p> elements`,
+    () => {
+      expect(convertNewlines('Para one.\n\nPara two.')).toBe(
+        '<p>Para one.</p><p>Para two.</p>'
+      )
+    }
+  )
+
+  it(
+    String.raw`converts single \n (line break) to <br> within a paragraph`,
+    () => {
+      expect(convertNewlines('Line one.\nLine two.')).toBe(
+        '<p>Line one.<br>Line two.</p>'
+      )
+    }
+  )
+
+  it('converts a block of bullet lines to a <ul> list', () => {
+    const result = convertNewlines('• Item one\n• Item two\n• Item three')
+    expect(result).toBe(
+      '<ul class="govuk-list govuk-list--bullet"><li>Item one</li><li>Item two</li><li>Item three</li></ul>'
+    )
+  })
+
+  it('keeps bullet list and surrounding paragraphs as separate elements', () => {
+    const result = convertNewlines(
+      'Intro text.\n\n• Item one\n• Item two\n\nFollowing text.'
+    )
+    expect(result).toBe(
+      '<p>Intro text.</p>' +
+        '<ul class="govuk-list govuk-list--bullet"><li>Item one</li><li>Item two</li></ul>' +
+        '<p>Following text.</p>'
+    )
+  })
+
+  it('preserves inline HTML markup inside bullet items', () => {
+    const result = convertNewlines(
+      '• cattle that are <mark class="highlight-general">overdue</mark> for testing\n• other cattle'
+    )
+    expect(result).toContain('<ul class="govuk-list govuk-list--bullet">')
+    expect(result).toContain(
+      '<li>cattle that are <mark class="highlight-general">overdue</mark> for testing</li>'
+    )
+    expect(result).toContain('<li>other cattle</li>')
+  })
+
+  it('falls back to <br> for mixed lines where not all start with •', () => {
+    const result = convertNewlines('Intro line\n• Item one')
+    expect(result).toBe('<p>Intro line<br>• Item one</p>')
+  })
+
+  it('filters out empty paragraphs', () => {
+    const result = convertNewlines('Para one.\n\n\n\nPara two.')
+    expect(result).toContain('Para one.')
+    expect(result).toContain('Para two.')
   })
 })
 
