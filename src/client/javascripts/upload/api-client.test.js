@@ -370,8 +370,15 @@ describe('handleReviewHistory - updateReviewHistory absent', () => {
 
     await apiClient.submitTextReview(TEST_TEXT)
 
+    // addReviewToHistory should still be called as the immediate fallback
+    expect(reviewHistory.addReviewToHistory).toHaveBeenCalledOnce()
+    expect(reviewHistory.addReviewToHistory).toHaveBeenCalledWith(
+      expect.objectContaining({ id: MOCK_REVIEW_ID, status: 'pending' })
+    )
+
     // No timer scheduled for updateReviewHistory — advance time and confirm no errors
     await vi.advanceTimersByTimeAsync(1000)
+    expect(console.error).not.toHaveBeenCalled()
     globalThis.updateReviewHistory = vi.fn()
   })
 })
