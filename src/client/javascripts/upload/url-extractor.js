@@ -109,7 +109,17 @@ export async function extractGovspeakText(urlString) {
   const proxyUrl = `/api/fetch-url?url=${encodeURIComponent(urlString)}`
   const response = await fetch(proxyUrl)
   if (!response.ok) {
-    throw new Error(`Proxy fetch failed: ${response.status}`)
+    let message =
+      'Could not retrieve content from that URL. Please check the URL is correct and try again.'
+    try {
+      const data = await response.json()
+      if (data.message) {
+        message = data.message
+      }
+    } catch {
+      // Response body not JSON — keep default message
+    }
+    throw new Error(message)
   }
   const html = await response.text()
   return buildExtractedHtml(html, urlString)
