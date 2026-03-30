@@ -77,7 +77,10 @@ async function fetchGovUkHtml(parsedUrl) {
       )
       // Only retry on network errors or 5xx; don't retry 4xx (client error)
       const status = Number(err.message?.match(/\d{3}/)?.[0])
-      if (status >= 400 && status < 500) {
+      if (
+        status >= HTTP_STATUS.BAD_REQUEST &&
+        status < HTTP_STATUS.INTERNAL_SERVER_ERROR
+      ) {
         break
       }
     } finally {

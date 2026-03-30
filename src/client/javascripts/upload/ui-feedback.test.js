@@ -8,7 +8,11 @@ import {
   hideError,
   hideSuccess,
   showProgress,
-  hideProgress
+  hideProgress,
+  showUrlError,
+  hideUrlError,
+  showRadioError,
+  hideRadioError
 } from './ui-feedback.js'
 
 const ERROR_GROUP_CLASS = 'govuk-form-group--error'
@@ -256,5 +260,214 @@ describe('upload/ui-feedback - missing elements', () => {
     expect(() => hideSuccess()).not.toThrow()
     expect(() => showProgress('Test', PROGRESS_PERCENTAGE_HALF)).not.toThrow()
     expect(() => hideProgress()).not.toThrow()
+  })
+})
+
+function buildFullTestDom() {
+  document.body.innerHTML = `
+    <div id="errorSummary" hidden>
+      <ul><li><a id="errorSummaryMessage" href="#text-content"></a></li></ul>
+    </div>
+    <form id="uploadForm">
+      <button id="uploadButton">Upload</button>
+      <div id="uploadProgress" hidden>
+        <div id="uploadStatusText"></div>
+        <div id="uploadProgressText"></div>
+        <div id="progressBar" data-progress="0"></div>
+      </div>
+      <div class="govuk-form-group" id="textFormGroup">
+        <div id="textFieldWrapper">
+          <p id="uploadError" hidden><span id="errorMessage"></span></p>
+          <textarea class="govuk-textarea" id="text-content"></textarea>
+        </div>
+      </div>
+      <div id="characterCountMessage"></div>
+      <div id="uploadSuccess" hidden></div>
+      <div class="govuk-form-group" id="urlFormGroup" hidden>
+        <p id="urlError" hidden><span id="urlErrorMessage"></span></p>
+        <input id="url-input" type="text">
+      </div>
+      <div class="govuk-form-group" id="actionSelectionGroup">
+        <p id="actionOptionError" hidden>
+          <span id="actionOptionErrorMessage"></span>
+        </p>
+        <div id="actionRadios"></div>
+      </div>
+    </form>
+  `
+  initializeElements()
+}
+
+const ERROR_INPUT_CLASS = 'govuk-input--error'
+const ERROR_GROUP_CLASS_URL = 'govuk-form-group--error'
+
+describe('upload/ui-feedback - showUrlError', () => {
+  beforeEach(buildFullTestDom)
+
+  it('should show the URL error element', () => {
+    showUrlError('Enter a valid URL')
+    expect(document.getElementById('urlError').hidden).toBe(false)
+  })
+
+  it('should set urlErrorMessage text', () => {
+    showUrlError('Enter a valid URL')
+    expect(document.getElementById('urlErrorMessage').textContent).toBe(
+      'Enter a valid URL'
+    )
+  })
+
+  it('should show errorSummary with the message', () => {
+    showUrlError('Invalid URL')
+    expect(document.getElementById('errorSummary').hidden).toBe(false)
+    expect(document.getElementById('errorSummaryMessage').textContent).toBe(
+      'Invalid URL'
+    )
+  })
+
+  it('should set errorSummaryMessage href to #url-input', () => {
+    showUrlError('Invalid URL')
+    expect(
+      document.getElementById('errorSummaryMessage').getAttribute('href')
+    ).toBe('#url-input')
+  })
+
+  it('should add error class to urlFormGroup', () => {
+    showUrlError('Invalid URL')
+    expect(
+      document
+        .getElementById('urlFormGroup')
+        .classList.contains(ERROR_GROUP_CLASS_URL)
+    ).toBe(true)
+  })
+
+  it('should add input error class to urlInput', () => {
+    showUrlError('Invalid URL')
+    expect(
+      document.getElementById('url-input').classList.contains(ERROR_INPUT_CLASS)
+    ).toBe(true)
+  })
+
+  it('should re-enable the upload button', () => {
+    const btn = document.getElementById('uploadButton')
+    btn.disabled = true
+    showUrlError('Invalid URL')
+    expect(btn.disabled).toBe(false)
+  })
+
+  it('should hide success element when showing URL error', () => {
+    document.getElementById('uploadSuccess').hidden = false
+    showUrlError('Invalid URL')
+    expect(document.getElementById('uploadSuccess').hidden).toBe(true)
+  })
+})
+
+describe('upload/ui-feedback - hideUrlError', () => {
+  beforeEach(buildFullTestDom)
+
+  it('should hide the URL error element', () => {
+    document.getElementById('urlError').hidden = false
+    hideUrlError()
+    expect(document.getElementById('urlError').hidden).toBe(true)
+  })
+
+  it('should hide errorSummary', () => {
+    document.getElementById('errorSummary').hidden = false
+    hideUrlError()
+    expect(document.getElementById('errorSummary').hidden).toBe(true)
+  })
+
+  it('should clear urlErrorMessage text', () => {
+    document.getElementById('urlErrorMessage').textContent = 'Some error'
+    hideUrlError()
+    expect(document.getElementById('urlErrorMessage').textContent).toBe('')
+  })
+
+  it('should remove error class from urlFormGroup', () => {
+    document.getElementById('urlFormGroup').classList.add(ERROR_GROUP_CLASS_URL)
+    hideUrlError()
+    expect(
+      document
+        .getElementById('urlFormGroup')
+        .classList.contains(ERROR_GROUP_CLASS_URL)
+    ).toBe(false)
+  })
+
+  it('should remove input error class from urlInput', () => {
+    document.getElementById('url-input').classList.add(ERROR_INPUT_CLASS)
+    hideUrlError()
+    expect(
+      document.getElementById('url-input').classList.contains(ERROR_INPUT_CLASS)
+    ).toBe(false)
+  })
+})
+
+describe('upload/ui-feedback - showRadioError', () => {
+  beforeEach(buildFullTestDom)
+
+  it('should show actionOptionError element', () => {
+    showRadioError('Select an option')
+    expect(document.getElementById('actionOptionError').hidden).toBe(false)
+  })
+
+  it('should set actionOptionErrorMessage text', () => {
+    showRadioError('Select an option')
+    expect(
+      document.getElementById('actionOptionErrorMessage').textContent
+    ).toBe('Select an option')
+  })
+
+  it('should add error class to actionSelectionGroup', () => {
+    showRadioError('Select an option')
+    expect(
+      document
+        .getElementById('actionSelectionGroup')
+        .classList.contains(ERROR_GROUP_CLASS_URL)
+    ).toBe(true)
+  })
+
+  it('should show errorSummary with the message', () => {
+    showRadioError('Select an option')
+    expect(document.getElementById('errorSummary').hidden).toBe(false)
+    expect(document.getElementById('errorSummaryMessage').textContent).toBe(
+      'Select an option'
+    )
+  })
+
+  it('should set errorSummaryMessage href to #actionRadios', () => {
+    showRadioError('Select an option')
+    expect(
+      document.getElementById('errorSummaryMessage').getAttribute('href')
+    ).toBe('#actionRadios')
+  })
+})
+
+describe('upload/ui-feedback - hideRadioError', () => {
+  beforeEach(buildFullTestDom)
+
+  it('should hide actionOptionError element', () => {
+    document.getElementById('actionOptionError').hidden = false
+    hideRadioError()
+    expect(document.getElementById('actionOptionError').hidden).toBe(true)
+  })
+
+  it('should clear actionOptionErrorMessage text', () => {
+    document.getElementById('actionOptionErrorMessage').textContent =
+      'Some error'
+    hideRadioError()
+    expect(
+      document.getElementById('actionOptionErrorMessage').textContent
+    ).toBe('')
+  })
+
+  it('should remove error class from actionSelectionGroup', () => {
+    document
+      .getElementById('actionSelectionGroup')
+      .classList.add(ERROR_GROUP_CLASS_URL)
+    hideRadioError()
+    expect(
+      document
+        .getElementById('actionSelectionGroup')
+        .classList.contains(ERROR_GROUP_CLASS_URL)
+    ).toBe(false)
   })
 })
