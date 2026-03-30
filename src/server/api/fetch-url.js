@@ -5,6 +5,8 @@ const logger = createLogger()
 const HTTP_STATUS = {
   OK: 200,
   BAD_REQUEST: 400,
+  FORBIDDEN: 403,
+  NOT_FOUND: 404,
   INTERNAL_SERVER_ERROR: 500
 }
 
@@ -122,10 +124,10 @@ export const fetchUrlController = {
       if (error.name === 'AbortError') {
         message =
           'The request timed out. GOV.UK took too long to respond — please try again in a moment.'
-      } else if (upstreamStatus === 404) {
+      } else if (upstreamStatus === HTTP_STATUS.NOT_FOUND) {
         message =
           'That page could not be found on GOV.UK. Please check the URL is correct and try again.'
-      } else if (upstreamStatus === 403) {
+      } else if (upstreamStatus === HTTP_STATUS.FORBIDDEN) {
         message =
           'Access to that page was denied. The URL may be restricted or require authentication.'
       } else if (

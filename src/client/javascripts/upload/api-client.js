@@ -23,6 +23,8 @@ import {
 } from './ui-feedback.js'
 import { addReviewToHistory } from './review-history.js'
 
+const JSON_PARSE_ERROR_PATTERNS = ['not valid JSON', 'Unexpected token']
+
 function getPreviewText(textContent) {
   const words = textContent.trim().split(/\s+/)
   return words.length > 0
@@ -98,11 +100,11 @@ export async function submitUrlReview(htmlContent, sourceUrl) {
     return data
   } catch (error) {
     console.error('[UPLOAD-HANDLER] URL review upload error:', error)
-    const userMessage =
-      error.message.includes('not valid JSON') ||
-      error.message.includes('Unexpected token')
-        ? 'The review service returned an unexpected response. Please try again.'
-        : error.message
+    const userMessage = JSON_PARSE_ERROR_PATTERNS.some((p) =>
+      error.message.includes(p)
+    )
+      ? 'The review service returned an unexpected response. Please try again.'
+      : error.message
     showUrlError(userMessage)
     if (elements.uploadButton) {
       elements.uploadButton.disabled = false
@@ -145,11 +147,11 @@ export async function submitTextReview(textContent) {
     return data
   } catch (error) {
     console.error('[UPLOAD-HANDLER] Text review error:', error)
-    const userMessage =
-      error.message.includes('not valid JSON') ||
-      error.message.includes('Unexpected token')
-        ? 'Please enter a valid input'
-        : error.message
+    const userMessage = JSON_PARSE_ERROR_PATTERNS.some((p) =>
+      error.message.includes(p)
+    )
+      ? 'Please enter a valid input'
+      : error.message
     showError(userMessage)
     if (elements.textContentInput) {
       elements.textContentInput.disabled = false
@@ -203,11 +205,11 @@ export async function submitFileUpload(file) {
     return data
   } catch (error) {
     console.error('[UPLOAD-HANDLER] Upload error:', error)
-    const userMessage =
-      error.message.includes('not valid JSON') ||
-      error.message.includes('Unexpected token')
-        ? 'Please enter a valid input'
-        : error.message
+    const userMessage = JSON_PARSE_ERROR_PATTERNS.some((p) =>
+      error.message.includes(p)
+    )
+      ? 'Please enter a valid input'
+      : error.message
     showError(`Upload failed: ${userMessage}`)
     const elements = getElements()
     if (elements.textContentInput) {
