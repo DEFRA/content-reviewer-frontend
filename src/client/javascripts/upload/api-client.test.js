@@ -48,6 +48,7 @@ beforeEach(() => {
   vi.spyOn(uiFeedback, 'showProgress').mockImplementation(() => {})
   vi.spyOn(uiFeedback, 'hideProgress').mockImplementation(() => {})
   vi.spyOn(uiFeedback, 'showError').mockImplementation(() => {})
+  vi.spyOn(uiFeedback, 'showUrlError').mockImplementation(() => {})
   vi.spyOn(uiFeedback, 'hideError').mockImplementation(() => {})
   vi.spyOn(reviewHistory, 'addReviewToHistory').mockImplementation(() => {})
   vi.spyOn(characterCounter, 'updateCharacterCount').mockImplementation(
@@ -206,7 +207,7 @@ describe('submitUrlReview - errors', () => {
     await expect(
       apiClient.submitUrlReview(TEST_HTML, TEST_URL)
     ).rejects.toThrow(ERROR_MSG_EXTRACTION)
-    expect(uiFeedback.showError).toHaveBeenCalledWith(ERROR_MSG_EXTRACTION)
+    expect(uiFeedback.showUrlError).toHaveBeenCalledWith(ERROR_MSG_EXTRACTION)
   })
 
   it(TEST_DESCRIPTION_NETWORK_ERRORS, async () => {
@@ -214,7 +215,7 @@ describe('submitUrlReview - errors', () => {
     await expect(
       apiClient.submitUrlReview(TEST_HTML, TEST_URL)
     ).rejects.toThrow(ERROR_MSG_TIMEOUT)
-    expect(uiFeedback.showError).toHaveBeenCalled()
+    expect(uiFeedback.showUrlError).toHaveBeenCalled()
   })
 })
 

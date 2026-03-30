@@ -309,7 +309,7 @@ describe('upload/url-extractor - extractGovspeakText', () => {
     })
 
     await expect(extractGovspeakText(GOVUK_URL)).rejects.toThrow(
-      'Proxy fetch failed: 500'
+      'Could not retrieve content from that URL'
     )
   })
 
