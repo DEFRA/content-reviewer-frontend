@@ -148,3 +148,61 @@ describe('upload/radio-handler - getSelectedAction', () => {
     expect(getSelectedAction()).toBe('text')
   })
 })
+
+describe('upload/radio-handler - hideBothPanels on unknown radio value', () => {
+  beforeEach(() => {
+    // Add a third radio with an unknown value to the DOM
+    document.body.innerHTML = `
+      <form id="uploadForm">
+        <div class="govuk-form-group" id="actionSelectionGroup">
+          <p id="actionOptionError" hidden><span id="actionOptionErrorMessage"></span></p>
+          <div id="actionRadios">
+            <input class="govuk-radios__input" id="action-url" name="actionOption" type="radio" value="url">
+            <input class="govuk-radios__input" id="action-text" name="actionOption" type="radio" value="text">
+            <input class="govuk-radios__input" id="action-other" name="actionOption" type="radio" value="other">
+          </div>
+        </div>
+        <div id="urlFormGroup" hidden></div>
+        <div id="textFormGroup" hidden></div>
+        <div id="errorSummary" hidden><a id="errorSummaryMessage"></a></div>
+        <div id="uploadError" hidden><span id="errorMessage"></span></div>
+        <div id="urlError" hidden><span id="urlErrorMessage"></span></div>
+        <input id="url-input" type="text">
+        <textarea id="text-content"></textarea>
+        <button id="uploadButton"></button>
+        <div id="uploadProgress" hidden></div>
+        <div id="progressBar"></div>
+        <div id="uploadStatusText"></div>
+        <div id="uploadProgressText"></div>
+        <div id="uploadSuccess" hidden></div>
+        <div id="characterCountMessage"></div>
+        <div id="textFieldWrapper"></div>
+      </form>
+    `
+    initializeElements()
+    vi.clearAllMocks()
+  })
+
+  it('should hide both panels when a radio with an unknown value fires change', () => {
+    initializeRadioHandler()
+
+    // First show both panels so we can verify they get hidden
+    document.getElementById('urlFormGroup').hidden = false
+    document.getElementById('textFormGroup').hidden = false
+
+    const otherRadio = document.getElementById('action-other')
+    otherRadio.checked = true
+    otherRadio.dispatchEvent(new Event('change'))
+
+    expect(document.getElementById('urlFormGroup').hidden).toBe(true)
+    expect(document.getElementById('textFormGroup').hidden).toBe(true)
+  })
+
+  it('should call hideTextClearButton when an unknown radio value fires change', () => {
+    initializeRadioHandler()
+    const otherRadio = document.getElementById('action-other')
+    otherRadio.checked = true
+    otherRadio.dispatchEvent(new Event('change'))
+    expect(hideTextClearButton).toHaveBeenCalled()
+  })
+})

@@ -48,6 +48,7 @@ beforeEach(() => {
   vi.spyOn(uiFeedback, 'showProgress').mockImplementation(() => {})
   vi.spyOn(uiFeedback, 'hideProgress').mockImplementation(() => {})
   vi.spyOn(uiFeedback, 'showError').mockImplementation(() => {})
+  vi.spyOn(uiFeedback, 'showUrlError').mockImplementation(() => {})
   vi.spyOn(uiFeedback, 'hideError').mockImplementation(() => {})
   vi.spyOn(reviewHistory, 'addReviewToHistory').mockImplementation(() => {})
   vi.spyOn(characterCounter, 'updateCharacterCount').mockImplementation(
@@ -206,7 +207,7 @@ describe('submitUrlReview - errors', () => {
     await expect(
       apiClient.submitUrlReview(TEST_HTML, TEST_URL)
     ).rejects.toThrow(ERROR_MSG_EXTRACTION)
-    expect(uiFeedback.showError).toHaveBeenCalledWith(ERROR_MSG_EXTRACTION)
+    expect(uiFeedback.showUrlError).toHaveBeenCalledWith(ERROR_MSG_EXTRACTION)
   })
 
   it(TEST_DESCRIPTION_NETWORK_ERRORS, async () => {
@@ -214,7 +215,7 @@ describe('submitUrlReview - errors', () => {
     await expect(
       apiClient.submitUrlReview(TEST_HTML, TEST_URL)
     ).rejects.toThrow(ERROR_MSG_TIMEOUT)
-    expect(uiFeedback.showError).toHaveBeenCalled()
+    expect(uiFeedback.showUrlError).toHaveBeenCalled()
   })
 })
 
@@ -309,5 +310,129 @@ describe('submitFileUpload - errors', () => {
     const result = await uploadPromise
     expect(result).toBeInstanceOf(Error)
     expect(result.message).toBe(ERROR_MSG_BAD_REQUEST)
+  })
+})
+
+describe('startAutoRefresh - forceStartAutoRefresh branch', () => {
+  it('should call forceStartAutoRefresh when it is available', async () => {
+    const mockResponse = { reviewId: MOCK_REVIEW_ID }
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockResponse
+    })
+    globalThis.forceStartAutoRefresh = vi.fn()
+
+    await apiClient.submitTextReview(TEST_TEXT)
+
+    expect(globalThis.forceStartAutoRefresh).toHaveBeenCalled()
+    expect(globalThis.startAutoRefresh).not.toHaveBeenCalled()
+    delete globalThis.forceStartAutoRefresh
+  })
+
+  it('should call startAutoRefresh when forceStartAutoRefresh is absent', async () => {
+    const mockResponse = { reviewId: MOCK_REVIEW_ID }
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockResponse
+    })
+    delete globalThis.forceStartAutoRefresh
+
+    await apiClient.submitTextReview(TEST_TEXT)
+
+    expect(globalThis.startAutoRefresh).toHaveBeenCalled()
+  })
+
+  it('should log a warning when neither auto-refresh function is available', async () => {
+    const mockResponse = { reviewId: MOCK_REVIEW_ID }
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockResponse
+    })
+    delete globalThis.forceStartAutoRefresh
+    delete globalThis.startAutoRefresh
+
+    await apiClient.submitTextReview(TEST_TEXT)
+
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('No auto-refresh function found')
+    )
+    globalThis.startAutoRefresh = vi.fn()
+  })
+})
+
+describe('handleReviewHistory - updateReviewHistory absent', () => {
+  it('should not schedule updateReviewHistory when it is not a function', async () => {
+    delete globalThis.updateReviewHistory
+    const mockResponse = { reviewId: MOCK_REVIEW_ID }
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockResponse
+    })
+
+    await apiClient.submitTextReview(TEST_TEXT)
+
+    // addReviewToHistory should still be called as the immediate fallback
+    expect(reviewHistory.addReviewToHistory).toHaveBeenCalledOnce()
+    expect(reviewHistory.addReviewToHistory).toHaveBeenCalledWith(
+      expect.objectContaining({ id: MOCK_REVIEW_ID, status: 'pending' })
+    )
+
+    // No timer scheduled for updateReviewHistory — advance time and confirm no errors
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(console.error).not.toHaveBeenCalled()
+    globalThis.updateReviewHistory = vi.fn()
+  })
+})
+
+describe('submitTextReview - JSON parse error message', () => {
+  it('should show "Please enter a valid input" for JSON parse errors', async () => {
+    mockFetch.mockRejectedValueOnce(new Error('not valid JSON received'))
+    await expect(apiClient.submitTextReview(TEST_TEXT)).rejects.toThrow()
+    expect(uiFeedback.showError).toHaveBeenCalledWith(
+      'Please enter a valid input'
+    )
+  })
+
+  it('should show "Please enter a valid input" for Unexpected token errors', async () => {
+    mockFetch.mockRejectedValueOnce(new Error('Unexpected token < in JSON'))
+    await expect(apiClient.submitTextReview(TEST_TEXT)).rejects.toThrow()
+    expect(uiFeedback.showError).toHaveBeenCalledWith(
+      'Please enter a valid input'
+    )
+  })
+})
+
+describe('submitFileUpload - updateReviewHistory absent (addReviewToHistory fallback)', () => {
+  it('should call addReviewToHistory directly when updateReviewHistory is not a function', async () => {
+    delete globalThis.updateReviewHistory
+    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ reviewId: MOCK_REVIEW_ID })
+    })
+
+    const uploadPromise = apiClient.submitFileUpload(file)
+    await vi.advanceTimersByTimeAsync(0)
+    await uploadPromise
+
+    expect(reviewHistory.addReviewToHistory).toHaveBeenCalledWith(
+      expect.objectContaining({ id: MOCK_REVIEW_ID, fileName: TEST_FILENAME })
+    )
+    globalThis.updateReviewHistory = vi.fn()
+  })
+})
+
+describe('submitFileUpload - JSON parse error message', () => {
+  it('should show "Upload failed: Please enter a valid input" for JSON errors', async () => {
+    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
+    mockFetch.mockRejectedValueOnce(new Error('not valid JSON received'))
+
+    const uploadPromise = apiClient.submitFileUpload(file).catch((err) => err)
+    await vi.advanceTimersByTimeAsync(0)
+    await uploadPromise
+
+    expect(uiFeedback.showError).toHaveBeenCalledWith(
+      'Upload failed: Please enter a valid input'
+    )
   })
 })

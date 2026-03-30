@@ -386,3 +386,77 @@ describe('upload/form-handler - URL clear and refocus after success', () => {
     expect(urlInput.value).toBe(GOVUK_TEST_URL)
   })
 })
+
+describe('upload/form-handler - text action file-only submit', () => {
+  beforeEach(async () => {
+    buildDom()
+    vi.clearAllMocks()
+    const radioMod = await import('./radio-handler.js')
+    radioMod.getSelectedAction.mockReturnValue('text')
+    const { submitFileUpload } = await import('./api-client.js')
+    submitFileUpload.mockResolvedValue({ reviewId: 'file-review-1' })
+  })
+
+  it('should call submitFileUpload when a file is selected and text is empty', async () => {
+    const fileInput = document.getElementById('file-upload')
+    const mockFile = new File(['content'], 'report.pdf', {
+      type: 'application/pdf'
+    })
+    Object.defineProperty(fileInput, 'files', {
+      value: { 0: mockFile, length: 1 },
+      configurable: true
+    })
+    document.getElementById(TEXT_CONTENT_ID).value = ''
+
+    const event = makeSubmitEvent()
+    await handleFormSubmit(event)
+
+    const { submitFileUpload } = await import('./api-client.js')
+    expect(submitFileUpload).toHaveBeenCalledWith(mockFile)
+  })
+
+  it('should not call submitTextReview when submitting a file', async () => {
+    const fileInput = document.getElementById('file-upload')
+    Object.defineProperty(fileInput, 'files', {
+      value: { 0: new File(['x'], 'test.txt'), length: 1 },
+      configurable: true
+    })
+    document.getElementById(TEXT_CONTENT_ID).value = ''
+
+    const event = makeSubmitEvent()
+    await handleFormSubmit(event)
+
+    expect(submitTextReview).not.toHaveBeenCalled()
+  })
+})
+
+describe('upload/form-handler - text action text-too-long', () => {
+  beforeEach(async () => {
+    buildDom()
+    vi.clearAllMocks()
+    const radioMod = await import('./radio-handler.js')
+    radioMod.getSelectedAction.mockReturnValue('text')
+  })
+
+  it('should show error when text exceeds 100000 characters', async () => {
+    const textarea = document.getElementById(TEXT_CONTENT_ID)
+    textarea.value = 'x'.repeat(100001)
+
+    const event = makeSubmitEvent()
+    await handleFormSubmit(event)
+
+    expect(showError).toHaveBeenCalledWith(
+      expect.stringContaining('Text content too long')
+    )
+  })
+
+  it('should not call submitTextReview when text is too long', async () => {
+    const textarea = document.getElementById(TEXT_CONTENT_ID)
+    textarea.value = 'x'.repeat(100001)
+
+    const event = makeSubmitEvent()
+    await handleFormSubmit(event)
+
+    expect(submitTextReview).not.toHaveBeenCalled()
+  })
+})

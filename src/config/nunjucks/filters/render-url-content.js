@@ -145,7 +145,9 @@ export function convertNewlines(html) {
     .split('\n\n')
     .map((para) => {
       const lines = para.split('\n').filter((l) => l.trim())
-      if (lines.length === 0) return ''
+      if (lines.length === 0) {
+        return ''
+      }
       // If every non-empty line starts with a bullet marker, render as a list.
       // trimStart() handles any residual leading whitespace from inline assembly.
       const allBullets = lines.every((l) => l.trimStart().startsWith('• '))
