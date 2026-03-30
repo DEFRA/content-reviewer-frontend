@@ -321,3 +321,64 @@ describe('upload/url-extractor - extractGovspeakText', () => {
     )
   })
 })
+
+describe('upload/url-extractor - buildExtractedHtml link edge cases', () => {
+  it('should drop an anchor whose text content is empty', () => {
+    const html = `
+      <html><body>
+        <div data-module="govspeak">
+          <p>Before<a href="https://www.gov.uk/page">   </a>after</p>
+        </div>
+      </body></html>
+    `
+    const result = buildExtractedHtml(html, GOVUK_URL)
+    // Empty-text links are dropped entirely — no Markdown placeholder should appear
+    expect(result).not.toContain('](https://www.gov.uk/page)')
+    expect(result).toContain('Beforeafter')
+  })
+
+  it('should keep plain text for an anchor with an empty href attribute', () => {
+    const html = `
+      <html><body>
+        <div data-module="govspeak">
+          <p>Click <a href="">here</a> to continue</p>
+        </div>
+      </body></html>
+    `
+    const result = buildExtractedHtml(html, GOVUK_URL)
+    expect(result).toContain('here')
+    expect(result).not.toContain('](')
+  })
+
+  it('should skip a node that is a descendant of an already-matched node', () => {
+    // govspeak (selector index 4) matches first; govuk-grid-column-two-thirds
+    // (selector index 10) is an ancestor — the overlap check should skip it so
+    // content is not duplicated.
+    const html = `
+      <html><body>
+        <div class="govuk-grid-column-two-thirds">
+          <div data-module="govspeak"><p>Inner content</p></div>
+        </div>
+      </body></html>
+    `
+    const result = buildExtractedHtml(html, GOVUK_URL)
+    // Content should appear exactly once (not duplicated by double extraction)
+    const matches = result.match(/Inner content/g) ?? []
+    expect(matches.length).toBe(1)
+  })
+
+  it('should skip an ancestor node when a descendant was already matched', () => {
+    // govspeak (index 4) is matched first; accordion content (index 6) is inside
+    // it — the overlap check should prevent the inner node being re-extracted.
+    const html = `
+      <html><body>
+        <div data-module="govspeak">
+          <div class="govuk-accordion__section-content"><p>Accordion text</p></div>
+        </div>
+      </body></html>
+    `
+    const result = buildExtractedHtml(html, GOVUK_URL)
+    const matches = result.match(/Accordion text/g) ?? []
+    expect(matches.length).toBe(1)
+  })
+})
