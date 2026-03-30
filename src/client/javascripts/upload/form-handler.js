@@ -76,6 +76,8 @@ async function handleUrlSubmit(elements) {
       message = error.message
     } else if (error.message?.startsWith('Could not extract any content')) {
       message = ERROR_UNSUPPORTED_LAYOUT
+    } else if (error.message && error.message !== 'Failed to fetch') {
+      message = error.message
     } else {
       message = ERROR_FETCH_FAILED
     }

@@ -18,6 +18,7 @@ import {
   showProgress,
   hideProgress,
   showError,
+  showUrlError,
   hideError
 } from './ui-feedback.js'
 import { addReviewToHistory } from './review-history.js'
@@ -80,8 +81,14 @@ export async function submitUrlReview(htmlContent, sourceUrl) {
     })
     showProgress('Processing upload...', PROGRESS_PROCESSING)
     if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.message || 'URL review upload failed')
+      let message = 'URL review upload failed'
+      try {
+        const errorData = await response.json()
+        message = errorData.message || message
+      } catch {
+        // Response body is not JSON (e.g. HTML error page) — keep default message
+      }
+      throw new Error(message)
     }
     showProgress('Processing review...', PROGRESS_PROCESSING)
     const data = await response.json()
@@ -91,7 +98,12 @@ export async function submitUrlReview(htmlContent, sourceUrl) {
     return data
   } catch (error) {
     console.error('[UPLOAD-HANDLER] URL review upload error:', error)
-    showError(error.message)
+    const userMessage =
+      error.message.includes('not valid JSON') ||
+      error.message.includes('Unexpected token')
+        ? 'The review service returned an unexpected response. Please try again.'
+        : error.message
+    showUrlError(userMessage)
     if (elements.uploadButton) {
       elements.uploadButton.disabled = false
     }
