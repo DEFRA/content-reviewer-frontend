@@ -20,6 +20,11 @@ vi.mock('./input-controls.js', () => ({
   hideUrlClearButton: vi.fn()
 }))
 
+vi.mock('./character-counter.js', () => ({
+  initCharacterCount: vi.fn(),
+  updateCharacterCount: vi.fn()
+}))
+
 const ACTION_URL_ID = 'action-url'
 const ACTION_TEXT_ID = 'action-text'
 
@@ -111,6 +116,15 @@ describe('upload/radio-handler - initializeRadioHandler', () => {
     textRadio.checked = true
     textRadio.dispatchEvent(new Event('change'))
     expect(showTextClearButton).toHaveBeenCalled()
+  })
+
+  it('should call initCharacterCount when text radio is selected', async () => {
+    const { initCharacterCount } = await import('./character-counter.js')
+    initializeRadioHandler()
+    const textRadio = document.getElementById(ACTION_TEXT_ID)
+    textRadio.checked = true
+    textRadio.dispatchEvent(new Event('change'))
+    expect(initCharacterCount).toHaveBeenCalled()
   })
 
   it('should hide clear button when URL radio is selected', () => {

@@ -1,6 +1,7 @@
 // Radio button handler: shows/hides URL input or text content based on selection
 import { getElements } from './dom-elements.js'
 import { hideError, hideUrlError, hideRadioError } from './ui-feedback.js'
+import { initCharacterCount } from './character-counter.js'
 import {
   showTextClearButton,
   hideTextClearButton,
@@ -44,6 +45,7 @@ function showTextPanel() {
   hideUrlClearButton()
   hideUrlError()
   hideError()
+  initCharacterCount()
 }
 
 /**

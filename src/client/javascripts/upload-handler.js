@@ -6,7 +6,10 @@
 
 // Import all modular components
 import { initializeElements, getElements } from './upload/dom-elements.js'
-import { updateCharacterCount } from './upload/character-counter.js'
+import {
+  initCharacterCount,
+  updateCharacterCount
+} from './upload/character-counter.js'
 import {
   initializeFileInput,
   initializeTextInput,
@@ -37,10 +40,12 @@ function initialize() {
     return
   }
 
-  // Set up character count listener and initial state
+  // Set up character count listeners.
+  // The count message is hidden until the user focuses the textarea
+  // or opens the text panel via the radio button (which calls initCharacterCount).
   if (elements.textContentInput) {
     elements.textContentInput.addEventListener('input', updateCharacterCount)
-    updateCharacterCount()
+    elements.textContentInput.addEventListener('focus', initCharacterCount)
   }
 
   // Initialize UI state
