@@ -1,6 +1,20 @@
 import { describe, it, beforeEach, expect, vi } from 'vitest'
 import { homeController } from './controller'
 
+// Use vi.hoisted so these are available when the vi.mock factory runs (hoisted to top)
+const { mockLoggerError, mockLoggerInfo } = vi.hoisted(() => ({
+  mockLoggerError: vi.fn(),
+  mockLoggerInfo: vi.fn()
+}))
+
+vi.mock('../common/helpers/logging/logger.js', () => ({
+  createLogger: vi.fn(() => ({
+    info: mockLoggerInfo,
+    error: mockLoggerError,
+    warn: vi.fn()
+  }))
+}))
+
 const mockConfig = {
   get: vi.fn((key) => {
     if (key === 'backendUrl') {
@@ -129,6 +143,17 @@ describe('homeController - error handling', () => {
         reviewHistory: [],
         pagination: expect.objectContaining({ totalReviews: 0, totalPages: 1 })
       })
+    )
+  })
+
+  it('calls logger.error with error details when backend fetch throws', async () => {
+    const backendError = new Error('Connection refused')
+    globalThis.fetch.mockRejectedValueOnce(backendError)
+    const req = mockRequest()
+    await homeController.handler(req, mockH)
+    expect(mockLoggerError).toHaveBeenCalledWith(
+      expect.stringContaining('Connection refused'),
+      expect.objectContaining({ stack: expect.any(String) })
     )
   })
 })
