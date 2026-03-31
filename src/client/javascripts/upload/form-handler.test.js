@@ -24,7 +24,14 @@ vi.mock('./ui-feedback.js', () => ({
   showUrlError: vi.fn(),
   hideUrlError: vi.fn(),
   showRadioError: vi.fn(),
-  hideRadioError: vi.fn()
+  hideRadioError: vi.fn(),
+  showCharLimitError: vi.fn(),
+  hideCharLimitError: vi.fn()
+}))
+
+// Mock character-counter — updateCharacterCount re-applies char-limit state
+vi.mock('./character-counter.js', () => ({
+  updateCharacterCount: vi.fn()
 }))
 
 // Mock radio-handler — default to null (no selection)
@@ -41,6 +48,9 @@ vi.mock('./url-extractor.js', () => ({
 
 const VALID_TEXT =
   'This is some valid content that is long enough to submit for review purposes.'
+
+const CHARACTER_LIMIT = 100000
+const OVER_LIMIT_LENGTH = CHARACTER_LIMIT + 1
 
 const TEXT_CONTENT_ID = 'text-content'
 const GOVUK_TEST_URL = 'https://www.gov.uk/test'
@@ -108,6 +118,13 @@ describe('upload/form-handler - no radio selected', () => {
     const event = makeSubmitEvent()
     await handleFormSubmit(event)
     expect(submitTextReview).not.toHaveBeenCalled()
+  })
+
+  it('should not call updateCharacterCount when no option is selected', async () => {
+    const { updateCharacterCount } = await import('./character-counter.js')
+    const event = makeSubmitEvent()
+    await handleFormSubmit(event)
+    expect(updateCharacterCount).not.toHaveBeenCalled()
   })
 })
 
@@ -184,6 +201,13 @@ describe('upload/form-handler - URL action validation', () => {
     await handleFormSubmit(event)
 
     expect(showUrlError).toHaveBeenCalledWith('Enter URL for content review')
+  })
+
+  it('should not call updateCharacterCount for URL action', async () => {
+    const { updateCharacterCount } = await import('./character-counter.js')
+    const event = makeSubmitEvent()
+    await handleFormSubmit(event)
+    expect(updateCharacterCount).not.toHaveBeenCalled()
   })
 
   it('should show invalid-URL error when URL is not a gov.uk URL', async () => {
@@ -440,7 +464,7 @@ describe('upload/form-handler - text action text-too-long', () => {
 
   it('should show error when text exceeds 100000 characters', async () => {
     const textarea = document.getElementById(TEXT_CONTENT_ID)
-    textarea.value = 'x'.repeat(100001)
+    textarea.value = 'x'.repeat(OVER_LIMIT_LENGTH)
 
     const event = makeSubmitEvent()
     await handleFormSubmit(event)
@@ -452,11 +476,22 @@ describe('upload/form-handler - text action text-too-long', () => {
 
   it('should not call submitTextReview when text is too long', async () => {
     const textarea = document.getElementById(TEXT_CONTENT_ID)
-    textarea.value = 'x'.repeat(100001)
+    textarea.value = 'x'.repeat(OVER_LIMIT_LENGTH)
 
     const event = makeSubmitEvent()
     await handleFormSubmit(event)
 
     expect(submitTextReview).not.toHaveBeenCalled()
+  })
+
+  it('should call updateCharacterCount to re-apply char-limit state after hideError', async () => {
+    const { updateCharacterCount } = await import('./character-counter.js')
+    const textarea = document.getElementById(TEXT_CONTENT_ID)
+    textarea.value = 'x'.repeat(OVER_LIMIT_LENGTH)
+
+    const event = makeSubmitEvent()
+    await handleFormSubmit(event)
+
+    expect(updateCharacterCount).toHaveBeenCalled()
   })
 })

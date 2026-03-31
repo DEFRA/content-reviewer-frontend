@@ -10,6 +10,7 @@ import {
   showRadioError,
   hideRadioError
 } from './ui-feedback.js'
+import { updateCharacterCount } from './character-counter.js'
 import {
   submitTextReview,
   submitFileUpload,
@@ -135,6 +136,8 @@ export async function handleFormSubmit(e) {
       return
     }
     if (action === 'text') {
+      // Re-apply char-limit state if still over limit (hideError clears the border)
+      updateCharacterCount()
       await handleTextSubmit(elements)
     }
   } catch (error) {

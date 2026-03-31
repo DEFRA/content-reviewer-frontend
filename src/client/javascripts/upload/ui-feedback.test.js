@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { initializeElements } from './dom-elements.js'
 import {
   showError,
@@ -12,12 +12,17 @@ import {
   showUrlError,
   hideUrlError,
   showRadioError,
-  hideRadioError
+  hideRadioError,
+  showCharLimitError,
+  hideCharLimitError,
+  showInlineTextError,
+  hideInlineTextError
 } from './ui-feedback.js'
 
 const ERROR_GROUP_CLASS = 'govuk-form-group--error'
 const ERROR_TEXTAREA_CLASS = 'govuk-textarea--error'
 const TEXT_CONTENT_ID = 'text-content'
+const ENTER_TEXT_ERROR = 'Enter text content for review'
 const PROGRESS_PERCENTAGE_HALF = 50
 const PROGRESS_PERCENTAGE_DECIMAL = 45.7
 const PROGRESS_PERCENTAGE_ROUNDED = '46'
@@ -78,12 +83,10 @@ describe('upload/ui-feedback - showError', () => {
     const errorSummary = document.getElementById('errorSummary')
     const errorSummaryMessage = document.getElementById('errorSummaryMessage')
 
-    showError('Enter text content for review')
+    showError(ENTER_TEXT_ERROR)
 
     expect(errorSummary.hidden).toBe(false)
-    expect(errorSummaryMessage.textContent).toBe(
-      'Enter text content for review'
-    )
+    expect(errorSummaryMessage.textContent).toBe(ENTER_TEXT_ERROR)
   })
 
   it('should add error class to form group', () => {
@@ -300,39 +303,42 @@ function buildFullTestDom() {
 
 const ERROR_INPUT_CLASS = 'govuk-input--error'
 const ERROR_GROUP_CLASS_URL = 'govuk-form-group--error'
+const ENTER_VALID_URL_ERROR = 'Enter a valid URL'
+const INVALID_URL_ERROR = 'Invalid URL'
+const SELECT_OPTION_ERROR = 'Select an option'
 
 describe('upload/ui-feedback - showUrlError', () => {
   beforeEach(buildFullTestDom)
 
   it('should show the URL error element', () => {
-    showUrlError('Enter a valid URL')
+    showUrlError(ENTER_VALID_URL_ERROR)
     expect(document.getElementById('urlError').hidden).toBe(false)
   })
 
   it('should set urlErrorMessage text', () => {
-    showUrlError('Enter a valid URL')
+    showUrlError(ENTER_VALID_URL_ERROR)
     expect(document.getElementById('urlErrorMessage').textContent).toBe(
-      'Enter a valid URL'
+      ENTER_VALID_URL_ERROR
     )
   })
 
   it('should show errorSummary with the message', () => {
-    showUrlError('Invalid URL')
+    showUrlError(INVALID_URL_ERROR)
     expect(document.getElementById('errorSummary').hidden).toBe(false)
     expect(document.getElementById('errorSummaryMessage').textContent).toBe(
-      'Invalid URL'
+      INVALID_URL_ERROR
     )
   })
 
   it('should set errorSummaryMessage href to #url-input', () => {
-    showUrlError('Invalid URL')
+    showUrlError(INVALID_URL_ERROR)
     expect(
       document.getElementById('errorSummaryMessage').getAttribute('href')
     ).toBe('#url-input')
   })
 
   it('should add error class to urlFormGroup', () => {
-    showUrlError('Invalid URL')
+    showUrlError(INVALID_URL_ERROR)
     expect(
       document
         .getElementById('urlFormGroup')
@@ -341,7 +347,7 @@ describe('upload/ui-feedback - showUrlError', () => {
   })
 
   it('should add input error class to urlInput', () => {
-    showUrlError('Invalid URL')
+    showUrlError(INVALID_URL_ERROR)
     expect(
       document.getElementById('url-input').classList.contains(ERROR_INPUT_CLASS)
     ).toBe(true)
@@ -350,13 +356,13 @@ describe('upload/ui-feedback - showUrlError', () => {
   it('should re-enable the upload button', () => {
     const btn = document.getElementById('uploadButton')
     btn.disabled = true
-    showUrlError('Invalid URL')
+    showUrlError(INVALID_URL_ERROR)
     expect(btn.disabled).toBe(false)
   })
 
   it('should hide success element when showing URL error', () => {
     document.getElementById('uploadSuccess').hidden = false
-    showUrlError('Invalid URL')
+    showUrlError(INVALID_URL_ERROR)
     expect(document.getElementById('uploadSuccess').hidden).toBe(true)
   })
 })
@@ -405,19 +411,19 @@ describe('upload/ui-feedback - showRadioError', () => {
   beforeEach(buildFullTestDom)
 
   it('should show actionOptionError element', () => {
-    showRadioError('Select an option')
+    showRadioError(SELECT_OPTION_ERROR)
     expect(document.getElementById('actionOptionError').hidden).toBe(false)
   })
 
   it('should set actionOptionErrorMessage text', () => {
-    showRadioError('Select an option')
+    showRadioError(SELECT_OPTION_ERROR)
     expect(
       document.getElementById('actionOptionErrorMessage').textContent
-    ).toBe('Select an option')
+    ).toBe(SELECT_OPTION_ERROR)
   })
 
   it('should add error class to actionSelectionGroup', () => {
-    showRadioError('Select an option')
+    showRadioError(SELECT_OPTION_ERROR)
     expect(
       document
         .getElementById('actionSelectionGroup')
@@ -426,15 +432,15 @@ describe('upload/ui-feedback - showRadioError', () => {
   })
 
   it('should show errorSummary with the message', () => {
-    showRadioError('Select an option')
+    showRadioError(SELECT_OPTION_ERROR)
     expect(document.getElementById('errorSummary').hidden).toBe(false)
     expect(document.getElementById('errorSummaryMessage').textContent).toBe(
-      'Select an option'
+      SELECT_OPTION_ERROR
     )
   })
 
   it('should set errorSummaryMessage href to #actionRadios', () => {
-    showRadioError('Select an option')
+    showRadioError(SELECT_OPTION_ERROR)
     expect(
       document.getElementById('errorSummaryMessage').getAttribute('href')
     ).toBe('#actionRadios')
@@ -469,5 +475,119 @@ describe('upload/ui-feedback - hideRadioError', () => {
         .getElementById('actionSelectionGroup')
         .classList.contains(ERROR_GROUP_CLASS_URL)
     ).toBe(false)
+  })
+})
+
+describe('upload/ui-feedback - showCharLimitError', () => {
+  beforeEach(buildTestDom)
+
+  it('should add error class to textarea', () => {
+    const textarea = document.getElementById(TEXT_CONTENT_ID)
+    showCharLimitError()
+    expect(textarea.classList.contains(ERROR_TEXTAREA_CLASS)).toBe(true)
+  })
+
+  it('should not add form-group error class to textFormGroup', () => {
+    const textFormGroup = document.getElementById('textFormGroup')
+    showCharLimitError()
+    expect(textFormGroup.classList.contains(ERROR_GROUP_CLASS)).toBe(false)
+  })
+
+  it('should not touch the inline uploadError element', () => {
+    const uploadError = document.getElementById('uploadError')
+    showCharLimitError()
+    expect(uploadError.hidden).toBe(true)
+  })
+})
+
+describe('upload/ui-feedback - hideCharLimitError', () => {
+  beforeEach(buildTestDom)
+
+  it('should remove error class from textarea', () => {
+    const textarea = document.getElementById(TEXT_CONTENT_ID)
+    textarea.classList.add(ERROR_TEXTAREA_CLASS)
+    hideCharLimitError()
+    expect(textarea.classList.contains(ERROR_TEXTAREA_CLASS)).toBe(false)
+  })
+
+  it('should not hide uploadError set by showError', () => {
+    const uploadError = document.getElementById('uploadError')
+    uploadError.hidden = false
+    hideCharLimitError()
+    expect(uploadError.hidden).toBe(false)
+  })
+
+  it('should not clear errorMessage set by showError', () => {
+    const errorMessage = document.getElementById('errorMessage')
+    errorMessage.textContent = ENTER_TEXT_ERROR
+    hideCharLimitError()
+    expect(errorMessage.textContent).toBe(ENTER_TEXT_ERROR)
+  })
+})
+
+describe('upload/ui-feedback - showInlineTextError', () => {
+  beforeEach(buildTestDom)
+
+  it('should show the inline uploadError element', () => {
+    const uploadError = document.getElementById('uploadError')
+    showInlineTextError('Too long.')
+    expect(uploadError.hidden).toBe(false)
+  })
+
+  it('should set the errorMessage text', () => {
+    const errorMessage = document.getElementById('errorMessage')
+    showInlineTextError(ENTER_TEXT_ERROR)
+    expect(errorMessage.textContent).toBe(ENTER_TEXT_ERROR)
+  })
+
+  it('should add form-group error class to textFormGroup', () => {
+    const textFormGroup = document.getElementById('textFormGroup')
+    showInlineTextError('Too long.')
+    expect(textFormGroup.classList.contains(ERROR_GROUP_CLASS)).toBe(true)
+  })
+
+  it('should add textarea error class when inline error is shown', () => {
+    const textarea = document.getElementById(TEXT_CONTENT_ID)
+    showInlineTextError('Too long.')
+    expect(textarea.classList.contains(ERROR_TEXTAREA_CLASS)).toBe(true)
+  })
+
+  it('should NOT steal focus from the textarea', () => {
+    const textarea = document.getElementById(TEXT_CONTENT_ID)
+    const focusSpy = vi.spyOn(textarea, 'focus')
+    showInlineTextError('Too long.')
+    expect(focusSpy).not.toHaveBeenCalled()
+  })
+})
+
+describe('upload/ui-feedback - hideInlineTextError', () => {
+  beforeEach(buildTestDom)
+
+  it('should hide the inline uploadError element', () => {
+    const uploadError = document.getElementById('uploadError')
+    uploadError.hidden = false
+    hideInlineTextError()
+    expect(uploadError.hidden).toBe(true)
+  })
+
+  it('should clear the errorMessage text', () => {
+    const errorMessage = document.getElementById('errorMessage')
+    errorMessage.textContent = ENTER_TEXT_ERROR
+    hideInlineTextError()
+    expect(errorMessage.textContent).toBe('')
+  })
+
+  it('should remove form-group error class from textFormGroup', () => {
+    const textFormGroup = document.getElementById('textFormGroup')
+    textFormGroup.classList.add(ERROR_GROUP_CLASS)
+    hideInlineTextError()
+    expect(textFormGroup.classList.contains(ERROR_GROUP_CLASS)).toBe(false)
+  })
+
+  it('should remove textarea error class when inline error is hidden', () => {
+    const textarea = document.getElementById(TEXT_CONTENT_ID)
+    textarea.classList.add(ERROR_TEXTAREA_CLASS)
+    hideInlineTextError()
+    expect(textarea.classList.contains(ERROR_TEXTAREA_CLASS)).toBe(false)
   })
 })
