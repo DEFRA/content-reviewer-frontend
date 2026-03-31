@@ -5,6 +5,60 @@ const FORM_GROUP_ERROR_CLASS = 'govuk-form-group--error'
 const TEXTAREA_ERROR_CLASS = 'govuk-textarea--error'
 const INPUT_ERROR_CLASS = 'govuk-input--error'
 
+export function showCharLimitError() {
+  const elements = getElements()
+  if (elements.textContentInput) {
+    elements.textContentInput.classList.add(TEXTAREA_ERROR_CLASS)
+  }
+}
+
+export function hideCharLimitError() {
+  const elements = getElements()
+  if (elements.textContentInput) {
+    elements.textContentInput.classList.remove(TEXTAREA_ERROR_CLASS)
+  }
+}
+
+/**
+ * Shows the inline error above the textarea without stealing focus.
+ * Used by the real-time character counter so focus stays in the textarea.
+ */
+export function showInlineTextError(message) {
+  const elements = getElements()
+  if (elements.uploadError) {
+    elements.uploadError.hidden = false
+  }
+  if (elements.errorMessage) {
+    elements.errorMessage.textContent = message
+  }
+  if (elements.textFormGroup) {
+    elements.textFormGroup.classList.add(FORM_GROUP_ERROR_CLASS)
+  }
+  if (elements.textContentInput) {
+    elements.textContentInput.classList.add(TEXTAREA_ERROR_CLASS)
+  }
+}
+
+/**
+ * Hides the inline error above the textarea.
+ * Used by the real-time character counter when content drops back under the limit.
+ */
+export function hideInlineTextError() {
+  const elements = getElements()
+  if (elements.uploadError) {
+    elements.uploadError.hidden = true
+  }
+  if (elements.errorMessage) {
+    elements.errorMessage.textContent = ''
+  }
+  if (elements.textFormGroup) {
+    elements.textFormGroup.classList.remove(FORM_GROUP_ERROR_CLASS)
+  }
+  if (elements.textContentInput) {
+    elements.textContentInput.classList.remove(TEXTAREA_ERROR_CLASS)
+  }
+}
+
 export function showError(message) {
   hideSuccess()
   hideProgress()
