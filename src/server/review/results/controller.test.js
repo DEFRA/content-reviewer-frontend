@@ -394,3 +394,68 @@ describe('resultsController - data transformation scenarios', () => {
     )
   })
 })
+
+// Legacy scores schema (buildScoresMap fallback)
+describe('resultsController - legacy scores schema', () => {
+  it('should build scores map from legacy accessibility/style/tone/overall keys', async () => {
+    const mockRequest = createMockRequest({ id: 'legacy-scores' })
+    const mockH = createMockH()
+
+    // Provide only legacy keys — note: 'accessibility' IS in the five-category schema
+    // so we must NOT include it here, otherwise the fallback won't trigger.
+    // The legacy fallback only fires when none of the five-category keys are present.
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        success: true,
+        data: {
+          status: 'completed',
+          processedAt: '2026-02-26T09:00:00Z',
+          scores: {
+            style: 60,
+            tone: 40,
+            overall: 70
+          },
+          annotatedSections: [],
+          issues: [],
+          improvements: []
+        }
+      })
+    })
+
+    const result = await resultsController.handler(mockRequest, mockH)
+
+    const scoresMap = result.data.results.result.reviewData.scores
+
+    // Each legacy key should map to its label with score divided by 20
+    expect(scoresMap['Style']).toEqual({ score: 3, note: '' })
+    expect(scoresMap['Tone']).toEqual({ score: 2, note: '' })
+    expect(scoresMap['Overall']).toEqual({ score: 4, note: '' }) // Math.round(70/20)=4
+  })
+
+  it('should produce empty scores map when no recognised score keys present', async () => {
+    const mockRequest = createMockRequest({ id: 'no-scores' })
+    const mockH = createMockH()
+
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        success: true,
+        data: {
+          status: 'completed',
+          processedAt: '2026-02-26T10:00:00Z',
+          scores: {},
+          annotatedSections: [],
+          issues: [],
+          improvements: []
+        }
+      })
+    })
+
+    const result = await resultsController.handler(mockRequest, mockH)
+
+    expect(result.data.results.result.reviewData.scores).toEqual({})
+  })
+})
