@@ -15,7 +15,9 @@ vi.mock('./ui-feedback.js', () => ({
 
 vi.mock('./input-controls.js', () => ({
   showTextClearButton: vi.fn(),
-  hideTextClearButton: vi.fn()
+  hideTextClearButton: vi.fn(),
+  showUrlClearButton: vi.fn(),
+  hideUrlClearButton: vi.fn()
 }))
 
 vi.mock('./character-counter.js', () => ({
