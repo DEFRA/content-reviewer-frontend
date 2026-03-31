@@ -120,3 +120,43 @@ describe('fetchUrlController - valid gov.uk URLs', () => {
     expect(globalThis.fetch).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('fetchUrlController - upstream error message variants', () => {
+  const GOVUK_URL = 'https://www.gov.uk/test-page'
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('should return timeout message when fetch is aborted (AbortError)', async () => {
+    const abortError = new Error('The operation was aborted')
+    abortError.name = 'AbortError'
+    globalThis.fetch = vi.fn().mockRejectedValue(abortError)
+
+    const { request, h } = buildRequestAndH(GOVUK_URL)
+    const result = await fetchUrlController.handler(request, h)
+
+    expect(result._code).toBe(HTTP_STATUS_INTERNAL_SERVER_ERROR)
+    expect(result._body.message).toContain('timed out')
+  })
+
+  it('should return 404-specific message when upstream returns 404', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({ ok: false, status: 404 })
+
+    const { request, h } = buildRequestAndH(GOVUK_URL)
+    const result = await fetchUrlController.handler(request, h)
+
+    expect(result._code).toBe(HTTP_STATUS_INTERNAL_SERVER_ERROR)
+    expect(result._body.message).toContain('could not be found')
+  })
+
+  it('should return 403-specific message when upstream returns 403', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({ ok: false, status: 403 })
+
+    const { request, h } = buildRequestAndH(GOVUK_URL)
+    const result = await fetchUrlController.handler(request, h)
+
+    expect(result._code).toBe(HTTP_STATUS_INTERNAL_SERVER_ERROR)
+    expect(result._body.message).toContain('denied')
+  })
+})

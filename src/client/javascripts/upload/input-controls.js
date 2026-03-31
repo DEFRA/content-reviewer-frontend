@@ -9,7 +9,7 @@ import { getElements, getFileInput } from './dom-elements.js'
 import { updateCharacterCount } from './character-counter.js'
 import { hideError, hideUrlError } from './ui-feedback.js'
 
-let fileClearBtn, textClearBtn
+let fileClearBtn, textClearBtn, urlClearBtn
 
 function addClearButton(input, label, onClear) {
   const btn = document.createElement('button')
@@ -72,6 +72,34 @@ export function initializeTextInput() {
   if (textClearBtn) {
     textClearBtn.disabled = false
     textClearBtn.style.display = 'none'
+  }
+}
+
+export function initializeUrlInput() {
+  const elements = getElements()
+  if (!elements.urlInput) {
+    return
+  }
+  urlClearBtn?.remove()
+  urlClearBtn = addClearButton(elements.urlInput, 'Clear URL', () => {
+    elements.urlInput.value = ''
+    elements.urlInput.disabled = false
+    hideUrlError()
+  })
+  if (urlClearBtn) {
+    urlClearBtn.style.display = 'none'
+  }
+}
+
+export function showUrlClearButton() {
+  if (urlClearBtn) {
+    urlClearBtn.style.display = ''
+  }
+}
+
+export function hideUrlClearButton() {
+  if (urlClearBtn) {
+    urlClearBtn.style.display = 'none'
   }
 }
 

@@ -1,8 +1,13 @@
 // Radio button handler: shows/hides URL input or text content based on selection
 import { getElements } from './dom-elements.js'
 import { hideError, hideUrlError, hideRadioError } from './ui-feedback.js'
-import { showTextClearButton, hideTextClearButton } from './input-controls.js'
 import { initCharacterCount } from './character-counter.js'
+import {
+  showTextClearButton,
+  hideTextClearButton,
+  showUrlClearButton,
+  hideUrlClearButton
+} from './input-controls.js'
 
 /**
  * Shows the URL input panel and hides the text content panel.
@@ -21,6 +26,7 @@ function showUrlPanel() {
     elements.characterCountMessage.classList.remove('govuk-error-message')
   }
   hideTextClearButton()
+  showUrlClearButton()
   hideError()
 }
 
@@ -36,6 +42,7 @@ function showTextPanel() {
     elements.urlFormGroup.hidden = true
   }
   showTextClearButton()
+  hideUrlClearButton()
   hideUrlError()
   hideError()
   initCharacterCount()
@@ -53,6 +60,7 @@ function hideBothPanels() {
     elements.textFormGroup.hidden = true
   }
   hideTextClearButton()
+  hideUrlClearButton()
 }
 
 /**

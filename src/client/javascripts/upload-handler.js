@@ -12,7 +12,8 @@ import {
 } from './upload/character-counter.js'
 import {
   initializeFileInput,
-  initializeTextInput
+  initializeTextInput,
+  initializeUrlInput
 } from './upload/input-controls.js'
 import { hideError, hideProgress, hideSuccess } from './upload/ui-feedback.js'
 import { handleFormSubmit } from './upload/form-handler.js'
@@ -52,9 +53,10 @@ function initialize() {
   hideProgress()
   hideSuccess()
 
-  // Initialize input controls (file input, text input, clear buttons, mutual exclusion)
+  // Initialize input controls (file input, text input, URL input, clear buttons, mutual exclusion)
   initializeFileInput()
   initializeTextInput()
+  initializeUrlInput()
 
   // Set up form submission handler
   elements.form.addEventListener('submit', handleFormSubmit)
