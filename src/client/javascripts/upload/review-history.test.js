@@ -17,7 +17,7 @@ function buildDom(limitValue = '5') {
     <table>
       <tbody id="reviewHistoryBody"></tbody>
     </table>
-    <select id="historyLimit">
+    <select id="reviewLimit">
       <option value="${limitValue}" selected>${limitValue}</option>
     </select>
   `
@@ -270,7 +270,7 @@ describe('review-history - enforceTableLimit', () => {
     expect(document.querySelectorAll('#reviewHistoryBody tr').length).toBe(2)
   })
 
-  it('defaults to limit of 5 when #historyLimit select is absent', () => {
+  it('defaults to limit of 5 when #reviewLimit select is absent', () => {
     document.body.innerHTML = `
       <table><tbody id="reviewHistoryBody"></tbody></table>
     `

@@ -109,7 +109,7 @@ function createActionCell(review) {
 }
 
 function enforceTableLimit() {
-  const limitSelect = document.getElementById('historyLimit')
+  const limitSelect = document.getElementById('reviewLimit')
   const tbody = document.querySelector('#reviewHistoryBody')
   if (!tbody) {
     return

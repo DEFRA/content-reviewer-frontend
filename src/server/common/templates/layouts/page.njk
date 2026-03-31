@@ -25,8 +25,16 @@
       navigationClasses: "govuk-header__navigation--end",
       navigation: [
         {
+          text: "|",
+          classes: "app-header-divider"
+        },
+        {
           text: (user.displayName or user.email or user.name or 'User'),
           classes: "app-header-user-name"
+        },
+        {
+          text: "|",
+          classes: "app-header-divider"
         },
         {
           href: "/auth/logout",
