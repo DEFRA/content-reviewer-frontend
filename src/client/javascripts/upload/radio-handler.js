@@ -2,6 +2,7 @@
 import { getElements } from './dom-elements.js'
 import { hideError, hideUrlError, hideRadioError } from './ui-feedback.js'
 import { showTextClearButton, hideTextClearButton } from './input-controls.js'
+import { initCharacterCount } from './character-counter.js'
 
 /**
  * Shows the URL input panel and hides the text content panel.
@@ -37,6 +38,7 @@ function showTextPanel() {
   showTextClearButton()
   hideUrlError()
   hideError()
+  initCharacterCount()
 }
 
 /**
