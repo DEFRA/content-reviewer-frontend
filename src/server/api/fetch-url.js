@@ -13,6 +13,7 @@ const HTTP_STATUS = {
 const ALLOWED_HOSTNAME = 'www.gov.uk'
 const FETCH_TIMEOUT_MS = 30_000
 const FETCH_MAX_RETRIES = 2
+const FASTLY_ERROR_SNIPPET_CHARS = 300
 
 /**
  * Browser-like headers sent with every GOV.UK proxy request.
@@ -122,7 +123,7 @@ async function fetchGovUkHtml(parsedUrl) {
             url: parsedUrl.toString(),
             attempt,
             fastlyDiagnostics,
-            htmlSnippet: html.substring(0, 300)
+            htmlSnippet: html.substring(0, FASTLY_ERROR_SNIPPET_CHARS)
           },
           'fetch-url: Fastly CDN error page detected in 200 response body'
         )

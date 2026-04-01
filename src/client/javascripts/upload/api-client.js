@@ -25,6 +25,20 @@ import { addReviewToHistory } from './review-history.js'
 
 const JSON_PARSE_ERROR_PATTERNS = ['not valid JSON', 'Unexpected token']
 
+async function extractJsonErrorMessage(response, contentType, defaultMessage) {
+  try {
+    const errorData = await response.json()
+    return errorData.message || defaultMessage
+  } catch {
+    // Response body is not valid JSON — keep default message and log for diagnosis
+    console.error(
+      '[UPLOAD-HANDLER] Non-JSON error response from /api/review/text',
+      { status: response.status, contentType }
+    )
+    return defaultMessage
+  }
+}
+
 function getPreviewText(textContent) {
   const words = textContent.trim().split(/\s+/)
   return words.length > 0
@@ -98,16 +112,7 @@ export async function submitUrlReview(htmlContent, sourceUrl) {
           'This page could not be submitted for review. The content may have been blocked by a security filter. ' +
           'Please try a different URL or paste the content directly using the text input.'
       } else {
-        try {
-          const errorData = await response.json()
-          message = errorData.message || message
-        } catch {
-          // Response body is not valid JSON — keep default message and log for diagnosis
-          console.error(
-            '[UPLOAD-HANDLER] Non-JSON error response from /api/review/text',
-            { status: response.status, contentType }
-          )
-        }
+        message = await extractJsonErrorMessage(response, contentType, message)
       }
       throw new Error(message)
     }
