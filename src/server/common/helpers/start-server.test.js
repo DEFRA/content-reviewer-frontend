@@ -193,6 +193,15 @@ describe('startServer - configuration and environment variable logging', () => {
       process.env.ENVIRONMENT || 'NOT SET'
     )
   })
+
+  it('should log "NOT SET" for NODE_ENV when it is not defined', async () => {
+    const origNodeEnv = process.env.NODE_ENV
+    delete process.env.NODE_ENV
+    const { startServer } = await import('./start-server.js')
+    await startServer()
+    expect(consoleSpy).toHaveBeenCalledWith('NODE_ENV:', 'NOT SET')
+    process.env.NODE_ENV = origNodeEnv
+  })
 })
 
 describe('startServer - config values logging', () => {

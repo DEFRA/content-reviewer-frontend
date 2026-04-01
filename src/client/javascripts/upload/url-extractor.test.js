@@ -313,6 +313,42 @@ describe('upload/url-extractor - extractGovspeakText', () => {
     )
   })
 
+  it('should use default message when error response body is not valid JSON', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: () => Promise.reject(new Error('Not JSON'))
+    })
+
+    await expect(extractGovspeakText(GOVUK_URL)).rejects.toThrow(
+      'Could not retrieve content from that URL'
+    )
+  })
+
+  it('should use server-provided message when error response body is valid JSON with message', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: () => Promise.resolve({ message: 'Page not found on GOV.UK' })
+    })
+
+    await expect(extractGovspeakText(GOVUK_URL)).rejects.toThrow(
+      'Page not found on GOV.UK'
+    )
+  })
+
+  it('should use default message when error response JSON has no message field', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: () => Promise.resolve({}) // valid JSON but no .message → if(data.message) false branch
+    })
+
+    await expect(extractGovspeakText(GOVUK_URL)).rejects.toThrow(
+      'Could not retrieve content from that URL'
+    )
+  })
+
   it('should throw when fetch itself rejects', async () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network error'))
 
@@ -380,5 +416,19 @@ describe('upload/url-extractor - buildExtractedHtml link edge cases', () => {
     const result = buildExtractedHtml(html, GOVUK_URL)
     const matches = result.match(/Accordion text/g) ?? []
     expect(matches.length).toBe(1)
+  })
+
+  it('should skip a govspeak node whose text content is whitespace-only (if(text) false branch)', () => {
+    // A div[data-module="govspeak"] with only whitespace content → text.trim() = '' → if(text) false
+    // A second node provides real content so sections is non-empty and no error is thrown
+    const html = `
+      <html><body>
+        <div data-module="govspeak">   </div>
+        <div data-module="govspeak"><p>Real content here</p></div>
+      </body></html>
+    `
+    const result = buildExtractedHtml(html, GOVUK_URL)
+    // The whitespace-only node is skipped; the real content node is included
+    expect(result).toContain('Real content here')
   })
 })

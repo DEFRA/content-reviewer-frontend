@@ -490,3 +490,39 @@ describe('resultsController - failed review status', () => {
     expect(result.template).toBe('review/results/error')
   })
 })
+
+// buildScoresMap — noteKey exists but value is absent (|| '' branch)
+describe('resultsController - buildScoresMap noteKey fallback to empty string', () => {
+  it('should use empty string for note when noteKey is defined but value is absent from scores', async () => {
+    const mockRequest = createMockRequest({ id: 'note-key-fallback' })
+    const mockH = createMockH()
+
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        success: true,
+        data: {
+          status: 'completed',
+          processedAt: '2026-02-25T12:00:00Z',
+          // plainEnglish key present (triggers five-category schema) but plainEnglishNote absent
+          scores: {
+            plainEnglish: 80
+          },
+          annotatedSections: [],
+          issues: [],
+          improvements: []
+        }
+      })
+    })
+
+    const result = await resultsController.handler(mockRequest, mockH)
+
+    const scoresMap = result.data.results.result.reviewData.scores
+    // 'Plain English' entry should exist with note = '' (|| '' branch fires)
+    expect(scoresMap['Plain English']).toEqual({
+      score: expect.any(Number),
+      note: ''
+    })
+  })
+})

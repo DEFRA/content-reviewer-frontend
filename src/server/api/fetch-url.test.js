@@ -159,4 +159,48 @@ describe('fetchUrlController - upstream error message variants', () => {
     expect(result._code).toBe(HTTP_STATUS_INTERNAL_SERVER_ERROR)
     expect(result._body.message).toContain('denied')
   })
+
+  it('should return generic 4xx message when upstream returns a non-404/403 4xx status', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({ ok: false, status: 429 })
+
+    const { request, h } = buildRequestAndH(GOVUK_URL)
+    const result = await fetchUrlController.handler(request, h)
+
+    expect(result._code).toBe(HTTP_STATUS_INTERNAL_SERVER_ERROR)
+    expect(result._body.message).toContain('returned an error')
+  })
+})
+
+describe('fetchUrlController - setTimeout abort arrow function', () => {
+  const GOVUK_URL = 'https://www.gov.uk/test-page'
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.useRealTimers()
+  })
+
+  it('should abort the fetch via controller.abort() when the 30s timeout fires', async () => {
+    vi.useFakeTimers()
+
+    // fetch hangs until the signal is aborted (timeout fires → controller.abort())
+    globalThis.fetch = vi.fn((_url, opts) => {
+      return new Promise((_resolve, reject) => {
+        opts.signal.addEventListener('abort', () => {
+          const err = new Error('The operation was aborted')
+          err.name = 'AbortError'
+          reject(err)
+        })
+      })
+    })
+
+    const { request, h } = buildRequestAndH(GOVUK_URL)
+    const handlerPromise = fetchUrlController.handler(request, h)
+
+    // Advance past FETCH_TIMEOUT_MS (30_000ms) for all 3 attempts
+    await vi.advanceTimersByTimeAsync(30_001 * 3)
+
+    const result = await handlerPromise
+    expect(result._code).toBe(HTTP_STATUS_INTERNAL_SERVER_ERROR)
+    expect(result._body.message).toContain('timed out')
+  })
 })

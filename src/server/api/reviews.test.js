@@ -268,6 +268,31 @@ describe('getReviewsController - Data Normalization', () => {
   })
 })
 
+describe('getReviewsController - userId scoping', () => {
+  let mockH
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockH = createMockH()
+  })
+
+  it('should include userId in backend URL when getUserIdentifier returns a value', async () => {
+    const { getUserIdentifier } =
+      await import('../common/helpers/get-user-identifier.js')
+    getUserIdentifier.mockReturnValueOnce('user-abc')
+
+    globalThis.fetch.mockResolvedValueOnce(createSuccessResponse([], null))
+
+    const mockRequest = createMockRequest()
+    await getReviewsController(mockRequest, mockH)
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('userId=user-abc'),
+      expect.objectContaining({})
+    )
+  })
+})
+
 describe('getReviewsController - Error Handling', () => {
   let mockRequest
   let mockH

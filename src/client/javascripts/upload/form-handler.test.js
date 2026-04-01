@@ -409,6 +409,24 @@ describe('upload/form-handler - URL clear and refocus after success', () => {
 
     expect(urlInput.value).toBe(GOVUK_TEST_URL)
   })
+
+  it('should show the error message directly when error is not a known pattern', async () => {
+    const { parseGovUkUrl, extractGovspeakText } =
+      await import('./url-extractor.js')
+    parseGovUkUrl.mockReturnValue(new URL(GOVUK_TEST_URL))
+    const { showUrlError } = await import('./ui-feedback.js')
+    const specificError = new Error('Rate limit exceeded on GOV.UK')
+    extractGovspeakText.mockRejectedValue(specificError)
+
+    const urlInput = document.getElementById('url-input')
+    urlInput.value = GOVUK_TEST_URL
+
+    const event = makeSubmitEvent()
+    await handleFormSubmit(event)
+
+    // line 85 branch: error.message is truthy, not 'Failed to fetch', not 'NetworkError' prefix
+    expect(showUrlError).toHaveBeenCalledWith('Rate limit exceeded on GOV.UK')
+  })
 })
 
 describe('upload/form-handler - text action file-only submit', () => {
@@ -454,6 +472,59 @@ describe('upload/form-handler - text action file-only submit', () => {
   })
 })
 
+describe('upload/form-handler - text action both file and text present', () => {
+  beforeEach(async () => {
+    buildDom()
+    vi.clearAllMocks()
+    const radioMod = await import('./radio-handler.js')
+    radioMod.getSelectedAction.mockReturnValue('text')
+  })
+
+  it('should call showError with ERROR_ENTER_TEXT when both file and text are present', async () => {
+    const fileInput = document.getElementById('file-upload')
+    Object.defineProperty(fileInput, 'files', {
+      value: {
+        0: new File(['content'], 'doc.pdf', { type: 'application/pdf' }),
+        length: 1
+      },
+      configurable: true
+    })
+    document.getElementById(TEXT_CONTENT_ID).value = VALID_TEXT
+
+    const event = makeSubmitEvent()
+    await handleFormSubmit(event)
+
+    // line 144: both file and text present → handleTextError(ERROR_ENTER_TEXT)
+    expect(showError).toHaveBeenCalledWith('Enter text content for review')
+    expect(submitTextReview).not.toHaveBeenCalled()
+  })
+})
+
+describe('upload/form-handler - handleFormSubmit catch block', () => {
+  beforeEach(async () => {
+    buildDom()
+    vi.clearAllMocks()
+    const radioMod = await import('./radio-handler.js')
+    radioMod.getSelectedAction.mockReturnValue('text')
+  })
+
+  it('should log the error when handleTextSubmit throws (catch block at line 144)', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    document.getElementById(TEXT_CONTENT_ID).value = VALID_TEXT
+    const { submitTextReview: submitMock } = await import('./api-client.js')
+    submitMock.mockRejectedValueOnce(new Error('Unexpected server failure'))
+
+    const event = makeSubmitEvent()
+    await handleFormSubmit(event)
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      '[UPLOAD-HANDLER] Form submission error:',
+      expect.any(Error)
+    )
+    consoleSpy.mockRestore()
+  })
+})
+
 describe('upload/form-handler - text action text-too-long', () => {
   beforeEach(async () => {
     buildDom()
@@ -493,5 +564,112 @@ describe('upload/form-handler - text action text-too-long', () => {
     await handleFormSubmit(event)
 
     expect(updateCharacterCount).toHaveBeenCalled()
+  })
+})
+
+describe('upload/form-handler - absent uploadButton (disableSubmit/enableSubmit false branch)', () => {
+  beforeEach(async () => {
+    // Build DOM without uploadButton so disableSubmit/enableSubmit hit false branch
+    document.body.innerHTML = `
+      <div id="errorSummary" hidden><a id="errorSummaryMessage"></a></div>
+      <div class="govuk-form-group" id="actionSelectionGroup">
+        <p id="actionOptionError" hidden><span id="actionOptionErrorMessage"></span></p>
+        <div id="actionRadios"></div>
+      </div>
+      <div id="urlFormGroup" hidden>
+        <p id="urlError" hidden><span id="urlErrorMessage"></span></p>
+        <input id="url-input" type="text">
+      </div>
+      <div id="textFormGroup" hidden>
+        <p id="uploadError" hidden><span id="errorMessage"></span></p>
+        <textarea id="text-content"></textarea>
+      </div>
+      <input type="file" id="file-upload" />
+      <div id="uploadProgress" hidden></div>
+      <div id="uploadSuccess" hidden></div>
+      <div id="characterCountMessage"></div>
+    `
+    const { initializeElements } = await import('./dom-elements.js')
+    initializeElements()
+    vi.clearAllMocks()
+    const radioMod = await import('./radio-handler.js')
+    radioMod.getSelectedAction.mockReturnValue('text')
+  })
+
+  it('should not throw when uploadButton is absent (disableSubmit/enableSubmit false branch)', async () => {
+    document.getElementById(TEXT_CONTENT_ID).value = VALID_TEXT
+    const { submitTextReview: submitMock } = await import('./api-client.js')
+    submitMock.mockResolvedValueOnce({ reviewId: 'abc' })
+
+    const event = makeSubmitEvent()
+    await expect(handleFormSubmit(event)).resolves.toBeUndefined()
+  })
+
+  it('should not throw when uploadButton is absent and no action selected (enableSubmit false branch)', async () => {
+    const radioMod = await import('./radio-handler.js')
+    radioMod.getSelectedAction.mockReturnValue(null)
+
+    const event = makeSubmitEvent()
+    await expect(handleFormSubmit(event)).resolves.toBeUndefined()
+    // enableSubmit called after showRadioError — no uploadButton → false branch covered
+  })
+})
+
+describe('upload/form-handler - unknown action (neither url nor text)', () => {
+  beforeEach(async () => {
+    buildDom()
+    vi.clearAllMocks()
+    const radioMod = await import('./radio-handler.js')
+    // Return a value that is neither 'url' nor 'text'
+    radioMod.getSelectedAction.mockReturnValue('file')
+  })
+
+  it('should not throw and not call submitTextReview for unknown action', async () => {
+    const event = makeSubmitEvent()
+    await handleFormSubmit(event)
+    expect(submitTextReview).not.toHaveBeenCalled()
+  })
+})
+
+describe('upload/form-handler - clearAndRefocusUrlInput with absent urlInput', () => {
+  beforeEach(async () => {
+    // Build DOM without url-input so clearAndRefocusUrlInput hits false branch
+    document.body.innerHTML = `
+      <div id="errorSummary" hidden><a id="errorSummaryMessage"></a></div>
+      <div id="urlFormGroup" hidden>
+        <p id="urlError" hidden><span id="urlErrorMessage"></span></p>
+      </div>
+      <div id="actionSelectionGroup">
+        <p id="actionOptionError" hidden><span id="actionOptionErrorMessage"></span></p>
+        <div id="actionRadios"></div>
+      </div>
+      <div id="textFormGroup" hidden>
+        <p id="uploadError" hidden><span id="errorMessage"></span></p>
+        <textarea id="text-content"></textarea>
+      </div>
+      <input type="file" id="file-upload" />
+      <button id="uploadButton">Upload</button>
+      <div id="uploadProgress" hidden></div>
+      <div id="uploadSuccess" hidden></div>
+      <div id="characterCountMessage"></div>
+    `
+    const { initializeElements } = await import('./dom-elements.js')
+    initializeElements()
+    vi.clearAllMocks()
+    const radioMod = await import('./radio-handler.js')
+    radioMod.getSelectedAction.mockReturnValue('url')
+  })
+
+  it('should not throw when urlInput is absent after successful URL submit', async () => {
+    const { extractGovspeakText, parseGovUkUrl } =
+      await import('./url-extractor.js')
+    parseGovUkUrl.mockReturnValue(new URL('https://www.gov.uk/test'))
+    extractGovspeakText.mockResolvedValueOnce('<html>Content</html>')
+    const { submitUrlReview } = await import('./api-client.js')
+    submitUrlReview.mockResolvedValueOnce({ reviewId: 'url-review-1' })
+
+    const event = makeSubmitEvent()
+    await expect(handleFormSubmit(event)).resolves.toBeUndefined()
+    // clearAndRefocusUrlInput called with no url-input element → no throw
   })
 })
