@@ -459,3 +459,34 @@ describe('resultsController - legacy scores schema', () => {
     expect(result.data.results.result.reviewData.scores).toEqual({})
   })
 })
+
+// Failed review status
+describe('resultsController - failed review status', () => {
+  it('should render the error view when envelope status is failed', async () => {
+    const mockRequest = createMockRequest({ id: 'failed-review' })
+    const mockH = createMockH()
+
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        success: true,
+        data: {
+          status: 'failed',
+          documentId: 'failed-review'
+        }
+      })
+    })
+
+    const result = await resultsController.handler(mockRequest, mockH)
+
+    expect(mockH.view).toHaveBeenCalledWith(
+      'review/results/error',
+      expect.objectContaining({
+        pageTitle: 'Error',
+        error: expect.stringContaining('failed to process')
+      })
+    )
+    expect(result.template).toBe('review/results/error')
+  })
+})

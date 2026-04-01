@@ -305,3 +305,47 @@ describe('CookieBanner - Cookie Preferences (get)', () => {
     consoleErrorSpy.mockRestore()
   })
 })
+
+describe('CookieBanner - DOMContentLoaded branch', () => {
+  afterEach(() => {
+    document.body.innerHTML = ''
+  })
+
+  it('should call initCookieBanner via DOMContentLoaded when readyState is loading', async () => {
+    // Simulate readyState = 'loading' so the module-level branch fires via the event
+    Object.defineProperty(document, 'readyState', {
+      value: 'loading',
+      writable: true,
+      configurable: true
+    })
+
+    let domContentLoadedListener
+    const addEventListenerSpy = vi
+      .spyOn(document, 'addEventListener')
+      .mockImplementation((event, handler) => {
+        if (event === 'DOMContentLoaded') {
+          domContentLoadedListener = handler
+        }
+      })
+
+    // Re-import the module so the top-level code re-runs with readyState = 'loading'
+    vi.resetModules()
+    await import('./cookie-banner.js')
+
+    expect(addEventListenerSpy).toHaveBeenCalledWith(
+      'DOMContentLoaded',
+      expect.any(Function)
+    )
+
+    // Restore readyState and trigger the captured listener to exercise the handler body
+    Object.defineProperty(document, 'readyState', {
+      value: 'complete',
+      configurable: true
+    })
+    if (domContentLoadedListener) {
+      domContentLoadedListener()
+    }
+
+    addEventListenerSpy.mockRestore()
+  })
+})

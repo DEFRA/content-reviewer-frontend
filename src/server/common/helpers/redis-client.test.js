@@ -228,4 +228,20 @@ describe('buildRedisClient - Cluster', () => {
     const clusterOptions = MockCluster.mock.calls[0][1]
     expect(clusterOptions.redisOptions).toMatchObject({ tls: {} })
   })
+
+  it('dnsLookup passes the address straight through to the callback', () => {
+    const config = {
+      host: REDIS_CLUSTER_HOST,
+      keyPrefix: 'cluster:',
+      username: '',
+      password: '',
+      useTLS: false,
+      useSingleInstanceCache: false
+    }
+    buildRedisClient(config)
+    const clusterOptions = MockCluster.mock.calls[0][1]
+    const callbackFn = vi.fn()
+    clusterOptions.dnsLookup('redis-host', callbackFn)
+    expect(callbackFn).toHaveBeenCalledWith(null, 'redis-host')
+  })
 })
