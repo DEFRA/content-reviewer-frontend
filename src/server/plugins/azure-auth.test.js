@@ -456,6 +456,45 @@ describe('azureAuth - Logout Handler - Edge Cases', () => {
   })
 })
 
+describe('azureAuth - Callback Handler - username nullish coalescing', () => {
+  let mockServer
+  let callbackHandler
+  beforeEach(() => {
+    vi.clearAllMocks()
+    setupMockConfig()
+    mockServer = {
+      route: vi.fn((routes) => {
+        const callbackRoute = routes.find((r) => r.path === ROUTES.CALLBACK)
+        if (callbackRoute) {
+          callbackHandler = callbackRoute.handler
+        }
+      })
+    }
+    azureAuth.plugin.register(mockServer)
+  })
+  test('Should log "unknown" when account.username is null', async () => {
+    mockMsalClient.acquireTokenByCode.mockResolvedValueOnce({
+      account: {
+        homeAccountId: TEST_CONSTANTS.USER_ID,
+        username: null,
+        name: TEST_CONSTANTS.USER_NAME
+      }
+    })
+    const setCookieAuth = vi.fn()
+    const request = {
+      query: { code: TEST_CONSTANTS.AUTH_CODE },
+      auth: { credentials: null },
+      cookieAuth: { set: setCookieAuth }
+    }
+    const h = {
+      redirect: vi.fn((url) => ({ redirectTo: url }))
+    }
+    await callbackHandler(request, h)
+    expect(mockLogger.info).toHaveBeenCalledWith('User authenticated: unknown')
+    expect(h.redirect).toHaveBeenCalledWith('/')
+  })
+})
+
 describe('azureAuth - Callback Handler - MSAL not initialised', () => {
   let mockServer
   let callbackHandler

@@ -222,3 +222,53 @@ describe('upload/radio-handler - hideBothPanels on unknown radio value', () => {
     expect(hideTextClearButton).toHaveBeenCalled()
   })
 })
+
+describe('upload/radio-handler - null element guards in showUrlPanel and showTextPanel', () => {
+  beforeEach(() => {
+    // Build a minimal DOM that intentionally omits urlFormGroup, textFormGroup,
+    // and characterCountMessage so the null-guard false branches are exercised.
+    document.body.innerHTML = `
+      <form id="uploadForm">
+        <div class="govuk-form-group" id="actionSelectionGroup">
+          <div id="actionRadios">
+            <input class="govuk-radios__input" id="action-url" name="actionOption" type="radio" value="url">
+            <input class="govuk-radios__input" id="action-text" name="actionOption" type="radio" value="text">
+          </div>
+        </div>
+        <div id="errorSummary" hidden><a id="errorSummaryMessage"></a></div>
+        <div id="uploadError" hidden><span id="errorMessage"></span></div>
+        <div id="urlError" hidden><span id="urlErrorMessage"></span></div>
+        <input id="url-input" type="text">
+        <textarea id="text-content"></textarea>
+        <button id="uploadButton"></button>
+        <div id="uploadProgress" hidden></div>
+        <div id="progressBar"></div>
+        <div id="uploadStatusText"></div>
+        <div id="uploadProgressText"></div>
+        <div id="uploadSuccess" hidden></div>
+        <div id="textFieldWrapper"></div>
+      </form>
+    `
+    // urlFormGroup, textFormGroup, characterCountMessage are intentionally absent
+    initializeElements()
+    vi.clearAllMocks()
+  })
+
+  it('should not throw when urlFormGroup is absent and URL radio is selected', () => {
+    expect(() => {
+      initializeRadioHandler()
+      const urlRadio = document.getElementById('action-url')
+      urlRadio.checked = true
+      urlRadio.dispatchEvent(new Event('change'))
+    }).not.toThrow()
+  })
+
+  it('should not throw when textFormGroup is absent and text radio is selected', () => {
+    expect(() => {
+      initializeRadioHandler()
+      const textRadio = document.getElementById('action-text')
+      textRadio.checked = true
+      textRadio.dispatchEvent(new Event('change'))
+    }).not.toThrow()
+  })
+})

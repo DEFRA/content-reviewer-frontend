@@ -89,6 +89,19 @@ describe('uploadController', () => {
     await uploadController.uploadComplete(request, h)
     expect(h.redirect).toHaveBeenCalledWith('/review/status-poller/review-abc')
   })
+
+  it('should use "anonymous" userId when yar.id is not set', async () => {
+    const h = { redirect: vi.fn() }
+    const request = {
+      server: { info: { protocol: 'http' } },
+      info: { host: 'localhost' },
+      yar: { id: undefined, set: vi.fn() }, // id is undefined → 'anonymous'
+      logger: { error: vi.fn() }
+    }
+
+    await uploadController.initiateUpload(request, h)
+    expect(h.redirect).toHaveBeenCalledWith('http://example.com/upload')
+  })
 })
 
 // ─── initiateUpload error path ────────────────────────────────────────────────
@@ -373,6 +386,50 @@ describe('uploadController - uploadComplete error', () => {
     )
     expect(h.redirect).toHaveBeenCalledWith('/')
     expect(request.logger.error).toHaveBeenCalled()
+  })
+})
+
+// ─── uploadComplete — form.file absent (|| {} fallback) ──────────────────────
+
+describe('uploadController - uploadComplete missing form.file', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    getUploadStatus.mockResolvedValue({
+      uploadStatus: 'ready',
+      numberOfRejectedFiles: 0,
+      form: {} // no .file property → triggers || {} fallback at line 231
+    })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ reviewId: 'review-no-file' })
+      })
+    )
+  })
+
+  it('should use empty object for fileDetails when form.file is absent', async () => {
+    const h = { redirect: vi.fn(), view: vi.fn() }
+    const request = {
+      yar: {
+        get: vi.fn().mockReturnValue('upload-no-file'),
+        clear: vi.fn(),
+        set: vi.fn(),
+        flash: vi.fn()
+      },
+      server: {
+        app: { config: { get: vi.fn().mockReturnValue('http://backend') } }
+      },
+      logger: { error: vi.fn() }
+    }
+
+    // Should complete without throwing (fileDetails = {})
+    await uploadController.uploadComplete(request, h)
+
+    // The successful path redirects to the status poller
+    expect(h.redirect).toHaveBeenCalledWith(
+      expect.stringContaining('/review/status-poller/')
+    )
   })
 })
 
