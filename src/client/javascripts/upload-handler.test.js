@@ -157,3 +157,32 @@ describe('upload-handler UI elements', () => {
 // - upload/form-handler.test.js
 //
 // This main test file only tests the entry point integration.
+
+describe('upload-handler - initialize when form is absent', () => {
+  beforeEach(() => {
+    // No form element in DOM — triggers the early-return console.warn path
+    document.body.innerHTML = '<div id="app"></div>'
+  })
+
+  afterEach(() => {
+    document.body.innerHTML = ''
+    vi.restoreAllMocks()
+  })
+
+  it('should warn and return early when the form element is not found', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    // Re-import so the DOMContentLoaded handler fires with the current (formless) DOM
+    vi.resetModules()
+    await import('./upload-handler.js').catch(() => {})
+
+    // Trigger DOMContentLoaded to invoke the initialize function
+    document.dispatchEvent(new Event('DOMContentLoaded'))
+
+    // The warn may come from the module-level listener or a direct call
+    // Either way, no form means the warn branch is exercised
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Form element not found')
+    )
+  })
+})

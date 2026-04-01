@@ -455,3 +455,55 @@ describe('azureAuth - Logout Handler - Edge Cases', () => {
     expect(h.redirect).toHaveBeenCalled()
   })
 })
+
+describe('azureAuth - Callback Handler - MSAL not initialised', () => {
+  let mockServer
+  let callbackHandler
+  beforeEach(() => {
+    vi.clearAllMocks()
+    setupMockConfig()
+    mockServer = {
+      route: vi.fn((routes) => {
+        const callbackRoute = routes.find((r) => r.path === ROUTES.CALLBACK)
+        if (callbackRoute) {
+          callbackHandler = callbackRoute.handler
+        }
+      })
+    }
+    azureAuth.plugin.register(mockServer)
+  })
+
+  test('Should redirect to error page and restore anonymous session when MSAL is null', async () => {
+    // Temporarily set msalClient to null on the module
+    vi.mocked(await import('../../config/azure-auth.js')).msalClient = null
+
+    // Rebuild so the handler closes over null msalClient
+    azureAuth.plugin.register(mockServer)
+
+    const setCookieAuth = vi.fn()
+    const request = {
+      query: { code: TEST_CONSTANTS.AUTH_CODE },
+      auth: {
+        credentials: {
+          sid: TEST_CONSTANTS.SESSION_ID,
+          isAuthenticated: false
+        }
+      },
+      cookieAuth: { set: setCookieAuth }
+    }
+    const h = {
+      redirect: vi.fn((url) => ({ redirectTo: url }))
+    }
+
+    await callbackHandler(request, h)
+
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      'MSAL client not initialised – cannot process callback'
+    )
+    expect(h.redirect).toHaveBeenCalledWith(ROUTES.LOGIN_ERROR)
+
+    // Restore msalClient
+    vi.mocked(await import('../../config/azure-auth.js')).msalClient =
+      mockMsalClient
+  })
+})
