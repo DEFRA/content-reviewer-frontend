@@ -5,6 +5,7 @@ import { reviewHistoryController } from './controller.js'
 vi.mock('./controller.js', () => ({
   reviewHistoryController: {
     showHistory: vi.fn(),
+    showDeleteConfirm: vi.fn(),
     deleteReview: vi.fn()
   }
 }))
@@ -27,6 +28,11 @@ describe('review-history plugin', () => {
         method: 'GET',
         path: '/review/history',
         handler: reviewHistoryController.showHistory
+      },
+      {
+        method: 'GET',
+        path: '/review/history/{reviewId}/delete',
+        handler: reviewHistoryController.showDeleteConfirm
       },
       {
         method: 'POST',

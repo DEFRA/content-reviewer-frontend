@@ -217,40 +217,39 @@ describe('review-history - result cell rendering', () => {
 describe('review-history - action cell rendering', () => {
   beforeEach(() => buildDom())
 
-  it('renders a Delete button of type="button"', () => {
+  it('renders a Delete link navigating to the confirm-delete page', () => {
     addReviewToHistory({ id: 'r1', status: 'pending' })
-    const btn = document.querySelector('.delete-review-btn')
-    expect(btn).not.toBeNull()
-    expect(btn.type).toBe('button')
-    expect(btn.textContent).toBe('Delete')
+    const link = document.querySelector('.delete-review-btn')
+    expect(link).not.toBeNull()
+    expect(link.tagName).toBe('A')
+    expect(link.textContent).toBe('Delete')
   })
 
-  it('sets data-review-id on the Delete button', () => {
+  it('sets review ID in the Delete link href', () => {
     addReviewToHistory({ id: 'r1', status: 'pending' })
-    expect(document.querySelector('.delete-review-btn').dataset.reviewId).toBe(
-      'r1'
-    )
+    expect(document.querySelector('.delete-review-btn').href).toContain('r1')
   })
 
   it('sets data-filename from fileName', () => {
     addReviewToHistory({ id: '1', status: 'pending', fileName: 'report.docx' })
-    expect(document.querySelector('.delete-review-btn').dataset.filename).toBe(
+    expect(document.querySelector('.delete-review-btn').href).toContain(
       'report.docx'
     )
   })
 
   it('uses filename when fileName is absent', () => {
     addReviewToHistory({ id: '1', status: 'pending', filename: 'alt.pdf' })
-    expect(document.querySelector('.delete-review-btn').dataset.filename).toBe(
+    expect(document.querySelector('.delete-review-btn').href).toContain(
       'alt.pdf'
     )
   })
 
   it('defaults data-filename to N/A when no filename field is present', () => {
     addReviewToHistory({ id: '1', status: 'pending' })
-    expect(document.querySelector('.delete-review-btn').dataset.filename).toBe(
-      'N/A'
-    )
+    const href = document
+      .querySelector('.delete-review-btn')
+      .getAttribute('href')
+    expect(decodeURIComponent(href)).toContain('N/A')
   })
 })
 

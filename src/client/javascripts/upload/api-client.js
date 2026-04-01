@@ -83,12 +83,31 @@ export async function submitUrlReview(htmlContent, sourceUrl) {
     })
     showProgress('Processing upload...', PROGRESS_PROCESSING)
     if (!response.ok) {
+      const contentType = response.headers?.get('content-type') ?? ''
+      const isHtmlError = contentType.includes('text/html')
       let message = 'URL review upload failed'
-      try {
-        const errorData = await response.json()
-        message = errorData.message || message
-      } catch {
-        // Response body is not JSON (e.g. HTML error page) — keep default message
+      if (isHtmlError) {
+        // A CDN or gateway (e.g. Fastly on the CDP platform) returned an HTML
+        // error page instead of a JSON response.  This typically means the
+        // request body was too large or triggered a WAF rule.
+        console.error(
+          '[UPLOAD-HANDLER] CDN/gateway returned HTML error for POST /api/review/text',
+          { status: response.status, contentType }
+        )
+        message =
+          'This page could not be submitted for review. The content may have been blocked by a security filter. ' +
+          'Please try a different URL or paste the content directly using the text input.'
+      } else {
+        try {
+          const errorData = await response.json()
+          message = errorData.message || message
+        } catch {
+          // Response body is not valid JSON — keep default message and log for diagnosis
+          console.error(
+            '[UPLOAD-HANDLER] Non-JSON error response from /api/review/text',
+            { status: response.status, contentType }
+          )
+        }
       }
       throw new Error(message)
     }

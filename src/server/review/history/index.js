@@ -11,6 +11,11 @@ export default {
           handler: reviewHistoryController.showHistory
         },
         {
+          method: 'GET',
+          path: '/review/history/{reviewId}/delete',
+          handler: reviewHistoryController.showDeleteConfirm
+        },
+        {
           method: 'POST',
           path: '/review/history/{reviewId}/delete',
           handler: reviewHistoryController.deleteReview

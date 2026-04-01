@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { reviewHistoryController } from './controller.js'
+import { getUserIdentifier } from '../../common/helpers/get-user-identifier.js'
 
 vi.mock('../../common/helpers/logging/logger.js', () => ({
   createLogger: vi.fn(() => ({
@@ -300,5 +301,79 @@ describe('reviewHistoryController - deleteReview', () => {
       expect.objectContaining({ method: 'DELETE' })
     )
     expect(mockH.redirect).toHaveBeenCalledWith(REVIEW_HISTORY_REDIRECT)
+  })
+})
+
+describe('reviewHistoryController - showHistory with authenticated userId', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should include userId in the backend request URL when getUserIdentifier returns a value', async () => {
+    getUserIdentifier.mockReturnValueOnce('user-abc-123')
+
+    const mockRequest = createMockRequest()
+    const mockH = createMockH()
+
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => ({ reviews: [], total: 0 })
+    })
+
+    await reviewHistoryController.showHistory(mockRequest, mockH)
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('userId=user-abc-123'),
+      expect.objectContaining({})
+    )
+  })
+})
+
+describe('reviewHistoryController - showDeleteConfirm', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should render the confirm-delete view with reviewId and filename from query', async () => {
+    const mockRequest = {
+      params: { reviewId: 'rev-xyz' },
+      query: { filename: 'annual-report.pdf' }
+    }
+    const mockH = createMockH()
+
+    const result = await reviewHistoryController.showDeleteConfirm(
+      mockRequest,
+      mockH
+    )
+
+    expect(mockH.view).toHaveBeenCalledWith(
+      'review/history/confirm-delete',
+      expect.objectContaining({
+        pageTitle: 'Delete review',
+        reviewId: 'rev-xyz',
+        filename: 'annual-report.pdf'
+      })
+    )
+    expect(result.template).toBe('review/history/confirm-delete')
+  })
+
+  it('should fall back to "this review" when filename query param is absent', async () => {
+    const mockRequest = {
+      params: { reviewId: 'rev-no-name' },
+      query: {}
+    }
+    const mockH = createMockH()
+
+    await reviewHistoryController.showDeleteConfirm(mockRequest, mockH)
+
+    expect(mockH.view).toHaveBeenCalledWith(
+      'review/history/confirm-delete',
+      expect.objectContaining({
+        reviewId: 'rev-no-name',
+        filename: 'this review'
+      })
+    )
   })
 })

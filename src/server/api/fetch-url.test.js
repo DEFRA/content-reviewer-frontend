@@ -121,6 +121,64 @@ describe('fetchUrlController - valid gov.uk URLs', () => {
   })
 })
 
+describe('fetchUrlController - valid gov.uk URLs with Fastly headers', () => {
+  const GOVUK_URL = 'https://www.gov.uk/test-page'
+  const MOCK_HTML =
+    '<html><body><div data-module="govspeak">Content</div></body></html>'
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('should return 200 and log Fastly CDN headers when x-served-by is present', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve(MOCK_HTML),
+      headers: {
+        get: (name) => {
+          const map = {
+            'x-served-by': 'cache-edge-lon1-123',
+            'x-cache': 'HIT',
+            'x-cache-hits': '3',
+            via: '1.1 varnish',
+            'x-varnish': '987654321'
+          }
+          return map[name] ?? null
+        }
+      }
+    })
+
+    const { request, h } = buildRequestAndH(GOVUK_URL)
+    const result = await fetchUrlController.handler(request, h)
+
+    // The Fastly header logging block (lines 98-107) should have executed;
+    // the handler still returns the HTML successfully
+    expect(result._code).toBe(HTTP_STATUS_OK)
+    expect(result._body).toBe(MOCK_HTML)
+  })
+
+  it('should return 500 with Fastly CDN message when upstream returns 200 with a Fastly error page body', async () => {
+    const fastlyErrorHtml =
+      '<html><head><title>Fastly Error</title></head><body><p>Fastly error: 503 backend read error</p></body></html>'
+
+    // All three retry attempts return the Fastly error page
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve(fastlyErrorHtml)
+    })
+
+    const { request, h } = buildRequestAndH(GOVUK_URL)
+    const result = await fetchUrlController.handler(request, h)
+
+    expect(result._code).toBe(HTTP_STATUS_INTERNAL_SERVER_ERROR)
+    expect(result._body.success).toBe(false)
+    expect(result._body.message).toContain('CDN')
+    // Retry logic applies (3 total attempts) because the thrown error message
+    // contains '200' which does not match the 4xx-break condition
+    expect(globalThis.fetch).toHaveBeenCalledTimes(3)
+  })
+})
+
 describe('fetchUrlController - upstream error message variants', () => {
   const GOVUK_URL = 'https://www.gov.uk/test-page'
 
@@ -158,5 +216,17 @@ describe('fetchUrlController - upstream error message variants', () => {
 
     expect(result._code).toBe(HTTP_STATUS_INTERNAL_SERVER_ERROR)
     expect(result._body.message).toContain('denied')
+  })
+
+  it('should return "That URL returned an error" message for other 4xx statuses (e.g. 422)', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({ ok: false, status: 422 })
+
+    const { request, h } = buildRequestAndH(GOVUK_URL)
+    const result = await fetchUrlController.handler(request, h)
+
+    expect(result._code).toBe(HTTP_STATUS_INTERNAL_SERVER_ERROR)
+    expect(result._body.message).toContain('That URL returned an error')
+    // 4xx triggers the break — only 1 fetch attempt, no retries
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1)
   })
 })
