@@ -217,6 +217,16 @@ describe('submitUrlReview - errors', () => {
     ).rejects.toThrow(ERROR_MSG_TIMEOUT)
     expect(uiFeedback.showUrlError).toHaveBeenCalled()
   })
+
+  it('should use default message when error response body is not JSON', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      json: () => Promise.reject(new Error('Not JSON'))
+    })
+    await expect(
+      apiClient.submitUrlReview(TEST_HTML, TEST_URL)
+    ).rejects.toThrow('URL review upload failed')
+  })
 })
 
 describe('submitFileUpload - success', () => {
@@ -360,6 +370,26 @@ describe('startAutoRefresh - forceStartAutoRefresh branch', () => {
   })
 })
 
+describe('updateLocalHistory - setTimeout arrow function fires when updateReviewHistory is present', () => {
+  it('should call updateReviewHistory after HISTORY_UPDATE_DELAY when it is a function', async () => {
+    const mockResponse = { reviewId: MOCK_REVIEW_ID }
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockResponse
+    })
+
+    await apiClient.submitTextReview(TEST_TEXT)
+
+    // Arrow function inside setTimeout has not fired yet
+    expect(globalThis.updateReviewHistory).not.toHaveBeenCalled()
+
+    // Advance past the 500ms HISTORY_UPDATE_DELAY to fire the arrow function
+    await vi.advanceTimersByTimeAsync(501)
+
+    expect(globalThis.updateReviewHistory).toHaveBeenCalledOnce()
+  })
+})
+
 describe('handleReviewHistory - updateReviewHistory absent', () => {
   it('should not schedule updateReviewHistory when it is not a function', async () => {
     delete globalThis.updateReviewHistory
@@ -434,5 +464,188 @@ describe('submitFileUpload - JSON parse error message', () => {
     expect(uiFeedback.showError).toHaveBeenCalledWith(
       'Upload failed: Please enter a valid input'
     )
+  })
+})
+
+describe('submitFileUpload - startAutoRefresh absent', () => {
+  it('should skip startAutoRefresh call when globalThis.startAutoRefresh is not a function', async () => {
+    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ reviewId: MOCK_REVIEW_ID })
+    })
+    delete globalThis.startAutoRefresh
+
+    const uploadPromise = apiClient.submitFileUpload(file)
+    await vi.advanceTimersByTimeAsync(0)
+    await uploadPromise
+
+    // Should complete without error even though startAutoRefresh is absent
+    expect(uiFeedback.showError).not.toHaveBeenCalled()
+    globalThis.startAutoRefresh = vi.fn()
+  })
+})
+
+describe('submitFileUpload - fileInput absent in success path', () => {
+  it('should not throw when getFileInput returns null after successful upload', async () => {
+    vi.spyOn(domElements, 'getFileInput').mockReturnValue(null)
+    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ reviewId: MOCK_REVIEW_ID })
+    })
+
+    const uploadPromise = apiClient.submitFileUpload(file)
+    await vi.advanceTimersByTimeAsync(0)
+    await uploadPromise
+
+    // fileInputEl is null → if (fileInputEl) false branch covered
+    expect(uiFeedback.showError).not.toHaveBeenCalled()
+  })
+})
+
+describe('submitFileUpload - textContentInput null in error catch', () => {
+  it('should not throw when textContentInput is absent during catch', async () => {
+    vi.spyOn(domElements, 'getElements').mockReturnValue({
+      ...mockElements,
+      textContentInput: null
+    })
+    const file = new File(['data'], TEST_FILENAME, { type: TEST_FILE_TYPE })
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({ message: ERROR_MSG_UPLOAD })
+    })
+
+    const uploadPromise = apiClient.submitFileUpload(file).catch((err) => err)
+    await vi.advanceTimersByTimeAsync(0)
+    const result = await uploadPromise
+
+    expect(result).toBeInstanceOf(Error)
+    expect(uiFeedback.showError).toHaveBeenCalled()
+  })
+})
+
+describe('handleReviewHistory - data.id fallback when reviewId absent', () => {
+  it('should use data.id when data.reviewId is absent', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ id: 'fallback-id-123', status: 'pending' })
+    })
+    await apiClient.submitTextReview(TEST_TEXT)
+    expect(reviewHistory.addReviewToHistory).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'fallback-id-123' })
+    )
+  })
+})
+
+describe('submitFileUpload - errorData.message absent (|| Upload failed fallback)', () => {
+  it('should throw with Upload failed when errorData has no message', async () => {
+    const file = new File(['data'], TEST_FILENAME, { type: TEST_FILE_TYPE })
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({}) // No message property → || 'Upload failed'
+    })
+
+    const uploadPromise = apiClient.submitFileUpload(file).catch((err) => err)
+    await vi.advanceTimersByTimeAsync(0)
+    const result = await uploadPromise
+
+    expect(result).toBeInstanceOf(Error)
+    expect(result.message).toBe('Upload failed')
+  })
+})
+
+describe('submitUrlReview - JSON parse error in catch triggers userMessage ternary TRUE', () => {
+  it('should show unexpected response message when error contains JSON parse pattern', async () => {
+    mockFetch.mockRejectedValueOnce(
+      new Error('not valid JSON received from server')
+    )
+
+    await expect(
+      apiClient.submitUrlReview(TEST_HTML, TEST_URL)
+    ).rejects.toThrow()
+    expect(uiFeedback.showUrlError).toHaveBeenCalledWith(
+      'The review service returned an unexpected response. Please try again.'
+    )
+  })
+})
+
+describe('submitUrlReview - uploadButton absent in catch', () => {
+  it('should not throw when uploadButton is absent in catch block', async () => {
+    vi.spyOn(domElements, 'getElements').mockReturnValue({
+      ...mockElements,
+      uploadButton: null
+    })
+    mockFetch.mockRejectedValueOnce(new Error('Network failure'))
+
+    await expect(
+      apiClient.submitUrlReview(TEST_HTML, TEST_URL)
+    ).rejects.toThrow('Network failure')
+    // uploadButton null → if (elements.uploadButton) false branch covered
+  })
+})
+
+describe('submitUrlReview - errorData.message absent (|| message fallback)', () => {
+  it('should use default message when json parses but has no message field', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({}) // No message → || message right side fires
+    })
+    await expect(
+      apiClient.submitUrlReview(TEST_HTML, TEST_URL)
+    ).rejects.toThrow('URL review upload failed')
+  })
+})
+
+describe('submitTextReview - uploadButton absent in success path', () => {
+  it('should not throw when uploadButton is absent after successful text review', async () => {
+    vi.spyOn(domElements, 'getElements').mockReturnValue({
+      ...mockElements,
+      uploadButton: null
+    })
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ reviewId: MOCK_REVIEW_ID })
+    })
+    await apiClient.submitTextReview(TEST_TEXT)
+    // uploadButton null → if (elements.uploadButton) false branch covered
+    expect(uiFeedback.hideError).toHaveBeenCalled()
+  })
+})
+
+describe('submitTextReview - textContentInput absent in catch', () => {
+  it('should not throw when textContentInput is absent during text review catch', async () => {
+    vi.spyOn(domElements, 'getElements').mockReturnValue({
+      ...mockElements,
+      textContentInput: null
+    })
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({ message: ERROR_MSG_VALIDATION })
+    })
+    await expect(apiClient.submitTextReview(TEST_TEXT)).rejects.toThrow(
+      ERROR_MSG_VALIDATION
+    )
+    // textContentInput null → if (elements.textContentInput) false branch in catch
+  })
+})
+
+describe('submitFileUpload - data.id fallback when reviewId absent (in else/addReviewToHistory path)', () => {
+  it('should use data.id when data.reviewId is absent in the addReviewToHistory else path', async () => {
+    delete globalThis.updateReviewHistory // force else path
+    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ id: 'fallback-id-456' }) // No reviewId → || data.id fires
+    })
+
+    const uploadPromise = apiClient.submitFileUpload(file)
+    await vi.advanceTimersByTimeAsync(0)
+    await uploadPromise
+
+    expect(reviewHistory.addReviewToHistory).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'fallback-id-456' })
+    )
+    globalThis.updateReviewHistory = vi.fn()
   })
 })

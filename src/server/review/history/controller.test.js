@@ -63,6 +63,34 @@ function createMockH() {
 const REVIEW_HISTORY_TITLE = 'Review History'
 const REVIEW_HISTORY_VIEW = 'review/history/index'
 
+describe('reviewHistoryController - showHistory (userId scoping)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should include userId in backend URL when getUserIdentifier returns a non-null value', async () => {
+    const { getUserIdentifier } =
+      await import('../../common/helpers/get-user-identifier.js')
+    getUserIdentifier.mockReturnValueOnce('user-xyz')
+
+    const mockRequest = createMockRequest()
+    const mockH = createMockH()
+
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ reviews: [], total: 0 })
+    })
+
+    await reviewHistoryController.showHistory(mockRequest, mockH)
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('userId=user-xyz'),
+      expect.objectContaining({})
+    )
+  })
+})
+
 describe('reviewHistoryController - showHistory (fetch and display review history)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -147,6 +175,30 @@ describe('reviewHistoryController - showHistory (count and missing reviews scena
       statusText: 'OK',
       json: async () => ({
         total: 0
+      })
+    })
+
+    await reviewHistoryController.showHistory(mockRequest, mockH)
+    expect(mockH.view).toHaveBeenCalledWith(
+      REVIEW_HISTORY_VIEW,
+      expect.objectContaining({
+        reviews: [],
+        count: 0
+      })
+    )
+  })
+
+  it('should default count to 0 when total and count are both absent', async () => {
+    const mockRequest = createMockRequest()
+    const mockH = createMockH()
+
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => ({
+        reviews: []
+        // no total, no count → triggers || 0 branch
       })
     })
 
