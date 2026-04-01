@@ -91,6 +91,20 @@ export const reviewHistoryController = {
   },
 
   /**
+   * Show delete confirmation page
+   */
+  async showDeleteConfirm(request, h) {
+    const { reviewId } = request.params
+    const { filename } = request.query
+
+    return h.view('review/history/confirm-delete', {
+      pageTitle: 'Delete review',
+      reviewId,
+      filename: filename || 'this review'
+    })
+  },
+
+  /**
    * Delete a review from history
    */
   async deleteReview(request, h) {

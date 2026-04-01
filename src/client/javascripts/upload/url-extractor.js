@@ -3,6 +3,11 @@
 const GOVUK_HOSTNAME = 'www.gov.uk'
 const GOVUK_BASE_URL = 'https://www.gov.uk'
 const MAX_EXTRACTED_CHARS = 100_000
+// Maximum byte size of the extracted HTML document sent to the server.
+// Keeps the POST body within CDN/gateway request size limits (Fastly on the
+// CDP platform enforces a body size ceiling on the /api/review/text route).
+// Chosen conservatively well below the 1 MB application payload limit.
+const MAX_EXTRACTED_HTML_BYTES = 500_000
 
 /**
  * Ordered list of CSS selectors to try when extracting content.
@@ -266,7 +271,7 @@ export function buildExtractedHtml(html, sourceUrl) {
     )
   }
 
-  return `<!DOCTYPE html>
+  const htmlDoc = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -276,4 +281,19 @@ export function buildExtractedHtml(html, sourceUrl) {
 ${bodyContent}
 </body>
 </html>`
+
+  // Guard against extracted HTML that is valid in terms of text character count
+  // but whose markup (tags, attributes, inline data) pushes the raw byte size
+  // above what the CDN gateway (Fastly on the CDP platform) will accept for a
+  // POST request body.  Failing here with a clear message is preferable to a
+  // silent gateway rejection that produces a generic "URL review upload failed".
+  const htmlBytes = new TextEncoder().encode(htmlDoc).length
+  if (htmlBytes > MAX_EXTRACTED_HTML_BYTES) {
+    throw new Error(
+      `Extracted content is too large to process (${Math.round(htmlBytes / 1024)} KB). ` +
+        `The page has too much markup. Please try a different URL or use the text input instead.`
+    )
+  }
+
+  return htmlDoc
 }

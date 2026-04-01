@@ -111,6 +111,7 @@ export function hideError() {
 
 export function showUrlError(message) {
   hideSuccess()
+  hideProgress()
   const elements = getElements()
   if (elements.errorSummary) {
     elements.errorSummary.hidden = false

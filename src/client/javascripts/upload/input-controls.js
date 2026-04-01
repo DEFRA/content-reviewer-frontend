@@ -28,7 +28,7 @@ export function initializeFileInput() {
     return
   }
   fileClearBtn?.remove()
-  fileClearBtn = addClearButton(fileInput, 'Clear File', () => {
+  fileClearBtn = addClearButton(fileInput, 'Clear file', () => {
     const currentFileInput = getFileInput()
     if (currentFileInput) {
       currentFileInput.value = ''

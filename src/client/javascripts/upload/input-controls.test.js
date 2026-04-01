@@ -212,7 +212,7 @@ describe('upload/input-controls - initializeFileInput', () => {
     initializeFileInput()
     const btn = document.querySelector('.app-clear-button')
     expect(btn).not.toBeNull()
-    expect(btn.textContent).toBe('Clear File')
+    expect(btn.textContent).toBe('Clear file')
   })
 
   it('should not add a duplicate button when called twice', () => {
