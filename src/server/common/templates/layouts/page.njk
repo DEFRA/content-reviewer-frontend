@@ -10,6 +10,12 @@
 
 {% set mainClasses = "app-main-wrapper" %}
 
+{% block main %}
+  <main class="govuk-main-wrapper {{ mainClasses }}" id="main-content" tabindex="-1">
+    {% block content %}{% endblock %}
+  </main>
+{% endblock %}
+
 {% block head %}
   <link href="{{ getAssetPath('stylesheets/application.scss') }}" rel="stylesheet">
 {% endblock %}
