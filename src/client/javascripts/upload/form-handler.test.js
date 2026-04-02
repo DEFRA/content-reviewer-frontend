@@ -311,9 +311,9 @@ describe('upload/form-handler - URL action error handling', () => {
     const event = makeSubmitEvent()
     await handleFormSubmit(event)
 
-    // submitUrlReview (mocked) threw but did not call showUrlError itself;
-    // form-handler only calls showUrlError for bare network failures
-    expect(showUrlError).not.toHaveBeenCalled()
+    expect(showUrlError).toHaveBeenCalledWith(
+      'Could not extract content from that URL. The page layout is not supported. Please try a different URL or paste the content directly using the text input.'
+    )
   })
 
   it('should not show duplicate error when extracted text exceeds the character limit', async () => {

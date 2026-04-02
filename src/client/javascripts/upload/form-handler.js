@@ -24,6 +24,8 @@ const ERROR_ENTER_URL = 'Enter URL for content review'
 const ERROR_INVALID_URL = 'Enter a valid GOV.UK URL'
 const ERROR_NO_OPTION = 'Select an option to proceed'
 const ERROR_FETCH_FAILED = 'Could not retrieve content from that URL'
+const ERROR_UNSUPPORTED_LAYOUT =
+  'Could not extract content from that URL. The page layout is not supported. Please try a different URL or paste the content directly using the text input.'
 
 function disableSubmit(elements) {
   if (elements.uploadButton) {
@@ -76,6 +78,8 @@ async function handleUrlSubmit(elements) {
       error.message.startsWith('NetworkError')
     ) {
       showUrlError(ERROR_FETCH_FAILED)
+    } else if (error.message.startsWith('Could not extract')) {
+      showUrlError(ERROR_UNSUPPORTED_LAYOUT)
     }
     enableSubmit(elements)
   }
