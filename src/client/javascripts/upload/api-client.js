@@ -74,49 +74,32 @@ function startAutoRefresh() {
   }
 }
 
-export async function submitUrlReview(htmlContent, sourceUrl) {
+export async function submitUrlReview(sourceUrl) {
   const elements = getElements()
   try {
-    showProgress('Uploading extracted content...', PROGRESS_INITIAL)
+    showProgress('Submitting URL for review...', PROGRESS_INITIAL)
     const slug = sourceUrl
       .replace(/^https?:\/\//, '')
       .replaceAll(/[^a-z0-9]/gi, '-')
       .replaceAll(/-+/g, '-')
       .substring(0, SLUG_MAX_LENGTH)
     const fileName = `${slug}.html`
-    const response = await fetch('/api/review/text', {
+    const response = await fetch('/api/review/url', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: CREDENTIALS_SAME_ORIGIN,
-      body: JSON.stringify({
-        textContent: htmlContent,
-        title: fileName,
-        sourceType: 'url',
-        sourceUrl
-      })
+      body: JSON.stringify({ url: sourceUrl })
     })
-    showProgress('Processing upload...', PROGRESS_PROCESSING)
+    showProgress('Processing review...', PROGRESS_PROCESSING)
     if (!response.ok) {
       const contentType = response.headers?.get('content-type') ?? ''
-      const isHtmlError = contentType.includes('text/html')
-      let message = 'URL review upload failed'
-      if (isHtmlError) {
-        // A CDN or gateway (e.g. Fastly on the CDP platform) returned an HTML
-        // error page instead of a JSON response.  This typically means the
-        // request body was too large or triggered a WAF rule.
-        console.error(
-          '[UPLOAD-HANDLER] CDN/gateway returned HTML error for POST /api/review/text',
-          { status: response.status, contentType }
-        )
-        message =
-          'This page could not be submitted for review. The content may have been blocked by a security filter. ' +
-          'Please try a different URL or paste the content directly using the text input.'
-      } else {
-        message = await extractJsonErrorMessage(response, contentType, message)
-      }
+      const message = await extractJsonErrorMessage(
+        response,
+        contentType,
+        'URL review upload failed'
+      )
       throw new Error(message)
     }
-    showProgress('Processing review...', PROGRESS_PROCESSING)
     const data = await response.json()
     hideProgress()
     handleReviewHistory(data, fileName)

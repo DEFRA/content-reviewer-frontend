@@ -36,7 +36,7 @@ const GOVUK_FETCH_HEADERS = {
  * @param {string} urlString
  * @returns {URL|null}
  */
-function parseAllowedUrl(urlString) {
+export function parseAllowedUrl(urlString) {
   if (!urlString) {
     return null
   }
@@ -75,7 +75,7 @@ function isFastlyErrorPage(html) {
  * @param {URL} parsedUrl
  * @returns {Promise<string>}
  */
-async function fetchGovUkHtml(parsedUrl) {
+export async function fetchGovUkHtml(parsedUrl) {
   let lastError
   for (let attempt = 0; attempt <= FETCH_MAX_RETRIES; attempt++) {
     const controller = new AbortController()

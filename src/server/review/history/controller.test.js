@@ -30,9 +30,11 @@ vi.mock('undici', () => ({
 
 globalThis.fetch = vi.fn()
 
-function createMockRequest(params = {}) {
+function createMockRequest(params = {}, { payload = {}, query = {} } = {}) {
   return {
     params,
+    payload,
+    query,
     logger: {
       info: vi.fn(),
       error: vi.fn(),
@@ -267,16 +269,18 @@ describe('reviewHistoryController - showHistory (failure and error scenarios)', 
   })
 })
 
-const REVIEW_HISTORY_REDIRECT = '/review/history'
-const DELETE_FAILED_REDIRECT = '/review/history?error=delete_failed'
+const CONFIRM_DELETE_VIEW = 'review/history/confirm-delete'
 
 describe('reviewHistoryController - deleteReview', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('should delete review successfully and redirect', async () => {
-    const mockRequest = createMockRequest({ reviewId: 'test-123' })
+  it('should delete review successfully and show success message', async () => {
+    const mockRequest = createMockRequest(
+      { reviewId: 'test-123' },
+      { payload: { filename: 'annual-report.pdf' } }
+    )
     const mockH = createMockH()
 
     globalThis.fetch.mockResolvedValueOnce({
@@ -294,12 +298,37 @@ describe('reviewHistoryController - deleteReview', () => {
       'http://localhost:4000/api/reviews/test-123',
       expect.objectContaining({ method: 'DELETE' })
     )
-    expect(mockH.redirect).toHaveBeenCalledWith(REVIEW_HISTORY_REDIRECT)
-    expect(result.redirect).toBe(REVIEW_HISTORY_REDIRECT)
+    expect(mockH.view).toHaveBeenCalledWith(
+      CONFIRM_DELETE_VIEW,
+      expect.objectContaining({
+        pageTitle: 'Review deleted',
+        successMessage: expect.stringContaining('annual-report.pdf')
+      })
+    )
+    expect(result.template).toBe(CONFIRM_DELETE_VIEW)
   })
 
-  it('should handle delete failure and redirect with error', async () => {
-    const mockRequest = createMockRequest({ reviewId: 'test-456' })
+  it('should use "this review" as filename fallback when payload has no filename', async () => {
+    const mockRequest = createMockRequest({ reviewId: 'test-123' })
+    const mockH = createMockH()
+
+    globalThis.fetch.mockResolvedValueOnce({ ok: true, status: 200 })
+
+    await reviewHistoryController.deleteReview(mockRequest, mockH)
+
+    expect(mockH.view).toHaveBeenCalledWith(
+      CONFIRM_DELETE_VIEW,
+      expect.objectContaining({
+        successMessage: expect.stringContaining('this review')
+      })
+    )
+  })
+
+  it('should handle delete failure and show error message on the same page', async () => {
+    const mockRequest = createMockRequest(
+      { reviewId: 'test-456' },
+      { payload: { filename: 'report.pdf' } }
+    )
     const mockH = createMockH()
 
     globalThis.fetch.mockResolvedValueOnce({
@@ -312,12 +341,21 @@ describe('reviewHistoryController - deleteReview', () => {
       mockRequest,
       mockH
     )
-    expect(mockH.redirect).toHaveBeenCalledWith(DELETE_FAILED_REDIRECT)
-    expect(result.redirect).toBe(DELETE_FAILED_REDIRECT)
+    expect(mockH.view).toHaveBeenCalledWith(
+      CONFIRM_DELETE_VIEW,
+      expect.objectContaining({
+        pageTitle: 'Delete review',
+        errorMessage: expect.stringContaining('problem deleting')
+      })
+    )
+    expect(result.template).toBe(CONFIRM_DELETE_VIEW)
   })
 
-  it('should handle network errors during delete', async () => {
-    const mockRequest = createMockRequest({ reviewId: 'test-789' })
+  it('should handle network errors during delete and show error message', async () => {
+    const mockRequest = createMockRequest(
+      { reviewId: 'test-789' },
+      { payload: { filename: 'doc.pdf' } }
+    )
     const mockH = createMockH()
     const networkError = new Error('Connection timeout')
 
@@ -332,11 +370,16 @@ describe('reviewHistoryController - deleteReview', () => {
       networkError,
       'Failed to delete review'
     )
-    expect(mockH.redirect).toHaveBeenCalledWith(DELETE_FAILED_REDIRECT)
-    expect(result.redirect).toBe(DELETE_FAILED_REDIRECT)
+    expect(mockH.view).toHaveBeenCalledWith(
+      CONFIRM_DELETE_VIEW,
+      expect.objectContaining({
+        errorMessage: expect.stringContaining('problem deleting')
+      })
+    )
+    expect(result.template).toBe(CONFIRM_DELETE_VIEW)
   })
 
-  it('should log all required information during delete', async () => {
+  it('should call the correct backend delete endpoint', async () => {
     const mockRequest = createMockRequest({ reviewId: 'test-log' })
     const mockH = createMockH()
 
@@ -352,7 +395,10 @@ describe('reviewHistoryController - deleteReview', () => {
       'http://localhost:4000/api/reviews/test-log',
       expect.objectContaining({ method: 'DELETE' })
     )
-    expect(mockH.redirect).toHaveBeenCalledWith(REVIEW_HISTORY_REDIRECT)
+    expect(mockH.view).toHaveBeenCalledWith(
+      CONFIRM_DELETE_VIEW,
+      expect.objectContaining({ successMessage: expect.any(String) })
+    )
   })
 })
 
