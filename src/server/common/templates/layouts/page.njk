@@ -11,9 +11,17 @@
 {% set mainClasses = "app-main-wrapper" %}
 
 {% block main %}
-  <main class="govuk-main-wrapper {{ mainClasses }}" id="main-content" tabindex="-1">
-    {% block content %}{% endblock %}
-  </main>
+  <div class="govuk-width-container">
+    {{ cookieBanner() }}
+    {% if breadcrumbs.length > 1 %}
+      {{ govukBreadcrumbs({
+        items: breadcrumbs
+      }) }}
+    {% endif %}
+    <main class="govuk-main-wrapper {{ mainClasses }}" id="main-content" tabindex="-1">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
 {% endblock %}
 
 {% block head %}
@@ -86,17 +94,6 @@
 {% block pageTitle %}
   {{ pageTitle }}
 {% endblock %}
-
-{% block beforeContent %}
-  {{ cookieBanner() }}
-  {% if breadcrumbs.length > 1 %}
-    {{ govukBreadcrumbs({
-      items: breadcrumbs
-    }) }}
-  {% endif %}
-{% endblock %}
-
-{% block content %}{% endblock %}
 
 {% block footer %}
   {{ govukFooter({
