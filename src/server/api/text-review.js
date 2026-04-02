@@ -125,6 +125,16 @@ async function reviewText(request, h) {
         .filter((word) => word.length > 0).length
     }
 
+    logger.info(
+      {
+        sourceType: sourceType || 'text',
+        contentLengthKB: textInfo.lengthKB,
+        title: finalTitle,
+        hasSourceUrl: !!sourceUrl
+      },
+      `Forwarding text review to backend (${textInfo.lengthKB} KB, sourceType=${sourceType || 'text'})`
+    )
+
     const { response, backendRequestTime } = await submitToBackend(
       textContent,
       finalTitle,
@@ -134,10 +144,14 @@ async function reviewText(request, h) {
     )
 
     if (!response.ok) {
+      const backendContentType = response.headers?.get('content-type') ?? ''
       logger.error('Backend text review request failed', {
         status: response.status,
         statusText: response.statusText,
-        backendRequestTime
+        contentType: backendContentType,
+        backendRequestTime,
+        sourceType: sourceType || 'text',
+        contentLengthKB: textInfo.lengthKB
       })
       return h
         .response({

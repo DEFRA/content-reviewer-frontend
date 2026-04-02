@@ -97,14 +97,14 @@ function createResultCell(review) {
 
 function createActionCell(review) {
   const cell = document.createElement('td')
-  const btn = document.createElement('button')
+  const link = document.createElement('a')
+  const reviewId = review.id || review.reviewId
+  const filename = review.fileName || review.filename || 'N/A'
   cell.className = GOVUK_TABLE_CELL_CLASS
-  btn.type = 'button'
-  btn.className = 'govuk-link delete-review-btn'
-  btn.textContent = 'Delete'
-  btn.dataset.reviewId = review.id || review.reviewId
-  btn.dataset.filename = review.fileName || review.filename || 'N/A'
-  cell.appendChild(btn)
+  link.className = 'govuk-link delete-review-btn'
+  link.textContent = 'Delete'
+  link.href = `/review/history/${reviewId}/delete?filename=${encodeURIComponent(filename)}`
+  cell.appendChild(link)
   return cell
 }
 

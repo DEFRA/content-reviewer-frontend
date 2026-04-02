@@ -73,7 +73,10 @@ async function handleUrlSubmit(elements) {
   } catch (error) {
     console.error('[UPLOAD-HANDLER] Failed to extract content:', error)
     let message
-    if (error.message?.startsWith('Extracted text is too long')) {
+    if (
+      error.message?.startsWith('Extracted text is too long') ||
+      error.message?.startsWith('Extracted content is too large')
+    ) {
       message = error.message
     } else if (error.message?.startsWith('Could not extract any content')) {
       message = ERROR_UNSUPPORTED_LAYOUT

@@ -161,6 +161,23 @@ describe('textReviewApiController.reviewText - title generation', () => {
       })
     )
   })
+
+  it('generates a title truncated to TITLE_MAX_LENGTH characters when words are very long', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: vi.fn().mockResolvedValueOnce({ reviewId: 'rev-003' })
+    })
+
+    // Single word longer than TITLE_MAX_LENGTH (50 chars): the joined word is
+    // truncated to 50 chars then '...' is appended
+    const longWord = 'a'.repeat(60)
+    const req = createMockRequest({ title: null, textContent: longWord })
+    await textReviewApiController.reviewText(req, mockH)
+
+    const callBody = JSON.parse(fetchMock.mock.calls[0][1].body)
+    expect(callBody.title.endsWith('...')).toBe(true)
+    expect(callBody.title.length).toBeLessThanOrEqual(53) // 50 chars + '...'
+  })
 })
 
 describe('textReviewApiController.reviewText - backend success', () => {
