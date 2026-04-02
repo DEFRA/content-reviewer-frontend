@@ -109,9 +109,10 @@ export const reviewHistoryController = {
    */
   async deleteReview(request, h) {
     const startTime = Date.now()
+    const { reviewId } = request.params
+    const filename = request.payload?.filename || 'this review'
 
     try {
-      const { reviewId } = request.params
       const config = request.server.app.config
       const backendUrl = config.get('backendUrl')
 
@@ -135,18 +136,31 @@ export const reviewHistoryController = {
       logger.info(
         `Review deleted - id: ${reviewId}, time: ${totalProcessingTime}s`
       )
-      return h.redirect('/review/history')
+
+      return h.view('review/history/confirm-delete', {
+        pageTitle: 'Review deleted',
+        reviewId,
+        filename,
+        successMessage: `The review with the content ${filename} has been successfully deleted.`
+      })
     } catch (error) {
       const totalProcessingTime = (Date.now() - startTime) / 1000
 
       logger.error('Delete review request failed', {
-        reviewId: request.params.reviewId,
+        reviewId,
         error: error.message,
         totalProcessingTime: `${totalProcessingTime}s`
       })
 
       request.logger.error(error, 'Failed to delete review')
-      return h.redirect('/review/history?error=delete_failed')
+
+      return h.view('review/history/confirm-delete', {
+        pageTitle: 'Delete review',
+        reviewId,
+        filename,
+        errorMessage:
+          'There was a problem deleting the review. Please try again.'
+      })
     }
   }
 }
