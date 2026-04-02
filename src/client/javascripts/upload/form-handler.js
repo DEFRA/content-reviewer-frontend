@@ -16,7 +16,7 @@ import {
   submitFileUpload,
   submitUrlReview
 } from './api-client.js'
-import { parseGovUkUrl, extractGovspeakText } from './url-extractor.js'
+import { parseGovUkUrl } from './url-extractor.js'
 import { getSelectedAction } from './radio-handler.js'
 
 const ERROR_ENTER_TEXT = 'Enter text content for review'
@@ -66,30 +66,21 @@ async function handleUrlSubmit(elements) {
   }
   try {
     hideUrlError()
-    const htmlContent = await extractGovspeakText(urlValue)
-    await submitUrlReview(htmlContent, urlValue)
+    await submitUrlReview(urlValue)
     clearAndRefocusUrlInput(elements)
     enableSubmit(elements)
   } catch (error) {
-    console.error('[UPLOAD-HANDLER] Failed to extract content:', error)
-    let message
+    // submitUrlReview already showed the error via showUrlError; just re-enable submit.
+    // For network failures where submitUrlReview could not display a message, show fallback.
     if (
-      error.message?.startsWith('Extracted text is too long') ||
-      error.message?.startsWith('Extracted content is too large')
+      !error.message ||
+      error.message === 'Failed to fetch' ||
+      error.message.startsWith('NetworkError')
     ) {
-      message = error.message
-    } else if (error.message?.startsWith('Could not extract any content')) {
-      message = ERROR_UNSUPPORTED_LAYOUT
-    } else if (
-      error.message &&
-      error.message !== 'Failed to fetch' &&
-      !error.message.startsWith('NetworkError')
-    ) {
-      message = error.message
-    } else {
-      message = ERROR_FETCH_FAILED
+      showUrlError(ERROR_FETCH_FAILED)
+    } else if (error.message.startsWith('Could not extract')) {
+      showUrlError(ERROR_UNSUPPORTED_LAYOUT)
     }
-    showUrlError(message)
     enableSubmit(elements)
   }
 }

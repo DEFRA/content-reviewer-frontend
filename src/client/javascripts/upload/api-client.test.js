@@ -12,7 +12,6 @@ import {
 } from './constants.js'
 
 // Test constants
-const TEST_HTML = '<html></html>'
 const TEST_URL = 'https://example.com'
 const TEST_TEXT = 'Test content for review'
 const TEST_FILE_TYPE = 'text/plain'
@@ -174,9 +173,9 @@ describe('submitUrlReview - success', () => {
       ok: true,
       json: async () => mockResponse
     })
-    const result = await apiClient.submitUrlReview(TEST_HTML, TEST_URL)
+    const result = await apiClient.submitUrlReview(TEST_URL)
     expect(mockFetch).toHaveBeenCalledWith(
-      '/api/review/text',
+      '/api/review/url',
       expect.objectContaining({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
@@ -185,16 +184,16 @@ describe('submitUrlReview - success', () => {
     expect(result).toEqual(mockResponse)
   })
 
-  it('should generate slug from URL', async () => {
+  it('should send url in request body', async () => {
     const mockResponse = { reviewId: MOCK_URL_REVIEW_ID }
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => mockResponse
     })
-    await apiClient.submitUrlReview(TEST_HTML, TEST_URL)
+    await apiClient.submitUrlReview(TEST_URL)
     const callArgs = mockFetch.mock.calls[0][1]
     const body = JSON.parse(callArgs.body)
-    expect(body.title).toMatch(/example-com/)
+    expect(body.url).toBe(TEST_URL)
   })
 })
 
@@ -204,17 +203,17 @@ describe('submitUrlReview - errors', () => {
       ok: false,
       json: async () => ({ message: ERROR_MSG_EXTRACTION })
     })
-    await expect(
-      apiClient.submitUrlReview(TEST_HTML, TEST_URL)
-    ).rejects.toThrow(ERROR_MSG_EXTRACTION)
+    await expect(apiClient.submitUrlReview(TEST_URL)).rejects.toThrow(
+      ERROR_MSG_EXTRACTION
+    )
     expect(uiFeedback.showUrlError).toHaveBeenCalledWith(ERROR_MSG_EXTRACTION)
   })
 
   it(TEST_DESCRIPTION_NETWORK_ERRORS, async () => {
     mockFetch.mockRejectedValueOnce(new Error(ERROR_MSG_TIMEOUT))
-    await expect(
-      apiClient.submitUrlReview(TEST_HTML, TEST_URL)
-    ).rejects.toThrow(ERROR_MSG_TIMEOUT)
+    await expect(apiClient.submitUrlReview(TEST_URL)).rejects.toThrow(
+      ERROR_MSG_TIMEOUT
+    )
     expect(uiFeedback.showUrlError).toHaveBeenCalled()
   })
 
@@ -223,9 +222,9 @@ describe('submitUrlReview - errors', () => {
       ok: false,
       json: () => Promise.reject(new Error('Not JSON'))
     })
-    await expect(
-      apiClient.submitUrlReview(TEST_HTML, TEST_URL)
-    ).rejects.toThrow('URL review upload failed')
+    await expect(apiClient.submitUrlReview(TEST_URL)).rejects.toThrow(
+      'URL review upload failed'
+    )
   })
 })
 
@@ -561,9 +560,7 @@ describe('submitUrlReview - JSON parse error in catch triggers userMessage terna
       new Error('not valid JSON received from server')
     )
 
-    await expect(
-      apiClient.submitUrlReview(TEST_HTML, TEST_URL)
-    ).rejects.toThrow()
+    await expect(apiClient.submitUrlReview(TEST_URL)).rejects.toThrow()
     expect(uiFeedback.showUrlError).toHaveBeenCalledWith(
       'The review service returned an unexpected response. Please try again.'
     )
@@ -578,9 +575,9 @@ describe('submitUrlReview - uploadButton absent in catch', () => {
     })
     mockFetch.mockRejectedValueOnce(new Error('Network failure'))
 
-    await expect(
-      apiClient.submitUrlReview(TEST_HTML, TEST_URL)
-    ).rejects.toThrow('Network failure')
+    await expect(apiClient.submitUrlReview(TEST_URL)).rejects.toThrow(
+      'Network failure'
+    )
     // uploadButton null → if (elements.uploadButton) false branch covered
   })
 })
@@ -591,9 +588,9 @@ describe('submitUrlReview - errorData.message absent (|| message fallback)', () 
       ok: false,
       json: async () => ({}) // No message → || message right side fires
     })
-    await expect(
-      apiClient.submitUrlReview(TEST_HTML, TEST_URL)
-    ).rejects.toThrow('URL review upload failed')
+    await expect(apiClient.submitUrlReview(TEST_URL)).rejects.toThrow(
+      'URL review upload failed'
+    )
   })
 })
 
