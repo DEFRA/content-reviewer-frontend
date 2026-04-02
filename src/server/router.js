@@ -14,6 +14,7 @@ import { textReviewApiController } from './api/text-review.js'
 import { getReviewsController } from './api/reviews.js'
 import { deleteReviewRoute } from './api/delete-review.js'
 import { fetchUrlController } from './api/fetch-url.js'
+import { urlReviewController } from './api/url-review.js'
 import { serveStaticFiles } from './common/helpers/serve-static-files.js'
 import { loginController } from './auth/login/controller.js'
 
@@ -77,6 +78,21 @@ export const router = {
           payload: {
             parse: true,
             allow: 'application/json'
+          }
+        }
+      })
+
+      server.route({
+        method: 'POST',
+        path: '/api/review/url',
+        handler: urlReviewController.handler,
+        options: {
+          payload: {
+            parse: true,
+            allow: 'application/json'
+          },
+          timeout: {
+            socket: 60_000 // Allow up to 60s for fetch + extraction + backend submission
           }
         }
       })

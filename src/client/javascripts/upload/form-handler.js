@@ -16,7 +16,7 @@ import {
   submitFileUpload,
   submitUrlReview
 } from './api-client.js'
-import { parseGovUkUrl, extractGovspeakText } from './url-extractor.js'
+import { parseGovUkUrl } from './url-extractor.js'
 import { getSelectedAction } from './radio-handler.js'
 
 const ERROR_ENTER_TEXT = 'Enter text content for review'
@@ -24,8 +24,6 @@ const ERROR_ENTER_URL = 'Enter URL for content review'
 const ERROR_INVALID_URL = 'Enter a valid GOV.UK URL'
 const ERROR_NO_OPTION = 'Select an option to proceed'
 const ERROR_FETCH_FAILED = 'Could not retrieve content from that URL'
-const ERROR_UNSUPPORTED_LAYOUT =
-  'Could not extract content from that URL. The page layout is not supported'
 
 function disableSubmit(elements) {
   if (elements.uploadButton) {
@@ -66,30 +64,19 @@ async function handleUrlSubmit(elements) {
   }
   try {
     hideUrlError()
-    const htmlContent = await extractGovspeakText(urlValue)
-    await submitUrlReview(htmlContent, urlValue)
+    await submitUrlReview(urlValue)
     clearAndRefocusUrlInput(elements)
     enableSubmit(elements)
   } catch (error) {
-    console.error('[UPLOAD-HANDLER] Failed to extract content:', error)
-    let message
+    // submitUrlReview already showed the error via showUrlError; just re-enable submit.
+    // For network failures where submitUrlReview could not display a message, show fallback.
     if (
-      error.message?.startsWith('Extracted text is too long') ||
-      error.message?.startsWith('Extracted content is too large')
+      !error.message ||
+      error.message === 'Failed to fetch' ||
+      error.message.startsWith('NetworkError')
     ) {
-      message = error.message
-    } else if (error.message?.startsWith('Could not extract any content')) {
-      message = ERROR_UNSUPPORTED_LAYOUT
-    } else if (
-      error.message &&
-      error.message !== 'Failed to fetch' &&
-      !error.message.startsWith('NetworkError')
-    ) {
-      message = error.message
-    } else {
-      message = ERROR_FETCH_FAILED
+      showUrlError(ERROR_FETCH_FAILED)
     }
-    showUrlError(message)
     enableSubmit(elements)
   }
 }

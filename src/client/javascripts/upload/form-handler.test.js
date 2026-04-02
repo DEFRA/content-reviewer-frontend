@@ -224,11 +224,9 @@ describe('upload/form-handler - URL action validation', () => {
   })
 
   it('should accept the root https://www.gov.uk/ URL without showing an error', async () => {
-    const { parseGovUkUrl, extractGovspeakText } =
-      await import('./url-extractor.js')
+    const { parseGovUkUrl } = await import('./url-extractor.js')
     const GOVUK_ROOT_URL = 'https://www.gov.uk/'
     parseGovUkUrl.mockReturnValue(new URL(GOVUK_ROOT_URL))
-    extractGovspeakText.mockResolvedValue('<html><body>Home</body></html>')
     submitUrlReview.mockResolvedValue(undefined)
 
     const urlInput = document.getElementById('url-input')
@@ -238,10 +236,7 @@ describe('upload/form-handler - URL action validation', () => {
     await handleFormSubmit(event)
 
     expect(showUrlError).not.toHaveBeenCalled()
-    expect(submitUrlReview).toHaveBeenCalledWith(
-      '<html><body>Home</body></html>',
-      GOVUK_ROOT_URL
-    )
+    expect(submitUrlReview).toHaveBeenCalledWith(GOVUK_ROOT_URL)
   })
 })
 
@@ -256,13 +251,9 @@ describe('upload/form-handler - URL action submission', () => {
     getSelectedAction.mockReturnValue('url')
   })
 
-  it('should call submitUrlReview with extracted HTML for valid gov.uk URL', async () => {
-    const { parseGovUkUrl, extractGovspeakText } =
-      await import('./url-extractor.js')
+  it('should call submitUrlReview with URL for valid gov.uk URL', async () => {
+    const { parseGovUkUrl } = await import('./url-extractor.js')
     parseGovUkUrl.mockReturnValue(new URL(GOVUK_TEST_URL))
-    extractGovspeakText.mockResolvedValue(
-      '<html><body>Extracted content</body></html>'
-    )
     submitUrlReview.mockResolvedValue(undefined)
 
     const urlInput = document.getElementById('url-input')
@@ -271,10 +262,7 @@ describe('upload/form-handler - URL action submission', () => {
     const event = makeSubmitEvent()
     await handleFormSubmit(event)
 
-    expect(submitUrlReview).toHaveBeenCalledWith(
-      '<html><body>Extracted content</body></html>',
-      GOVUK_TEST_URL
-    )
+    expect(submitUrlReview).toHaveBeenCalledWith(GOVUK_TEST_URL)
   })
 })
 
@@ -292,11 +280,10 @@ describe('upload/form-handler - URL action error handling', () => {
     getSelectedAction.mockReturnValue('url')
   })
 
-  it('should show fetch-failed error when gov.uk URL fetch throws a network error', async () => {
-    const { parseGovUkUrl, extractGovspeakText } =
-      await import('./url-extractor.js')
+  it('should show fetch-failed error when submitUrlReview throws a network error', async () => {
+    const { parseGovUkUrl } = await import('./url-extractor.js')
     parseGovUkUrl.mockReturnValue(new URL(GOVUK_TEST_URL))
-    extractGovspeakText.mockRejectedValue(new Error('NetworkError'))
+    submitUrlReview.mockRejectedValue(new Error('NetworkError when fetching'))
 
     const urlInput = document.getElementById('url-input')
     urlInput.value = GOVUK_TEST_URL
@@ -309,11 +296,10 @@ describe('upload/form-handler - URL action error handling', () => {
     )
   })
 
-  it('should show unsupported-layout error when extraction finds no matching content', async () => {
-    const { parseGovUkUrl, extractGovspeakText } =
-      await import('./url-extractor.js')
+  it('should not show duplicate error when submitUrlReview throws with a meaningful message', async () => {
+    const { parseGovUkUrl } = await import('./url-extractor.js')
     parseGovUkUrl.mockReturnValue(new URL(GOVUK_TEST_URL))
-    extractGovspeakText.mockRejectedValue(
+    submitUrlReview.mockRejectedValue(
       new Error(
         'Could not extract any content from that URL. The page may use an unsupported layout.'
       )
@@ -325,19 +311,19 @@ describe('upload/form-handler - URL action error handling', () => {
     const event = makeSubmitEvent()
     await handleFormSubmit(event)
 
-    expect(showUrlError).toHaveBeenCalledWith(
-      'Could not extract content from that URL. The page layout is not supported'
-    )
+    // submitUrlReview (mocked) threw but did not call showUrlError itself;
+    // form-handler only calls showUrlError for bare network failures
+    expect(showUrlError).not.toHaveBeenCalled()
   })
 
-  it('should show error when extracted text exceeds the character limit', async () => {
-    const { parseGovUkUrl, extractGovspeakText } =
-      await import('./url-extractor.js')
+  it('should not show duplicate error when extracted text exceeds the character limit', async () => {
+    const { parseGovUkUrl } = await import('./url-extractor.js')
     parseGovUkUrl.mockReturnValue(new URL(GOVUK_TEST_URL))
-    const limitError = new Error(
-      'Extracted text is too long. Maximum 100000 characters. The webpage has 120000 characters'
+    submitUrlReview.mockRejectedValue(
+      new Error(
+        'Extracted text is too long. Maximum 100000 characters. The webpage has 120000 characters'
+      )
     )
-    extractGovspeakText.mockRejectedValue(limitError)
 
     const urlInput = document.getElementById('url-input')
     urlInput.value = GOVUK_TEST_URL
@@ -345,9 +331,9 @@ describe('upload/form-handler - URL action error handling', () => {
     const event = makeSubmitEvent()
     await handleFormSubmit(event)
 
-    expect(showUrlError).toHaveBeenCalledWith(
-      'Extracted text is too long. Maximum 100000 characters. The webpage has 120000 characters'
-    )
+    // submitUrlReview (mocked) threw but did not call showUrlError;
+    // form-handler only shows fallback for network-level failures
+    expect(showUrlError).not.toHaveBeenCalled()
   })
 })
 
@@ -363,10 +349,8 @@ describe('upload/form-handler - URL clear and refocus after success', () => {
   })
 
   it('should clear the URL input after a successful URL review submission', async () => {
-    const { parseGovUkUrl, extractGovspeakText } =
-      await import('./url-extractor.js')
+    const { parseGovUkUrl } = await import('./url-extractor.js')
     parseGovUkUrl.mockReturnValue(new URL(GOVUK_TEST_URL))
-    extractGovspeakText.mockResolvedValue('<html><body>Content</body></html>')
     submitUrlReview.mockResolvedValue(undefined)
 
     const urlInput = document.getElementById('url-input')
@@ -379,10 +363,8 @@ describe('upload/form-handler - URL clear and refocus after success', () => {
   })
 
   it('should set focus back to the URL input after a successful URL review submission', async () => {
-    const { parseGovUkUrl, extractGovspeakText } =
-      await import('./url-extractor.js')
+    const { parseGovUkUrl } = await import('./url-extractor.js')
     parseGovUkUrl.mockReturnValue(new URL(GOVUK_TEST_URL))
-    extractGovspeakText.mockResolvedValue('<html><body>Content</body></html>')
     submitUrlReview.mockResolvedValue(undefined)
 
     const urlInput = document.getElementById('url-input')
@@ -396,10 +378,9 @@ describe('upload/form-handler - URL clear and refocus after success', () => {
   })
 
   it('should NOT clear the URL input when URL review throws an error', async () => {
-    const { parseGovUkUrl, extractGovspeakText } =
-      await import('./url-extractor.js')
+    const { parseGovUkUrl } = await import('./url-extractor.js')
     parseGovUkUrl.mockReturnValue(new URL(GOVUK_TEST_URL))
-    extractGovspeakText.mockRejectedValue(new Error('NetworkError'))
+    submitUrlReview.mockRejectedValue(new Error('NetworkError'))
 
     const urlInput = document.getElementById('url-input')
     urlInput.value = GOVUK_TEST_URL
@@ -410,13 +391,12 @@ describe('upload/form-handler - URL clear and refocus after success', () => {
     expect(urlInput.value).toBe(GOVUK_TEST_URL)
   })
 
-  it('should show the error message directly when error is not a known pattern', async () => {
-    const { parseGovUkUrl, extractGovspeakText } =
-      await import('./url-extractor.js')
+  it('should not show additional error when submitUrlReview throws with a specific message', async () => {
+    const { parseGovUkUrl } = await import('./url-extractor.js')
     parseGovUkUrl.mockReturnValue(new URL(GOVUK_TEST_URL))
     const { showUrlError } = await import('./ui-feedback.js')
     const specificError = new Error('Rate limit exceeded on GOV.UK')
-    extractGovspeakText.mockRejectedValue(specificError)
+    submitUrlReview.mockRejectedValue(specificError)
 
     const urlInput = document.getElementById('url-input')
     urlInput.value = GOVUK_TEST_URL
@@ -424,8 +404,9 @@ describe('upload/form-handler - URL clear and refocus after success', () => {
     const event = makeSubmitEvent()
     await handleFormSubmit(event)
 
-    // line 85 branch: error.message is truthy, not 'Failed to fetch', not 'NetworkError' prefix
-    expect(showUrlError).toHaveBeenCalledWith('Rate limit exceeded on GOV.UK')
+    // submitUrlReview (mocked) handles its own error display;
+    // form-handler only shows fallback for bare network failures
+    expect(showUrlError).not.toHaveBeenCalled()
   })
 })
 
