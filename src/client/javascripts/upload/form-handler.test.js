@@ -326,7 +326,7 @@ describe('upload/form-handler - URL action error handling', () => {
     await handleFormSubmit(event)
 
     expect(showUrlError).toHaveBeenCalledWith(
-      'Could not extract content from that URL. The page layout is not supported'
+      'Could not extract content from that URL. The page layout is not supported. Please try a different URL or paste the content directly using the text input.'
     )
   })
 

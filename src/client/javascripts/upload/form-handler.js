@@ -25,7 +25,7 @@ const ERROR_INVALID_URL = 'Enter a valid GOV.UK URL'
 const ERROR_NO_OPTION = 'Select an option to proceed'
 const ERROR_FETCH_FAILED = 'Could not retrieve content from that URL'
 const ERROR_UNSUPPORTED_LAYOUT =
-  'Could not extract content from that URL. The page layout is not supported'
+  'Could not extract content from that URL. The page layout is not supported. Please try a different URL or paste the content directly using the text input.'
 
 function disableSubmit(elements) {
   if (elements.uploadButton) {
