@@ -28,7 +28,9 @@ export const ACCEPTED_FILE_TYPES = [
 export const ACCEPTED_FILE_EXTENSIONS = ['.pdf', '.doc', '.docx']
 
 export function isValidFileType(file) {
-  if (!file) return false
+  if (!file) {
+    return false
+  }
   const nameLC = file.name.toLowerCase()
   const hasValidExt = ACCEPTED_FILE_EXTENSIONS.some((ext) =>
     nameLC.endsWith(ext)

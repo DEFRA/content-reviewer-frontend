@@ -28,6 +28,7 @@ vi.mock('./character-counter.js', () => ({
 
 const ACTION_URL_ID = 'action-url'
 const ACTION_TEXT_ID = 'action-text'
+const ACTION_DOCUMENT_ID = 'action-document'
 
 function buildDom() {
   document.body.innerHTML = `
@@ -49,10 +50,18 @@ function buildDom() {
             type="radio"
             value="text"
           >
+          <input
+            class="govuk-radios__input"
+            id="action-document"
+            name="actionOption"
+            type="radio"
+            value="document"
+          >
         </div>
       </div>
       <div id="urlFormGroup" hidden></div>
       <div id="textFormGroup" hidden></div>
+      <div id="documentFormGroup" hidden></div>
       <div id="errorSummary" hidden><a id="errorSummaryMessage"></a></div>
       <div id="uploadError" hidden><span id="errorMessage"></span></div>
       <div id="urlError" hidden><span id="urlErrorMessage"></span></div>
@@ -81,6 +90,7 @@ describe('upload/radio-handler - initializeRadioHandler', () => {
     initializeRadioHandler()
     expect(document.getElementById('urlFormGroup').hidden).toBe(true)
     expect(document.getElementById('textFormGroup').hidden).toBe(true)
+    expect(document.getElementById('documentFormGroup').hidden).toBe(true)
   })
 
   it('should show URL panel when URL radio is selected', () => {
@@ -141,6 +151,47 @@ describe('upload/radio-handler - initializeRadioHandler', () => {
     expect(hideTextClearButton).toHaveBeenCalled()
   })
 
+  it('should show document panel when document radio is selected', () => {
+    initializeRadioHandler()
+    const docRadio = document.getElementById(ACTION_DOCUMENT_ID)
+    docRadio.checked = true
+    docRadio.dispatchEvent(new Event('change'))
+
+    expect(document.getElementById('documentFormGroup').hidden).toBe(false)
+    expect(document.getElementById('urlFormGroup').hidden).toBe(true)
+    expect(document.getElementById('textFormGroup').hidden).toBe(true)
+  })
+
+  it('should hide documentFormGroup when URL radio is selected', () => {
+    initializeRadioHandler()
+    // First show the document panel
+    const docRadio = document.getElementById(ACTION_DOCUMENT_ID)
+    docRadio.checked = true
+    docRadio.dispatchEvent(new Event('change'))
+
+    // Now switch to URL
+    const urlRadio = document.getElementById(ACTION_URL_ID)
+    urlRadio.checked = true
+    urlRadio.dispatchEvent(new Event('change'))
+
+    expect(document.getElementById('documentFormGroup').hidden).toBe(true)
+  })
+
+  it('should hide documentFormGroup when text radio is selected', () => {
+    initializeRadioHandler()
+    // First show the document panel
+    const docRadio = document.getElementById(ACTION_DOCUMENT_ID)
+    docRadio.checked = true
+    docRadio.dispatchEvent(new Event('change'))
+
+    // Now switch to text
+    const textRadio = document.getElementById(ACTION_TEXT_ID)
+    textRadio.checked = true
+    textRadio.dispatchEvent(new Event('change'))
+
+    expect(document.getElementById('documentFormGroup').hidden).toBe(true)
+  })
+
   it('should not throw when radio elements are absent', () => {
     document.body.innerHTML = '<div></div>'
     initializeElements()
@@ -163,6 +214,11 @@ describe('upload/radio-handler - getSelectedAction', () => {
   it('should return "text" when text radio is checked', () => {
     document.getElementById(ACTION_TEXT_ID).checked = true
     expect(getSelectedAction()).toBe('text')
+  })
+
+  it('should return "document" when document radio is checked', () => {
+    document.getElementById(ACTION_DOCUMENT_ID).checked = true
+    expect(getSelectedAction()).toBe('document')
   })
 })
 
@@ -224,16 +280,18 @@ describe('upload/radio-handler - hideBothPanels on unknown radio value', () => {
   })
 })
 
-describe('upload/radio-handler - null element guards in showUrlPanel and showTextPanel', () => {
+describe('upload/radio-handler - null element guards in all panel functions', () => {
   beforeEach(() => {
     // Build a minimal DOM that intentionally omits urlFormGroup, textFormGroup,
-    // and characterCountMessage so the null-guard false branches are exercised.
+    // documentFormGroup and characterCountMessage so the null-guard false branches
+    // are exercised across showUrlPanel, showTextPanel, showDocumentPanel and hideBothPanels.
     document.body.innerHTML = `
       <form id="uploadForm">
         <div class="govuk-form-group" id="actionSelectionGroup">
           <div id="actionRadios">
             <input class="govuk-radios__input" id="action-url" name="actionOption" type="radio" value="url">
             <input class="govuk-radios__input" id="action-text" name="actionOption" type="radio" value="text">
+            <input class="govuk-radios__input" id="action-document" name="actionOption" type="radio" value="document">
           </div>
         </div>
         <div id="errorSummary" hidden><a id="errorSummaryMessage"></a></div>
@@ -250,7 +308,7 @@ describe('upload/radio-handler - null element guards in showUrlPanel and showTex
         <div id="textFieldWrapper"></div>
       </form>
     `
-    // urlFormGroup, textFormGroup, characterCountMessage are intentionally absent
+    // urlFormGroup, textFormGroup, documentFormGroup, characterCountMessage intentionally absent
     initializeElements()
     vi.clearAllMocks()
   })
@@ -270,6 +328,15 @@ describe('upload/radio-handler - null element guards in showUrlPanel and showTex
       const textRadio = document.getElementById('action-text')
       textRadio.checked = true
       textRadio.dispatchEvent(new Event('change'))
+    }).not.toThrow()
+  })
+
+  it('should not throw when documentFormGroup is absent and document radio is selected', () => {
+    expect(() => {
+      initializeRadioHandler()
+      const docRadio = document.getElementById('action-document')
+      docRadio.checked = true
+      docRadio.dispatchEvent(new Event('change'))
     }).not.toThrow()
   })
 })

@@ -421,3 +421,125 @@ describe('upload/input-controls - URL input', () => {
     expect(() => hideUrlClearButton()).not.toThrow()
   })
 })
+
+// ---------------------------------------------------------------------------
+// Null-guard branches for fileNameDisplay and characterCountMessage
+// ---------------------------------------------------------------------------
+
+describe('upload/input-controls - null guard branches', () => {
+  it('should not throw when fileNameDisplay is absent and a file is selected', () => {
+    // DOM without fileNameDisplay — covers the false branch of if (elements.fileNameDisplay)
+    document.body.innerHTML = `
+      <div id="errorSummary" hidden><a id="errorSummaryMessage"></a></div>
+      <form id="uploadForm">
+        <div class="govuk-form-group" id="documentFormGroup">
+          <p id="documentError" hidden><span id="documentErrorMessage"></span></p>
+          <input type="file" id="file-upload">
+          <button type="button" id="fileClearButton" class="app-clear-button">Clear file</button>
+        </div>
+        <div class="govuk-form-group" id="textFormGroup">
+          <div id="textFieldWrapper">
+            <p id="uploadError" hidden><span id="errorMessage"></span></p>
+            <textarea class="govuk-textarea" id="text-content"></textarea>
+          </div>
+        </div>
+        <div id="characterCountMessage"></div>
+        <button id="uploadButton" type="submit">Review content</button>
+        <div id="uploadSuccess" hidden></div>
+        <div id="uploadProgress" hidden>
+          <div id="uploadStatusText"></div>
+          <div id="uploadProgressText"></div>
+          <div id="progressBar" data-progress="0"></div>
+        </div>
+      </form>
+    `
+    initializeElements()
+    initializeFileInput()
+
+    const fileInput = document.getElementById('file-upload')
+    const validFile = new File(['content'], 'report.pdf', {
+      type: 'application/pdf'
+    })
+    Object.defineProperty(fileInput, 'files', {
+      value: { 0: validFile, length: 1 },
+      configurable: true
+    })
+    expect(() => fileInput.dispatchEvent(new Event('change'))).not.toThrow()
+  })
+
+  it('should not throw when characterCountMessage has no parentNode in initializeTextInput', () => {
+    // DOM where characterCountMessage is detached (no parent) — covers if (countParent) false branch
+    document.body.innerHTML = `
+      <div id="errorSummary" hidden><a id="errorSummaryMessage"></a></div>
+      <form id="uploadForm">
+        <div class="govuk-form-group" id="textFormGroup">
+          <div id="textFieldWrapper">
+            <p id="uploadError" hidden><span id="errorMessage"></span></p>
+            <textarea class="govuk-textarea" id="text-content"></textarea>
+          </div>
+        </div>
+        <button id="uploadButton" type="submit">Review content</button>
+        <div id="uploadSuccess" hidden></div>
+        <div id="uploadProgress" hidden>
+          <div id="uploadStatusText"></div>
+          <div id="uploadProgressText"></div>
+          <div id="progressBar" data-progress="0"></div>
+        </div>
+      </form>
+    `
+    initializeElements()
+    // Detach characterCountMessage so its parentNode is null
+    const msg = document.createElement('div')
+    msg.id = 'characterCountMessage'
+    // deliberately NOT appended to document — parentNode will be null
+
+    expect(() => initializeTextInput()).not.toThrow()
+  })
+
+  it('updateMutualExclusion: toggleInput does not throw when textarea has no govuk-form-group ancestor', () => {
+    // textarea placed outside any .govuk-form-group so group is null in toggleInput/highlightInput
+    document.body.innerHTML = `
+      <div id="errorSummary" hidden><a id="errorSummaryMessage"></a></div>
+      <form id="uploadForm">
+        <textarea id="text-content"></textarea>
+        <div id="characterCountMessage"></div>
+        <div id="textFieldWrapper"></div>
+        <button id="uploadButton" type="submit">Review content</button>
+        <div id="uploadSuccess" hidden></div>
+        <div id="uploadProgress" hidden>
+          <div id="uploadStatusText"></div>
+          <div id="uploadProgressText"></div>
+          <div id="progressBar" data-progress="0"></div>
+        </div>
+      </form>
+    `
+    initializeElements()
+    initializeTextInput()
+    document.getElementById('text-content').value = ''
+
+    expect(() => updateMutualExclusion()).not.toThrow()
+  })
+
+  it('updateMutualExclusion: highlightInput does not throw when textarea has no govuk-form-group ancestor', () => {
+    document.body.innerHTML = `
+      <div id="errorSummary" hidden><a id="errorSummaryMessage"></a></div>
+      <form id="uploadForm">
+        <textarea id="text-content"></textarea>
+        <div id="characterCountMessage"></div>
+        <div id="textFieldWrapper"></div>
+        <button id="uploadButton" type="submit">Review content</button>
+        <div id="uploadSuccess" hidden></div>
+        <div id="uploadProgress" hidden>
+          <div id="uploadStatusText"></div>
+          <div id="uploadProgressText"></div>
+          <div id="progressBar" data-progress="0"></div>
+        </div>
+      </form>
+    `
+    initializeElements()
+    initializeTextInput()
+    document.getElementById('text-content').value = 'some text'
+
+    expect(() => updateMutualExclusion()).not.toThrow()
+  })
+})
