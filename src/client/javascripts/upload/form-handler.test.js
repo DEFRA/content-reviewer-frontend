@@ -26,7 +26,9 @@ vi.mock('./ui-feedback.js', () => ({
   showRadioError: vi.fn(),
   hideRadioError: vi.fn(),
   showCharLimitError: vi.fn(),
-  hideCharLimitError: vi.fn()
+  hideCharLimitError: vi.fn(),
+  showDocumentError: vi.fn(),
+  hideDocumentError: vi.fn()
 }))
 
 // Mock character-counter — updateCharacterCount re-applies char-limit state
@@ -410,17 +412,17 @@ describe('upload/form-handler - URL clear and refocus after success', () => {
   })
 })
 
-describe('upload/form-handler - text action file-only submit', () => {
+describe('upload/form-handler - document action file submit', () => {
   beforeEach(async () => {
     buildDom()
     vi.clearAllMocks()
     const radioMod = await import('./radio-handler.js')
-    radioMod.getSelectedAction.mockReturnValue('text')
+    radioMod.getSelectedAction.mockReturnValue('document')
     const { submitFileUpload } = await import('./api-client.js')
     submitFileUpload.mockResolvedValue({ reviewId: 'file-review-1' })
   })
 
-  it('should call submitFileUpload when a file is selected and text is empty', async () => {
+  it('should call submitFileUpload when a file is selected (document action)', async () => {
     const fileInput = document.getElementById('file-upload')
     const mockFile = new File(['content'], 'report.pdf', {
       type: 'application/pdf'
@@ -429,7 +431,6 @@ describe('upload/form-handler - text action file-only submit', () => {
       value: { 0: mockFile, length: 1 },
       configurable: true
     })
-    document.getElementById(TEXT_CONTENT_ID).value = ''
 
     const event = makeSubmitEvent()
     await handleFormSubmit(event)
@@ -438,13 +439,12 @@ describe('upload/form-handler - text action file-only submit', () => {
     expect(submitFileUpload).toHaveBeenCalledWith(mockFile)
   })
 
-  it('should not call submitTextReview when submitting a file', async () => {
+  it('should not call submitTextReview when submitting a file (document action)', async () => {
     const fileInput = document.getElementById('file-upload')
     Object.defineProperty(fileInput, 'files', {
       value: { 0: new File(['x'], 'test.txt'), length: 1 },
       configurable: true
     })
-    document.getElementById(TEXT_CONTENT_ID).value = ''
 
     const event = makeSubmitEvent()
     await handleFormSubmit(event)
@@ -453,31 +453,78 @@ describe('upload/form-handler - text action file-only submit', () => {
   })
 })
 
-describe('upload/form-handler - text action both file and text present', () => {
+describe('upload/form-handler - document action no file selected', () => {
+  let showDocumentError
+
   beforeEach(async () => {
     buildDom()
     vi.clearAllMocks()
     const radioMod = await import('./radio-handler.js')
-    radioMod.getSelectedAction.mockReturnValue('text')
+    radioMod.getSelectedAction.mockReturnValue('document')
+    const feedbackMod = await import('./ui-feedback.js')
+    showDocumentError = feedbackMod.showDocumentError
   })
 
-  it('should call showError with ERROR_ENTER_TEXT when both file and text are present', async () => {
+  it('should call showDocumentError when no file is selected (document action)', async () => {
     const fileInput = document.getElementById('file-upload')
     Object.defineProperty(fileInput, 'files', {
-      value: {
-        0: new File(['content'], 'doc.pdf', { type: 'application/pdf' }),
-        length: 1
-      },
+      value: { length: 0 },
       configurable: true
     })
-    document.getElementById(TEXT_CONTENT_ID).value = VALID_TEXT
 
     const event = makeSubmitEvent()
     await handleFormSubmit(event)
 
-    // line 144: both file and text present → handleTextError(ERROR_ENTER_TEXT)
-    expect(showError).toHaveBeenCalledWith('Enter text content for review')
+    expect(showDocumentError).toHaveBeenCalledWith('Select a file to upload')
     expect(submitTextReview).not.toHaveBeenCalled()
+  })
+})
+
+describe('upload/form-handler - document action invalid file type', () => {
+  let showDocumentError
+
+  beforeEach(async () => {
+    buildDom()
+    vi.clearAllMocks()
+    const radioMod = await import('./radio-handler.js')
+    radioMod.getSelectedAction.mockReturnValue('document')
+    const feedbackMod = await import('./ui-feedback.js')
+    showDocumentError = feedbackMod.showDocumentError
+  })
+
+  it('should call showDocumentError when an invalid file type is selected', async () => {
+    const fileInput = document.getElementById('file-upload')
+    const invalidFile = new File(['content'], 'image.png', {
+      type: 'image/png'
+    })
+    Object.defineProperty(fileInput, 'files', {
+      value: { 0: invalidFile, length: 1 },
+      configurable: true
+    })
+
+    const event = makeSubmitEvent()
+    await handleFormSubmit(event)
+
+    expect(showDocumentError).toHaveBeenCalledWith(
+      'The selected file must be a PDF or Word document'
+    )
+  })
+
+  it('should not call submitFileUpload when file type is invalid', async () => {
+    const fileInput = document.getElementById('file-upload')
+    Object.defineProperty(fileInput, 'files', {
+      value: {
+        0: new File(['x'], 'photo.jpg', { type: 'image/jpeg' }),
+        length: 1
+      },
+      configurable: true
+    })
+
+    const event = makeSubmitEvent()
+    await handleFormSubmit(event)
+
+    const { submitFileUpload } = await import('./api-client.js')
+    expect(submitFileUpload).not.toHaveBeenCalled()
   })
 })
 

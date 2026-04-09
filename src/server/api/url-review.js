@@ -100,7 +100,7 @@ function convertLinksToMarkdown($, rootEl) {
     .each((_, anchor) => {
       const $anchor = $(anchor)
       const href = $anchor.attr('href') ?? ''
-      const text = $anchor.text().replace(/\s+/g, ' ').trim()
+      const text = $anchor.text().replaceAll(/\s+/g, ' ').trim()
 
       let replacement
       if (!text) {
@@ -150,6 +150,7 @@ function extractContent(html, sourceUrl) {
   $(NOISE_SELECTORS).remove()
 
   const sections = []
+  const sectionTexts = [] // plain text per section — avoids regex tag-stripping later
   const matchedEls = [] // raw DOM nodes for ancestor/descendant overlap detection
 
   for (const selector of CONTENT_SELECTORS) {
@@ -172,6 +173,7 @@ function extractContent(html, sourceUrl) {
 
       matchedEls.push(el)
       sections.push(`<section>\n${$(el).html().trim()}\n</section>`)
+      sectionTexts.push(text)
     })
   }
 
@@ -224,7 +226,7 @@ ${bodyContent}
  * @returns {string}
  */
 function mapFetchError(error) {
-  const upstreamStatus = Number(error.message?.match(/\d{3}/)?.[0])
+  const upstreamStatus = Number(/\d{3}/.exec(error.message)?.[0])
   if (error.name === 'AbortError') {
     return 'The request timed out. GOV.UK took too long to respond — please try again in a moment.'
   }

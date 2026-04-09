@@ -1,5 +1,5 @@
 // Form submission handler
-import { CHARACTER_LIMIT } from './constants.js'
+import { CHARACTER_LIMIT, isValidFileType } from './constants.js'
 import { getElements, getFileInput } from './dom-elements.js'
 import {
   hideError,
@@ -8,7 +8,9 @@ import {
   showUrlError,
   hideUrlError,
   showRadioError,
-  hideRadioError
+  hideRadioError,
+  showDocumentError,
+  hideDocumentError
 } from './ui-feedback.js'
 import { updateCharacterCount } from './character-counter.js'
 import {
@@ -26,6 +28,9 @@ const ERROR_NO_OPTION = 'Select an option to proceed'
 const ERROR_FETCH_FAILED = 'Could not retrieve content from that URL'
 const ERROR_UNSUPPORTED_LAYOUT =
   'Could not extract content from that URL. The page layout is not supported. Please try a different URL or paste the content directly using the text input.'
+const ERROR_NO_FILE = 'Select a file to upload'
+const ERROR_INVALID_FILE_TYPE =
+  'The selected file must be a PDF or Word document'
 
 function disableSubmit(elements) {
   if (elements.uploadButton) {
@@ -85,32 +90,44 @@ async function handleUrlSubmit(elements) {
   }
 }
 
+async function handleDocumentSubmit(elements) {
+  const file = getFileInput()?.files?.[0]
+  if (!file) {
+    showDocumentError(ERROR_NO_FILE)
+    enableSubmit(elements)
+    return
+  }
+  if (!isValidFileType(file)) {
+    showDocumentError(ERROR_INVALID_FILE_TYPE)
+    enableSubmit(elements)
+    return
+  }
+  hideDocumentError()
+  await submitFileUpload(file)
+}
+
 async function handleTextSubmit(elements) {
   const textContent = elements.textContentInput?.value?.trim()
-  const file = getFileInput()?.files?.[0]
-  if (file && !textContent) {
-    await submitFileUpload(file)
+  if (!textContent) {
+    handleTextError(ERROR_ENTER_TEXT, elements)
     return
   }
-  if (textContent && !file) {
-    if (textContent.length > CHARACTER_LIMIT) {
-      handleTextError(
-        `Text content too long. Maximum ${CHARACTER_LIMIT} characters. Your content has ${textContent.length} characters.`,
-        elements
-      )
-      return
-    }
-    hideError()
-    await submitTextReview(textContent)
+  if (textContent.length > CHARACTER_LIMIT) {
+    handleTextError(
+      `Text content too long. Maximum ${CHARACTER_LIMIT} characters. Your content has ${textContent.length} characters.`,
+      elements
+    )
     return
   }
-  handleTextError(ERROR_ENTER_TEXT, elements)
+  hideError()
+  await submitTextReview(textContent)
 }
 
 export async function handleFormSubmit(e) {
   e.preventDefault()
   hideError()
   hideUrlError()
+  hideDocumentError()
   hideRadioError()
   hideSuccess()
   const elements = getElements()
@@ -127,7 +144,13 @@ export async function handleFormSubmit(e) {
   try {
     if (action === 'url') {
       await handleUrlSubmit(elements)
-    } else if (action === 'text') {
+      return
+    }
+    if (action === 'document') {
+      await handleDocumentSubmit(elements)
+      return
+    }
+    if (action === 'text') {
       // Re-apply char-limit state if still over limit (hideError clears the border)
       updateCharacterCount()
       await handleTextSubmit(elements)

@@ -81,19 +81,6 @@
             </div>
           </div>
 
-          <!-- File Upload Option - COMMENTED OUT - File upload functionality disabled for demo -->
-          <!-- <div class="govuk-form-group" id="fileFormGroup">
-            <label class="govuk-label govuk-label--s" for="file-upload">
-              Upload a document (optional)
-            </label>
-            <div class="govuk-hint">
-              Accepted file types: PDF (.pdf), Word (.doc, .docx). Maximum file size: 10MB
-            </div>
-            <input class="govuk-file-upload" id="file-upload" name="file" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
-            <div id="file-name-display" class="govuk-hint govuk-!-margin-top-2 js-hidden">
-              Selected: <strong id="selected-file-name"></strong>
-            </div>
-          </div> -->
 
           <!-- Action selection: URL or Text content -->
           <div class="govuk-form-group" id="actionSelectionGroup">
@@ -131,8 +118,6 @@
                     URL upload
                   </label>
                 </div>
-                <!-- Document upload radio - commented out as per requirement -->
-                <!--
                 <div class="govuk-radios__item">
                   <input
                     class="govuk-radios__input"
@@ -145,7 +130,6 @@
                     Document upload
                   </label>
                 </div>
-                -->
               </div>
             </fieldset>
           </div>
@@ -174,6 +158,50 @@
               placeholder="Enter URL..."
               aria-describedby="url-input-hint"
             >
+          </div>
+
+          <!-- Document upload panel — shown when Document upload radio is selected -->
+          <div class="govuk-form-group" id="documentFormGroup" hidden>
+            <h1 class="govuk-label-wrapper">
+              <label class="govuk-label govuk-label--l" for="file-upload">
+                Upload a file
+              </label>
+            </h1>
+            <div class="govuk-hint" id="file-upload-hint">
+              Upload a file of type PDF (.pdf) or Word (.doc, .docx). Only the first 100,000 characters will be extracted for review.
+            </div>
+            <p class="govuk-error-message app-error-message" id="documentError" hidden>
+              <span class="govuk-visually-hidden">Error:</span>
+              <span id="documentErrorMessage"></span>
+            </p>
+            <div class="app-file-upload-wrapper">
+              <div class="app-file-upload-row">
+                <label
+                  for="file-upload"
+                  class="govuk-button govuk-button--secondary app-file-browse-btn"
+                  role="button"
+                >Choose file</label>
+                <div
+                  class="govuk-input app-file-upload-display"
+                  id="fileNameDisplay"
+                  aria-live="polite"
+                  aria-label="Selected file"
+                >No file chosen</div>
+              </div>
+              <input
+                class="app-file-upload-input"
+                id="file-upload"
+                name="file"
+                type="file"
+                accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                aria-describedby="file-upload-hint documentError"
+              >
+              <button
+                type="button"
+                class="govuk-button govuk-button--secondary app-clear-button app-file-clear-button"
+                id="fileClearButton"
+              >Clear file</button>
+            </div>
           </div>
 
           <!-- Text Content Option — hidden until Text content radio is selected -->

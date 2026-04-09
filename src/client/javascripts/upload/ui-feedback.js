@@ -211,6 +211,47 @@ export function showRadioError(message) {
   }
 }
 
+export function showDocumentError(message) {
+  hideSuccess()
+  hideProgress()
+  const elements = getElements()
+  if (elements.errorSummary) {
+    elements.errorSummary.hidden = false
+  }
+  if (elements.errorSummaryMessage) {
+    elements.errorSummaryMessage.textContent = message
+    elements.errorSummaryMessage.href = '#file-upload'
+  }
+  if (elements.documentError) {
+    elements.documentError.hidden = false
+  }
+  if (elements.documentErrorMessage) {
+    elements.documentErrorMessage.textContent = message
+  }
+  if (elements.documentFormGroup) {
+    elements.documentFormGroup.classList.add(FORM_GROUP_ERROR_CLASS)
+  }
+  if (elements.uploadButton) {
+    elements.uploadButton.disabled = false
+  }
+}
+
+export function hideDocumentError() {
+  const elements = getElements()
+  if (elements.errorSummary) {
+    elements.errorSummary.hidden = true
+  }
+  if (elements.documentError) {
+    elements.documentError.hidden = true
+  }
+  if (elements.documentErrorMessage) {
+    elements.documentErrorMessage.textContent = ''
+  }
+  if (elements.documentFormGroup) {
+    elements.documentFormGroup.classList.remove(FORM_GROUP_ERROR_CLASS)
+  }
+}
+
 export function hideRadioError() {
   const elements = getElements()
   if (elements.actionSelectionGroup) {
