@@ -55,6 +55,16 @@ vi.mock('undici', () => ({
 
 vi.mock('form-data', () => ({ default: formDataMock }))
 
+vi.mock('../common/helpers/get-user-identifier.js', () => ({
+  getUserIdentifier: vi.fn(() => null)
+}))
+
+/**
+ * Creates a mock Hapi file object that is async-iterable (stream-like).
+ * streamToBuffer() inside upload.js uses `for await` on the file, so the
+ * mock must implement [Symbol.asyncIterator] and yield a buffer of the
+ * correct byte length for size-validation tests.
+ */
 function createMockFile(
   filename = TEST_FILENAME,
   contentType = TEST_CONTENT_TYPE,
@@ -65,7 +75,10 @@ function createMockFile(
       filename,
       headers: { 'content-type': contentType }
     },
-    bytes
+    bytes,
+    [Symbol.asyncIterator]: async function* () {
+      yield Buffer.allocUnsafe(bytes)
+    }
   }
 }
 
@@ -264,7 +277,9 @@ describe('uploadApiController.uploadFile - backend errors', () => {
       ok: false,
       status: HTTP_STATUS_SERVICE_UNAVAILABLE,
       statusText: 'Service Unavailable',
-      text: vi.fn().mockResolvedValueOnce('Backend error')
+      json: vi
+        .fn()
+        .mockResolvedValueOnce({ message: 'Failed to upload file to backend' })
     })
 
     const req = createMockRequest()
