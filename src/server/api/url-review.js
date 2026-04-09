@@ -250,19 +250,22 @@ function mapFetchError(error) {
 
 /**
  * Step 1: Fetch the GOV.UK page server-side.
- * @returns {{ html: string } | { errorResponse: object }}
+ * @returns {Promise<{ html: string } | { errorResponse: object }>}
  */
-async function fetchPage(parsedUrl, url, h) {
-  try {
-    return { html: await fetchGovUkHtml(parsedUrl) }
-  } catch (fetchError) {
-    logger.error({ err: fetchError, url }, 'url-review: upstream fetch failed')
-    return {
-      errorResponse: h
-        .response({ success: false, message: mapFetchError(fetchError) })
-        .code(HTTP_STATUS.INTERNAL_SERVER_ERROR)
-    }
-  }
+function fetchPage(parsedUrl, url, h) {
+  return fetchGovUkHtml(parsedUrl)
+    .then((html) => ({ html }))
+    .catch((fetchError) => {
+      logger.error(
+        { err: fetchError, url },
+        'url-review: upstream fetch failed'
+      )
+      return {
+        errorResponse: h
+          .response({ success: false, message: mapFetchError(fetchError) })
+          .code(HTTP_STATUS.INTERNAL_SERVER_ERROR)
+      }
+    })
 }
 
 /**
