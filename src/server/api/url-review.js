@@ -150,7 +150,6 @@ function extractContent(html, sourceUrl) {
   $(NOISE_SELECTORS).remove()
 
   const sections = []
-  const sectionTexts = [] // plain text per section — avoids regex tag-stripping later
   const matchedEls = [] // raw DOM nodes for ancestor/descendant overlap detection
 
   for (const selector of CONTENT_SELECTORS) {
@@ -173,7 +172,6 @@ function extractContent(html, sourceUrl) {
 
       matchedEls.push(el)
       sections.push(`<section>\n${$(el).html().trim()}\n</section>`)
-      sectionTexts.push(text)
     })
   }
 

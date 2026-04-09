@@ -2,6 +2,7 @@ import FormData from 'form-data'
 import { Agent, fetch as undiciFetch } from 'undici'
 import { config } from '../../config/config.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
+import { getUserIdentifier } from '../common/helpers/get-user-identifier.js'
 
 const logger = createLogger()
 
@@ -136,10 +137,14 @@ async function sendFileToBackend(file, fileInfo, request) {
     `Uploading file to backend: ${file.hapi.filename} (${file.bytes} bytes)`
   )
 
+  const userId = getUserIdentifier(request)
   const response = await undiciFetch(`${backendUrl}/api/upload`, {
     method: 'POST',
     body: formData,
-    headers: formData.getHeaders(),
+    headers: {
+      ...formData.getHeaders(),
+      ...(userId ? { 'x-user-id': userId } : {})
+    },
     dispatcher: keepAliveAgent
   })
 
@@ -161,18 +166,24 @@ async function sendFileToBackend(file, fileInfo, request) {
  * Handle backend upload failure
  */
 async function handleBackendFailure(response, fileInfo, backendRequestTime, h) {
-  const error = await response.text()
+  let errorMessage = 'Failed to upload file to backend'
+  try {
+    const errorData = await response.json()
+    errorMessage = errorData.message || errorMessage
+  } catch {
+    // Response body was not JSON — keep default message
+  }
   logger.error('Backend upload request failed', {
     filename: fileInfo.filename,
     status: response.status,
     statusText: response.statusText,
-    errorResponse: error,
+    errorMessage,
     requestTime: `${backendRequestTime}s`
   })
   return h
     .response({
       success: false,
-      message: 'Failed to upload file to backend'
+      message: errorMessage
     })
     .code(HTTP_STATUS_INTERNAL_SERVER_ERROR)
 }
