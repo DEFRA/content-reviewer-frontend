@@ -159,13 +159,17 @@ function extractContent(html, sourceUrl) {
       const overlaps = matchedEls.some(
         (matched) => $.contains(matched, el) || $.contains(el, matched)
       )
-      if (overlaps) return
+      if (overlaps) {
+        return
+      }
 
       // Convert <a> tags to Markdown before capturing innerHTML
       convertLinksToMarkdown($, el)
 
       const text = $(el).text().replaceAll(/\s+/g, ' ').trim()
-      if (!text) return
+      if (!text) {
+        return
+      }
 
       matchedEls.push(el)
       sections.push(`<section>\n${$(el).html().trim()}\n</section>`)
@@ -181,8 +185,13 @@ function extractContent(html, sourceUrl) {
   }
 
   const bodyContent = sections.join('\n\n')
-  // Join already-extracted plain-text strings — no regex tag-stripping needed
-  const charCount = sectionTexts.join(' ').length
+  // Strip tags to count plain-text characters (use cheerio to avoid regex ReDoS)
+  const plainText = load(bodyContent)
+    .root()
+    .text()
+    .replaceAll(/\s+/g, ' ')
+    .trim()
+  const charCount = plainText.length
 
   if (charCount < MIN_USEFUL_CONTENT_CHARS) {
     throw new Error(
@@ -244,62 +253,109 @@ function mapFetchError(error) {
 }
 
 /**
- * Forward extracted GOV.UK content to the backend review API and return the
- * Hapi response.  Separated from the main handler to keep function length
- * within SonarQube limits.
+ * Step 1: Fetch the GOV.UK page server-side.
+ * @returns {Promise<{ html: string } | { errorResponse: object }>}
  */
-async function submitExtractedToBackend(extracted, url, request, h) {
-  const slug = url
-    .replaceAll(/^https?:\/\//g, '')
-    .replaceAll(/[^a-z0-9]/gi, '-')
-    .replaceAll(/-+/g, '-')
-    .substring(0, SLUG_MAX_LENGTH)
-  const finalTitle = extracted.title || `${slug}.html`
+function fetchPage(parsedUrl, url, h) {
+  return fetchGovUkHtml(parsedUrl)
+    .then((html) => ({ html }))
+    .catch((fetchError) => {
+      logger.error(
+        { err: fetchError, url },
+        'url-review: upstream fetch failed'
+      )
+      return {
+        errorResponse: h
+          .response({ success: false, message: mapFetchError(fetchError) })
+          .code(HTTP_STATUS.INTERNAL_SERVER_ERROR)
+      }
+    })
+}
 
-  const userId = getUserIdentifier(request)
-  const backendUrl = config.get('backendUrl')
+/**
+ * Step 2: Extract content from raw HTML with cheerio.
+ * @returns {{ extracted: object } | { errorResponse: object }}
+ */
+function extractPage(html, url, h) {
+  try {
+    return { extracted: extractContent(html, url) }
+  } catch (extractError) {
+    logger.warn(
+      { url, message: extractError.message },
+      'url-review: content extraction failed'
+    )
+    return {
+      errorResponse: h
+        .response({ success: false, message: extractError.message })
+        .code(HTTP_STATUS.BAD_REQUEST)
+    }
+  }
+}
 
-  const backendResponse = await fetch(`${backendUrl}/api/review/text`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(userId ? { 'x-user-id': userId } : {})
-    },
-    body: JSON.stringify({
-      content: extracted.htmlDoc,
-      title: finalTitle,
-      sourceType: 'url',
-      sourceUrl: url
-    }),
-    dispatcher: keepAliveAgent
-  })
+/**
+ * Step 3: Forward extracted content to the backend review API.
+ */
+async function submitToBackend(
+  url,
+  extracted,
+  finalTitle,
+  userId,
+  backendUrl,
+  h
+) {
+  try {
+    const backendResponse = await fetch(`${backendUrl}/api/review/text`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(userId ? { 'x-user-id': userId } : {})
+      },
+      body: JSON.stringify({
+        content: extracted.htmlDoc,
+        title: finalTitle,
+        sourceType: 'url',
+        sourceUrl: url
+      }),
+      dispatcher: keepAliveAgent
+    })
 
-  if (!backendResponse.ok) {
+    if (!backendResponse.ok) {
+      logger.error(
+        { url, status: backendResponse.status },
+        'url-review: backend review request failed'
+      )
+      return h
+        .response({
+          success: false,
+          message: 'Failed to submit content to the review service'
+        })
+        .code(HTTP_STATUS.INTERNAL_SERVER_ERROR)
+    }
+
+    const result = await backendResponse.json()
+    logger.info(
+      { url, reviewId: result.reviewId },
+      'url-review: review submitted successfully'
+    )
+    return h
+      .response({
+        success: true,
+        message: 'URL content submitted for review',
+        reviewId: result.reviewId
+      })
+      .code(HTTP_STATUS.OK)
+  } catch (backendError) {
     logger.error(
-      { url, status: backendResponse.status },
-      'url-review: backend review request failed'
+      { err: backendError, url },
+      'url-review: backend submission error'
     )
     return h
       .response({
         success: false,
-        message: 'Failed to submit content to the review service'
+        message: backendError.message || 'Internal server error'
       })
       .code(HTTP_STATUS.INTERNAL_SERVER_ERROR)
   }
-
-  const result = await backendResponse.json()
-  logger.info(
-    { url, reviewId: result.reviewId },
-    'url-review: review submitted successfully'
-  )
-
-  return h
-    .response({
-      success: true,
-      message: 'URL content submitted for review',
-      reviewId: result.reviewId
-    })
-    .code(HTTP_STATUS.OK)
 }
 
 /**
@@ -322,30 +378,14 @@ export const urlReviewController = {
 
     logger.info({ url: parsedUrl.toString() }, 'url-review: fetching page')
 
-    let html
-    try {
-      html = await fetchGovUkHtml(parsedUrl)
-    } catch (fetchError) {
-      logger.error(
-        { err: fetchError, url },
-        'url-review: upstream fetch failed'
-      )
-      return h
-        .response({ success: false, message: mapFetchError(fetchError) })
-        .code(HTTP_STATUS.INTERNAL_SERVER_ERROR)
+    const { html, errorResponse: fetchErr } = await fetchPage(parsedUrl, url, h)
+    if (fetchErr) {
+      return fetchErr
     }
 
-    let extracted
-    try {
-      extracted = extractContent(html, url)
-    } catch (extractError) {
-      logger.warn(
-        { url, message: extractError.message },
-        'url-review: content extraction failed'
-      )
-      return h
-        .response({ success: false, message: extractError.message })
-        .code(HTTP_STATUS.BAD_REQUEST)
+    const { extracted, errorResponse: extractErr } = extractPage(html, url, h)
+    if (extractErr) {
+      return extractErr
     }
 
     logger.info(
@@ -353,19 +393,17 @@ export const urlReviewController = {
       'url-review: content extracted, forwarding to backend'
     )
 
-    try {
-      return await submitExtractedToBackend(extracted, url, request, h)
-    } catch (backendError) {
-      logger.error(
-        { err: backendError, url },
-        'url-review: backend submission error'
-      )
-      return h
-        .response({
-          success: false,
-          message: backendError.message || 'Internal server error'
-        })
-        .code(HTTP_STATUS.INTERNAL_SERVER_ERROR)
-    }
+    const slug = url
+      .replaceAll(/^https?:\/\//g, '')
+      .replaceAll(/[^a-z0-9]/gi, '-')
+      .replaceAll(/-+/g, '-')
+      .substring(0, SLUG_MAX_LENGTH)
+    const fileName = `${slug}.html`
+    const finalTitle = extracted.title || fileName
+
+    const userId = getUserIdentifier(request)
+    const backendUrl = config.get('backendUrl')
+
+    return submitToBackend(url, extracted, finalTitle, userId, backendUrl, h)
   }
 }
