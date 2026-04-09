@@ -127,9 +127,7 @@ export async function handleFormSubmit(e) {
   try {
     if (action === 'url') {
       await handleUrlSubmit(elements)
-      return
-    }
-    if (action === 'text') {
+    } else if (action === 'text') {
       // Re-apply char-limit state if still over limit (hideError clears the border)
       updateCharacterCount()
       await handleTextSubmit(elements)

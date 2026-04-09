@@ -16,6 +16,8 @@ const keepAliveAgent = new Agent({
 const HTTP_STATUS = {
   OK: 200,
   BAD_REQUEST: 400,
+  FORBIDDEN: 403,
+  NOT_FOUND: 404,
   INTERNAL_SERVER_ERROR: 500
 }
 
@@ -156,13 +158,17 @@ function extractContent(html, sourceUrl) {
       const overlaps = matchedEls.some(
         (matched) => $.contains(matched, el) || $.contains(el, matched)
       )
-      if (overlaps) return
+      if (overlaps) {
+        return
+      }
 
       // Convert <a> tags to Markdown before capturing innerHTML
       convertLinksToMarkdown($, el)
 
       const text = $(el).text().replace(/\s+/g, ' ').trim()
-      if (!text) return
+      if (!text) {
+        return
+      }
 
       matchedEls.push(el)
       sections.push(`<section>\n${$(el).html().trim()}\n</section>`)
@@ -177,11 +183,8 @@ function extractContent(html, sourceUrl) {
   }
 
   const bodyContent = sections.join('\n\n')
-  // Strip tags to count plain-text characters
-  const plainText = bodyContent
-    .replace(/<[^>]*>/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
+  // Strip tags to count plain-text characters (use cheerio to avoid regex ReDoS)
+  const plainText = load(bodyContent).root().text().replace(/\s+/g, ' ').trim()
   const charCount = plainText.length
 
   if (charCount < MIN_USEFUL_CONTENT_CHARS) {
@@ -228,16 +231,122 @@ function mapFetchError(error) {
   if (error.message === 'Fastly CDN error 200') {
     return 'GOV.UK is temporarily unable to serve that page via its CDN. Please try again in a moment.'
   }
-  if (upstreamStatus === 404) {
+  if (upstreamStatus === HTTP_STATUS.NOT_FOUND) {
     return 'That page could not be found on GOV.UK. Please check the URL is correct and try again.'
   }
-  if (upstreamStatus === 403) {
+  if (upstreamStatus === HTTP_STATUS.FORBIDDEN) {
     return 'Access to that page was denied. The URL may be restricted or require authentication.'
   }
-  if (upstreamStatus >= 400 && upstreamStatus < 500) {
+  if (
+    upstreamStatus >= HTTP_STATUS.BAD_REQUEST &&
+    upstreamStatus < HTTP_STATUS.INTERNAL_SERVER_ERROR
+  ) {
     return 'That URL returned an error. Please check the URL is correct and points to a published GOV.UK page.'
   }
   return 'Could not retrieve content from that URL. Please check the URL is correct and try again.'
+}
+
+/**
+ * Step 1: Fetch the GOV.UK page server-side.
+ * @returns {{ html: string } | { errorResponse: object }}
+ */
+async function fetchPage(parsedUrl, url, h) {
+  try {
+    return { html: await fetchGovUkHtml(parsedUrl) }
+  } catch (fetchError) {
+    logger.error({ err: fetchError, url }, 'url-review: upstream fetch failed')
+    return {
+      errorResponse: h
+        .response({ success: false, message: mapFetchError(fetchError) })
+        .code(HTTP_STATUS.INTERNAL_SERVER_ERROR)
+    }
+  }
+}
+
+/**
+ * Step 2: Extract content from raw HTML with cheerio.
+ * @returns {{ extracted: object } | { errorResponse: object }}
+ */
+function extractPage(html, url, h) {
+  try {
+    return { extracted: extractContent(html, url) }
+  } catch (extractError) {
+    logger.warn(
+      { url, message: extractError.message },
+      'url-review: content extraction failed'
+    )
+    return {
+      errorResponse: h
+        .response({ success: false, message: extractError.message })
+        .code(HTTP_STATUS.BAD_REQUEST)
+    }
+  }
+}
+
+/**
+ * Step 3: Forward extracted content to the backend review API.
+ */
+async function submitToBackend(
+  url,
+  extracted,
+  finalTitle,
+  userId,
+  backendUrl,
+  h
+) {
+  try {
+    const backendResponse = await fetch(`${backendUrl}/api/review/text`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(userId ? { 'x-user-id': userId } : {})
+      },
+      body: JSON.stringify({
+        content: extracted.htmlDoc,
+        title: finalTitle,
+        sourceType: 'url',
+        sourceUrl: url
+      }),
+      dispatcher: keepAliveAgent
+    })
+
+    if (!backendResponse.ok) {
+      logger.error(
+        { url, status: backendResponse.status },
+        'url-review: backend review request failed'
+      )
+      return h
+        .response({
+          success: false,
+          message: 'Failed to submit content to the review service'
+        })
+        .code(HTTP_STATUS.INTERNAL_SERVER_ERROR)
+    }
+
+    const result = await backendResponse.json()
+    logger.info(
+      { url, reviewId: result.reviewId },
+      'url-review: review submitted successfully'
+    )
+    return h
+      .response({
+        success: true,
+        message: 'URL content submitted for review',
+        reviewId: result.reviewId
+      })
+      .code(HTTP_STATUS.OK)
+  } catch (backendError) {
+    logger.error(
+      { err: backendError, url },
+      'url-review: backend submission error'
+    )
+    return h
+      .response({
+        success: false,
+        message: backendError.message || 'Internal server error'
+      })
+      .code(HTTP_STATUS.INTERNAL_SERVER_ERROR)
+  }
 }
 
 /**
@@ -260,32 +369,14 @@ export const urlReviewController = {
 
     logger.info({ url: parsedUrl.toString() }, 'url-review: fetching page')
 
-    // Step 1: Fetch the GOV.UK page server-side
-    let html
-    try {
-      html = await fetchGovUkHtml(parsedUrl)
-    } catch (fetchError) {
-      logger.error(
-        { err: fetchError, url },
-        'url-review: upstream fetch failed'
-      )
-      return h
-        .response({ success: false, message: mapFetchError(fetchError) })
-        .code(HTTP_STATUS.INTERNAL_SERVER_ERROR)
+    const { html, errorResponse: fetchErr } = await fetchPage(parsedUrl, url, h)
+    if (fetchErr) {
+      return fetchErr
     }
 
-    // Step 2: Extract content with cheerio
-    let extracted
-    try {
-      extracted = extractContent(html, url)
-    } catch (extractError) {
-      logger.warn(
-        { url, message: extractError.message },
-        'url-review: content extraction failed'
-      )
-      return h
-        .response({ success: false, message: extractError.message })
-        .code(HTTP_STATUS.BAD_REQUEST)
+    const { extracted, errorResponse: extractErr } = extractPage(html, url, h)
+    if (extractErr) {
+      return extractErr
     }
 
     logger.info(
@@ -293,7 +384,6 @@ export const urlReviewController = {
       'url-review: content extracted, forwarding to backend'
     )
 
-    // Step 3: Submit extracted content to backend
     const slug = url
       .replace(/^https?:\/\//, '')
       .replace(/[^a-z0-9]/gi, '-')
@@ -305,60 +395,6 @@ export const urlReviewController = {
     const userId = getUserIdentifier(request)
     const backendUrl = config.get('backendUrl')
 
-    try {
-      const backendResponse = await fetch(`${backendUrl}/api/review/text`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(userId ? { 'x-user-id': userId } : {})
-        },
-        body: JSON.stringify({
-          content: extracted.htmlDoc,
-          title: finalTitle,
-          sourceType: 'url',
-          sourceUrl: url
-        }),
-        dispatcher: keepAliveAgent
-      })
-
-      if (!backendResponse.ok) {
-        logger.error(
-          { url, status: backendResponse.status },
-          'url-review: backend review request failed'
-        )
-        return h
-          .response({
-            success: false,
-            message: 'Failed to submit content to the review service'
-          })
-          .code(HTTP_STATUS.INTERNAL_SERVER_ERROR)
-      }
-
-      const result = await backendResponse.json()
-
-      logger.info(
-        { url, reviewId: result.reviewId },
-        'url-review: review submitted successfully'
-      )
-
-      return h
-        .response({
-          success: true,
-          message: 'URL content submitted for review',
-          reviewId: result.reviewId
-        })
-        .code(HTTP_STATUS.OK)
-    } catch (backendError) {
-      logger.error(
-        { err: backendError, url },
-        'url-review: backend submission error'
-      )
-      return h
-        .response({
-          success: false,
-          message: backendError.message || 'Internal server error'
-        })
-        .code(HTTP_STATUS.INTERNAL_SERVER_ERROR)
-    }
+    return submitToBackend(url, extracted, finalTitle, userId, backendUrl, h)
   }
 }

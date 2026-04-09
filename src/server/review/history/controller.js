@@ -8,6 +8,7 @@ import { Agent } from 'undici'
 
 const logger = createLogger()
 const REVIEW_HISTORY_TITLE = 'Review History'
+const DEFAULT_FILENAME = 'this review'
 
 // Reuse a single undici Agent with keep-alive for all history page backend calls
 const keepAliveAgent = new Agent({
@@ -100,7 +101,7 @@ export const reviewHistoryController = {
     return h.view('review/history/confirm-delete', {
       pageTitle: 'Delete review',
       reviewId,
-      filename: filename || 'this review'
+      filename: filename || DEFAULT_FILENAME
     })
   },
 
@@ -110,7 +111,7 @@ export const reviewHistoryController = {
   async deleteReview(request, h) {
     const startTime = Date.now()
     const { reviewId } = request.params
-    const filename = request.payload?.filename || 'this review'
+    const filename = request.payload?.filename || DEFAULT_FILENAME
 
     try {
       const config = request.server.app.config
