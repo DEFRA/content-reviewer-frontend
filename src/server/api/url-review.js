@@ -166,7 +166,7 @@ function extractContent(html, sourceUrl) {
       // Convert <a> tags to Markdown before capturing innerHTML
       convertLinksToMarkdown($, el)
 
-      const text = $(el).text().replace(/\s+/g, ' ').trim()
+      const text = $(el).text().replaceAll(/\s+/g, ' ').trim()
       if (!text) {
         return
       }
@@ -186,7 +186,11 @@ function extractContent(html, sourceUrl) {
 
   const bodyContent = sections.join('\n\n')
   // Strip tags to count plain-text characters (use cheerio to avoid regex ReDoS)
-  const plainText = load(bodyContent).root().text().replace(/\s+/g, ' ').trim()
+  const plainText = load(bodyContent)
+    .root()
+    .text()
+    .replaceAll(/\s+/g, ' ')
+    .trim()
   const charCount = plainText.length
 
   if (charCount < MIN_USEFUL_CONTENT_CHARS) {
@@ -390,9 +394,9 @@ export const urlReviewController = {
     )
 
     const slug = url
-      .replace(/^https?:\/\//, '')
-      .replace(/[^a-z0-9]/gi, '-')
-      .replace(/-+/g, '-')
+      .replaceAll(/^https?:\/\//g, '')
+      .replaceAll(/[^a-z0-9]/gi, '-')
+      .replaceAll(/-+/g, '-')
       .substring(0, SLUG_MAX_LENGTH)
     const fileName = `${slug}.html`
     const finalTitle = extracted.title || fileName
