@@ -3,13 +3,19 @@ import {
   APP_DISABLED_CLASS,
   APP_HIGHLIGHT_CLASS,
   ARIA_DISABLED_ATTR,
-  FORM_GROUP_SELECTOR
+  FORM_GROUP_SELECTOR,
+  isValidFileType
 } from './constants.js'
 import { getElements, getFileInput } from './dom-elements.js'
 import { updateCharacterCount } from './character-counter.js'
-import { hideError, hideUrlError } from './ui-feedback.js'
+import {
+  hideError,
+  hideUrlError,
+  hideDocumentError,
+  showDocumentError
+} from './ui-feedback.js'
 
-let fileClearBtn, textClearBtn, urlClearBtn
+let textClearBtn, urlClearBtn
 
 function addClearButton(input, label, onClear) {
   const btn = document.createElement('button')
@@ -27,17 +33,31 @@ export function initializeFileInput() {
   if (!fileInput) {
     return
   }
-  fileClearBtn?.remove()
-  fileClearBtn = addClearButton(fileInput, 'Clear file', () => {
-    const currentFileInput = getFileInput()
-    if (currentFileInput) {
-      currentFileInput.value = ''
-      currentFileInput.disabled = false
+  const elements = getElements()
+
+  // Update the file name display when the user picks a file
+  fileInput.addEventListener('change', () => {
+    const file = fileInput.files?.[0]
+    if (elements.fileNameDisplay) {
+      elements.fileNameDisplay.textContent = file?.name || 'No file chosen'
     }
-    updateMutualExclusion()
+    if (file && !isValidFileType(file)) {
+      showDocumentError('The selected file must be a PDF or Word document')
+    } else {
+      hideDocumentError()
+    }
   })
-  fileInput.addEventListener('change', updateMutualExclusion)
-  updateMutualExclusion()
+
+  // Wire the HTML clear button
+  if (elements.fileClearButton) {
+    elements.fileClearButton.addEventListener('click', () => {
+      fileInput.value = ''
+      if (elements.fileNameDisplay) {
+        elements.fileNameDisplay.textContent = 'No file chosen'
+      }
+      hideDocumentError()
+    })
+  }
 }
 
 export function initializeTextInput() {
@@ -115,18 +135,6 @@ export function hideTextClearButton() {
   }
 }
 
-function hasFileSelected() {
-  const fileInput = getFileInput()
-  return fileInput?.files?.length > 0
-}
-
-function hasTextEntered() {
-  const elements = getElements()
-  return (
-    elements.textContentInput && elements.textContentInput.value.trim() !== ''
-  )
-}
-
 function toggleInput(input, isDisabled, groupClass, clearBtn) {
   if (!input) {
     return
@@ -161,33 +169,19 @@ function highlightInput(input, shouldHighlight) {
 }
 
 export function updateMutualExclusion() {
-  const hasFile = hasFileSelected()
-  const hasText = hasTextEntered()
-  const fileInput = getFileInput()
+  const hasText =
+    getElements().textContentInput &&
+    getElements().textContentInput.value.trim() !== ''
   const elements = getElements()
-  if (hasFile && !hasText) {
-    toggleInput(
-      elements.textContentInput,
-      true,
-      APP_DISABLED_CLASS,
-      textClearBtn
-    )
-    highlightInput(fileInput, true)
-    highlightInput(elements.textContentInput, false)
-  } else if (hasText && !hasFile) {
-    toggleInput(fileInput, true, APP_DISABLED_CLASS, fileClearBtn)
+  if (hasText) {
     highlightInput(elements.textContentInput, true)
-    highlightInput(fileInput, false)
   } else {
-    // Neither file nor text present, or both present - enable both inputs
-    toggleInput(fileInput, false, APP_DISABLED_CLASS, fileClearBtn)
     toggleInput(
       elements.textContentInput,
       false,
       APP_DISABLED_CLASS,
       textClearBtn
     )
-    highlightInput(fileInput, false)
     highlightInput(elements.textContentInput, false)
   }
 }

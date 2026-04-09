@@ -48,6 +48,7 @@ beforeEach(() => {
   vi.spyOn(uiFeedback, 'hideProgress').mockImplementation(() => {})
   vi.spyOn(uiFeedback, 'showError').mockImplementation(() => {})
   vi.spyOn(uiFeedback, 'showUrlError').mockImplementation(() => {})
+  vi.spyOn(uiFeedback, 'showDocumentError').mockImplementation(() => {})
   vi.spyOn(uiFeedback, 'hideError').mockImplementation(() => {})
   vi.spyOn(reviewHistory, 'addReviewToHistory').mockImplementation(() => {})
   vi.spyOn(characterCounter, 'updateCharacterCount').mockImplementation(
@@ -293,7 +294,7 @@ describe('submitFileUpload - errors', () => {
     const result = await uploadPromise
     expect(result).toBeInstanceOf(Error)
     expect(result.message).toBe(ERROR_MSG_UPLOAD)
-    expect(uiFeedback.showError).toHaveBeenCalled()
+    expect(uiFeedback.showDocumentError).toHaveBeenCalled()
   })
 
   it(TEST_DESCRIPTION_NETWORK_ERRORS, async () => {
@@ -460,7 +461,7 @@ describe('submitFileUpload - JSON parse error message', () => {
     await vi.advanceTimersByTimeAsync(0)
     await uploadPromise
 
-    expect(uiFeedback.showError).toHaveBeenCalledWith(
+    expect(uiFeedback.showDocumentError).toHaveBeenCalledWith(
       'Upload failed: Please enter a valid input'
     )
   })
@@ -503,11 +504,11 @@ describe('submitFileUpload - fileInput absent in success path', () => {
   })
 })
 
-describe('submitFileUpload - textContentInput null in error catch', () => {
-  it('should not throw when textContentInput is absent during catch', async () => {
+describe('submitFileUpload - uploadButton null in error catch', () => {
+  it('should not throw when uploadButton is absent during catch', async () => {
     vi.spyOn(domElements, 'getElements').mockReturnValue({
       ...mockElements,
-      textContentInput: null
+      uploadButton: null
     })
     const file = new File(['data'], TEST_FILENAME, { type: TEST_FILE_TYPE })
     mockFetch.mockResolvedValueOnce({
@@ -520,7 +521,7 @@ describe('submitFileUpload - textContentInput null in error catch', () => {
     const result = await uploadPromise
 
     expect(result).toBeInstanceOf(Error)
-    expect(uiFeedback.showError).toHaveBeenCalled()
+    expect(uiFeedback.showDocumentError).toHaveBeenCalled()
   })
 })
 

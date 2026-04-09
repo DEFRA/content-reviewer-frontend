@@ -1,6 +1,11 @@
-// Radio button handler: shows/hides URL input or text content based on selection
+// Radio button handler: shows/hides URL input, text content or document panel
 import { getElements } from './dom-elements.js'
-import { hideError, hideUrlError, hideRadioError } from './ui-feedback.js'
+import {
+  hideError,
+  hideUrlError,
+  hideRadioError,
+  hideDocumentError
+} from './ui-feedback.js'
 import { initCharacterCount } from './character-counter.js'
 import {
   showTextClearButton,
@@ -19,6 +24,9 @@ function showUrlPanel() {
   }
   if (elements.textFormGroup) {
     elements.textFormGroup.hidden = true
+  }
+  if (elements.documentFormGroup) {
+    elements.documentFormGroup.hidden = true
   }
   if (elements.characterCountMessage) {
     elements.characterCountMessage.textContent = ''
@@ -41,6 +49,9 @@ function showTextPanel() {
   if (elements.urlFormGroup) {
     elements.urlFormGroup.hidden = true
   }
+  if (elements.documentFormGroup) {
+    elements.documentFormGroup.hidden = true
+  }
   showTextClearButton()
   hideUrlClearButton()
   hideUrlError()
@@ -49,7 +60,32 @@ function showTextPanel() {
 }
 
 /**
- * Hides both the URL and text content panels.
+ * Shows the document upload panel and hides all other panels.
+ */
+function showDocumentPanel() {
+  const elements = getElements()
+  if (elements.documentFormGroup) {
+    elements.documentFormGroup.hidden = false
+  }
+  if (elements.urlFormGroup) {
+    elements.urlFormGroup.hidden = true
+  }
+  if (elements.textFormGroup) {
+    elements.textFormGroup.hidden = true
+  }
+  if (elements.characterCountMessage) {
+    elements.characterCountMessage.textContent = ''
+    elements.characterCountMessage.style.display = 'none'
+    elements.characterCountMessage.classList.remove('govuk-error-message')
+  }
+  hideTextClearButton()
+  hideUrlClearButton()
+  hideError()
+  hideUrlError()
+}
+
+/**
+ * Hides all input panels (URL, text, and document).
  */
 function hideBothPanels() {
   const elements = getElements()
@@ -58,6 +94,9 @@ function hideBothPanels() {
   }
   if (elements.textFormGroup) {
     elements.textFormGroup.hidden = true
+  }
+  if (elements.documentFormGroup) {
+    elements.documentFormGroup.hidden = true
   }
   hideTextClearButton()
   hideUrlClearButton()
@@ -70,10 +109,13 @@ function hideBothPanels() {
 function handleRadioChange(event) {
   const value = event.target.value
   hideRadioError()
+  hideDocumentError()
   if (value === 'url') {
     showUrlPanel()
   } else if (value === 'text') {
     showTextPanel()
+  } else if (value === 'document') {
+    showDocumentPanel()
   } else {
     hideBothPanels()
   }

@@ -19,6 +19,7 @@ import {
   hideProgress,
   showError,
   showUrlError,
+  showDocumentError,
   hideError
 } from './ui-feedback.js'
 import { addReviewToHistory } from './review-history.js'
@@ -217,10 +218,10 @@ export async function submitFileUpload(file) {
     )
       ? 'Please enter a valid input'
       : error.message
-    showError(`Upload failed: ${userMessage}`)
+    showDocumentError(`Upload failed: ${userMessage}`)
     const elements = getElements()
-    if (elements.textContentInput) {
-      elements.textContentInput.disabled = false
+    if (elements.uploadButton) {
+      elements.uploadButton.disabled = false
     }
     throw error
   }
