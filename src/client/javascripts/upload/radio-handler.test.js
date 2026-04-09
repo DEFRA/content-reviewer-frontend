@@ -10,7 +10,8 @@ import { showTextClearButton, hideTextClearButton } from './input-controls.js'
 vi.mock('./ui-feedback.js', () => ({
   hideError: vi.fn(),
   hideUrlError: vi.fn(),
-  hideRadioError: vi.fn()
+  hideRadioError: vi.fn(),
+  hideDocumentError: vi.fn()
 }))
 
 vi.mock('./input-controls.js', () => ({

@@ -19,6 +19,24 @@ export const FORM_GROUP_SELECTOR = '.govuk-form-group'
 // Attributes
 export const ARIA_DISABLED_ATTR = 'aria-disabled'
 
+// Accepted file types for document upload
+export const ACCEPTED_FILE_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+]
+export const ACCEPTED_FILE_EXTENSIONS = ['.pdf', '.doc', '.docx']
+
+export function isValidFileType(file) {
+  if (!file) return false
+  const nameLC = file.name.toLowerCase()
+  const hasValidExt = ACCEPTED_FILE_EXTENSIONS.some((ext) =>
+    nameLC.endsWith(ext)
+  )
+  const hasValidMime = ACCEPTED_FILE_TYPES.includes(file.type)
+  return hasValidExt || hasValidMime
+}
+
 // Progress values
 export const PROGRESS_INITIAL = 30
 export const PROGRESS_PROCESSING = 70

@@ -22,16 +22,19 @@ function setupDOM() {
         <div id="actionRadios">
           <input id="action-url" name="actionOption" type="radio" value="url">
           <input id="action-text" name="actionOption" type="radio" value="text" checked>
+          <input id="action-document" name="actionOption" type="radio" value="document">
         </div>
       </div>
       <div id="urlFormGroup" hidden>
         <p id="urlError" hidden><span id="urlErrorMessage"></span></p>
         <input id="url-input" type="text">
       </div>
+      <div id="documentFormGroup" hidden>
+        <p id="documentError" hidden><span id="documentErrorMessage"></span></p>
+        <input id="${FILE_UPLOAD_ID}" type="file" />
+        <button type="button" id="fileClearButton" class="app-clear-button">Clear file</button>
+      </div>
       <div id="textFormGroup" hidden>
-        <div class="govuk-form-group">
-          <input id="${FILE_UPLOAD_ID}" type="file" />
-        </div>
         <div class="govuk-form-group">
           <textarea id="text-content"></textarea>
           <span id="characterCountMessage"></span>
@@ -140,6 +143,7 @@ describe('upload-handler - createStatusCell variants', () => {
   it('should render a "Processing..." tag for a processing-status review', async () => {
     // The status badge must use govuk-tag--blue for in-progress reviews so
     // users can distinguish them from completed ones at a glance.
+    document.getElementById('action-document').checked = true
     const fileInput = document.getElementById(FILE_UPLOAD_ID)
     Object.defineProperty(fileInput, 'files', {
       value: [new File(['data'], 'test.pdf')],
@@ -166,6 +170,7 @@ describe('upload-handler - createStatusCell variants', () => {
   it('should render a "Failed" tag for a failed-status review', async () => {
     // Failed reviews must be clearly distinguishable (govuk-tag--red) so
     // users know they need to resubmit rather than waiting for results.
+    document.getElementById('action-document').checked = true
     const fileInput = document.getElementById(FILE_UPLOAD_ID)
     Object.defineProperty(fileInput, 'files', {
       value: [new File(['data'], 'fail.pdf')],
@@ -191,6 +196,7 @@ describe('upload-handler - createStatusCell variants', () => {
     // The statusMap only handles known statuses. For anything else the module
     // falls back to a grey tag with the raw string capitalised. This prevents
     // a blank or broken badge appearing for future status values added server-side.
+    document.getElementById('action-document').checked = true
     const fileInput = document.getElementById(FILE_UPLOAD_ID)
     Object.defineProperty(fileInput, 'files', {
       value: [new File(['data'], 'unknown.pdf')],
@@ -283,6 +289,7 @@ describe('upload-handler - updateReviewHistory global', () => {
     )
     await loadModule()
 
+    document.getElementById('action-document').checked = true
     const fileInput = document.getElementById(FILE_UPLOAD_ID)
     Object.defineProperty(fileInput, 'files', {
       value: [new File(['data'], 'doc.pdf')],

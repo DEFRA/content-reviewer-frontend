@@ -36,6 +36,14 @@ export function initializeElements() {
   elements.actionOptionErrorMessage = document.getElementById(
     'actionOptionErrorMessage'
   )
+  // Document upload panel elements
+  elements.documentFormGroup = document.getElementById('documentFormGroup')
+  elements.fileNameDisplay = document.getElementById('fileNameDisplay')
+  elements.documentError = document.getElementById('documentError')
+  elements.documentErrorMessage = document.getElementById(
+    'documentErrorMessage'
+  )
+  elements.fileClearButton = document.getElementById('fileClearButton')
 }
 
 export function getElements() {
