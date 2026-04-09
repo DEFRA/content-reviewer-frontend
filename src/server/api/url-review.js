@@ -16,6 +16,8 @@ const keepAliveAgent = new Agent({
 const HTTP_STATUS = {
   OK: 200,
   BAD_REQUEST: 400,
+  FORBIDDEN: 403,
+  NOT_FOUND: 404,
   INTERNAL_SERVER_ERROR: 500
 }
 
@@ -98,7 +100,7 @@ function convertLinksToMarkdown($, rootEl) {
     .each((_, anchor) => {
       const $anchor = $(anchor)
       const href = $anchor.attr('href') ?? ''
-      const text = $anchor.text().replace(/\s+/g, ' ').trim()
+      const text = $anchor.text().replaceAll(/\s+/g, ' ').trim()
 
       let replacement
       if (!text) {
@@ -148,6 +150,7 @@ function extractContent(html, sourceUrl) {
   $(NOISE_SELECTORS).remove()
 
   const sections = []
+  const sectionTexts = [] // plain text per section — avoids regex tag-stripping later
   const matchedEls = [] // raw DOM nodes for ancestor/descendant overlap detection
 
   for (const selector of CONTENT_SELECTORS) {
@@ -161,11 +164,12 @@ function extractContent(html, sourceUrl) {
       // Convert <a> tags to Markdown before capturing innerHTML
       convertLinksToMarkdown($, el)
 
-      const text = $(el).text().replace(/\s+/g, ' ').trim()
+      const text = $(el).text().replaceAll(/\s+/g, ' ').trim()
       if (!text) return
 
       matchedEls.push(el)
       sections.push(`<section>\n${$(el).html().trim()}\n</section>`)
+      sectionTexts.push(text)
     })
   }
 
@@ -177,12 +181,8 @@ function extractContent(html, sourceUrl) {
   }
 
   const bodyContent = sections.join('\n\n')
-  // Strip tags to count plain-text characters
-  const plainText = bodyContent
-    .replace(/<[^>]*>/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-  const charCount = plainText.length
+  // Join already-extracted plain-text strings — no regex tag-stripping needed
+  const charCount = sectionTexts.join(' ').length
 
   if (charCount < MIN_USEFUL_CONTENT_CHARS) {
     throw new Error(
@@ -221,23 +221,85 @@ ${bodyContent}
  * @returns {string}
  */
 function mapFetchError(error) {
-  const upstreamStatus = Number(error.message?.match(/\d{3}/)?.[0])
+  const upstreamStatus = Number(/\d{3}/.exec(error.message)?.[0])
   if (error.name === 'AbortError') {
     return 'The request timed out. GOV.UK took too long to respond — please try again in a moment.'
   }
   if (error.message === 'Fastly CDN error 200') {
     return 'GOV.UK is temporarily unable to serve that page via its CDN. Please try again in a moment.'
   }
-  if (upstreamStatus === 404) {
+  if (upstreamStatus === HTTP_STATUS.NOT_FOUND) {
     return 'That page could not be found on GOV.UK. Please check the URL is correct and try again.'
   }
-  if (upstreamStatus === 403) {
+  if (upstreamStatus === HTTP_STATUS.FORBIDDEN) {
     return 'Access to that page was denied. The URL may be restricted or require authentication.'
   }
-  if (upstreamStatus >= 400 && upstreamStatus < 500) {
+  if (
+    upstreamStatus >= HTTP_STATUS.BAD_REQUEST &&
+    upstreamStatus < HTTP_STATUS.INTERNAL_SERVER_ERROR
+  ) {
     return 'That URL returned an error. Please check the URL is correct and points to a published GOV.UK page.'
   }
   return 'Could not retrieve content from that URL. Please check the URL is correct and try again.'
+}
+
+/**
+ * Forward extracted GOV.UK content to the backend review API and return the
+ * Hapi response.  Separated from the main handler to keep function length
+ * within SonarQube limits.
+ */
+async function submitExtractedToBackend(extracted, url, request, h) {
+  const slug = url
+    .replaceAll(/^https?:\/\//g, '')
+    .replaceAll(/[^a-z0-9]/gi, '-')
+    .replaceAll(/-+/g, '-')
+    .substring(0, SLUG_MAX_LENGTH)
+  const finalTitle = extracted.title || `${slug}.html`
+
+  const userId = getUserIdentifier(request)
+  const backendUrl = config.get('backendUrl')
+
+  const backendResponse = await fetch(`${backendUrl}/api/review/text`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(userId ? { 'x-user-id': userId } : {})
+    },
+    body: JSON.stringify({
+      content: extracted.htmlDoc,
+      title: finalTitle,
+      sourceType: 'url',
+      sourceUrl: url
+    }),
+    dispatcher: keepAliveAgent
+  })
+
+  if (!backendResponse.ok) {
+    logger.error(
+      { url, status: backendResponse.status },
+      'url-review: backend review request failed'
+    )
+    return h
+      .response({
+        success: false,
+        message: 'Failed to submit content to the review service'
+      })
+      .code(HTTP_STATUS.INTERNAL_SERVER_ERROR)
+  }
+
+  const result = await backendResponse.json()
+  logger.info(
+    { url, reviewId: result.reviewId },
+    'url-review: review submitted successfully'
+  )
+
+  return h
+    .response({
+      success: true,
+      message: 'URL content submitted for review',
+      reviewId: result.reviewId
+    })
+    .code(HTTP_STATUS.OK)
 }
 
 /**
@@ -260,7 +322,6 @@ export const urlReviewController = {
 
     logger.info({ url: parsedUrl.toString() }, 'url-review: fetching page')
 
-    // Step 1: Fetch the GOV.UK page server-side
     let html
     try {
       html = await fetchGovUkHtml(parsedUrl)
@@ -274,7 +335,6 @@ export const urlReviewController = {
         .code(HTTP_STATUS.INTERNAL_SERVER_ERROR)
     }
 
-    // Step 2: Extract content with cheerio
     let extracted
     try {
       extracted = extractContent(html, url)
@@ -293,61 +353,8 @@ export const urlReviewController = {
       'url-review: content extracted, forwarding to backend'
     )
 
-    // Step 3: Submit extracted content to backend
-    const slug = url
-      .replace(/^https?:\/\//, '')
-      .replace(/[^a-z0-9]/gi, '-')
-      .replace(/-+/g, '-')
-      .substring(0, SLUG_MAX_LENGTH)
-    const fileName = `${slug}.html`
-    const finalTitle = extracted.title || fileName
-
-    const userId = getUserIdentifier(request)
-    const backendUrl = config.get('backendUrl')
-
     try {
-      const backendResponse = await fetch(`${backendUrl}/api/review/text`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(userId ? { 'x-user-id': userId } : {})
-        },
-        body: JSON.stringify({
-          content: extracted.htmlDoc,
-          title: finalTitle,
-          sourceType: 'url',
-          sourceUrl: url
-        }),
-        dispatcher: keepAliveAgent
-      })
-
-      if (!backendResponse.ok) {
-        logger.error(
-          { url, status: backendResponse.status },
-          'url-review: backend review request failed'
-        )
-        return h
-          .response({
-            success: false,
-            message: 'Failed to submit content to the review service'
-          })
-          .code(HTTP_STATUS.INTERNAL_SERVER_ERROR)
-      }
-
-      const result = await backendResponse.json()
-
-      logger.info(
-        { url, reviewId: result.reviewId },
-        'url-review: review submitted successfully'
-      )
-
-      return h
-        .response({
-          success: true,
-          message: 'URL content submitted for review',
-          reviewId: result.reviewId
-        })
-        .code(HTTP_STATUS.OK)
+      return await submitExtractedToBackend(extracted, url, request, h)
     } catch (backendError) {
       logger.error(
         { err: backendError, url },

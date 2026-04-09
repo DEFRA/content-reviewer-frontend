@@ -19,7 +19,8 @@ import {
   REDIRECT_DELAY,
   HISTORY_UPDATE_DELAY,
   PREVIEW_WORDS_LIMIT,
-  PREVIEW_CHARS_LIMIT
+  PREVIEW_CHARS_LIMIT,
+  isValidFileType
 } from './constants.js'
 
 describe('upload/constants', () => {
@@ -64,6 +65,52 @@ describe('upload/constants', () => {
   it('should export preview limit constants', () => {
     expect(PREVIEW_WORDS_LIMIT).toBe(3)
     expect(PREVIEW_CHARS_LIMIT).toBe(50)
+  })
+
+  it('should use DEFAULT_CHARACTER_LIMIT when globalThis.contentReviewMaxCharLength is not set', () => {
+    // This branch is hit when the module is loaded without a server-injected value
+    expect(CHARACTER_LIMIT).toBe(DEFAULT_CHARACTER_LIMIT)
+  })
+})
+
+describe('upload/constants - isValidFileType', () => {
+  it('returns false for null', () => {
+    expect(isValidFileType(null)).toBe(false)
+  })
+
+  it('returns false for undefined', () => {
+    expect(isValidFileType(undefined)).toBe(false)
+  })
+
+  it('returns true for a file with a valid extension (.pdf)', () => {
+    expect(isValidFileType({ name: 'report.pdf', type: '' })).toBe(true)
+  })
+
+  it('returns true for a file with a valid extension (.docx)', () => {
+    expect(isValidFileType({ name: 'doc.docx', type: '' })).toBe(true)
+  })
+
+  it('returns true for a file with a valid extension (.doc)', () => {
+    expect(isValidFileType({ name: 'old.doc', type: '' })).toBe(true)
+  })
+
+  it('returns true when MIME type is valid even if extension is not recognised', () => {
+    // hasValidExt is false, hasValidMime is true — covers the second OR branch
+    expect(isValidFileType({ name: 'upload', type: 'application/pdf' })).toBe(
+      true
+    )
+  })
+
+  it('returns true when MIME type is application/msword', () => {
+    expect(
+      isValidFileType({ name: 'upload', type: 'application/msword' })
+    ).toBe(true)
+  })
+
+  it('returns false when both extension and MIME type are invalid', () => {
+    expect(isValidFileType({ name: 'image.png', type: 'image/png' })).toBe(
+      false
+    )
   })
 
   it('should respect globalThis.contentReviewMaxCharLength if set', () => {

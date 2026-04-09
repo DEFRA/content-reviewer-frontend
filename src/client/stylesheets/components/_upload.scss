@@ -1,5 +1,61 @@
 // Upload form styles
 
+// Custom file picker (Document upload panel)
+.app-file-upload-wrapper {
+  margin-top: 10px;
+}
+
+.app-file-upload-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  flex-wrap: nowrap;
+  margin-bottom: 10px;
+}
+
+.app-file-upload-display {
+  flex: 1 1 auto;
+  min-width: 0;
+  background-color: #ffffff;
+  border: none;
+  box-shadow: none;
+  color: #505a5f;
+  cursor: default;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+  height: auto;
+  align-self: center;
+  padding-left: 0;
+}
+
+.app-file-browse-btn {
+  flex: 0 0 auto;
+  margin-bottom: 0;
+  // Override default govuk-button bottom margin so it sits flush in the row
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+}
+
+// Clear file button — sits below the choose-file row with a clear gap
+.app-file-clear-button {
+  margin-top: 10px;
+}
+
+// Visually hide the native file input while keeping it accessible/focusable
+.app-file-upload-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .upload-progress-container {
   width: 100%;
   background-color: #f3f2f1;

@@ -100,6 +100,47 @@ async function submitToBackend(
 }
 
 /**
+ * Build a plain object of text metrics used for logging and validation.
+ */
+function getTextInfo(textContent) {
+  return {
+    length: textContent.length,
+    lengthKB: (textContent.length / 1024).toFixed(2),
+    wordCount: textContent
+      .trim()
+      .split(/\s+/)
+      .filter((word) => word.length > 0).length
+  }
+}
+
+/**
+ * Log a backend failure and return the appropriate Hapi error response.
+ */
+function handleBackendFailure(
+  response,
+  sourceType,
+  textInfo,
+  backendRequestTime,
+  h
+) {
+  const backendContentType = response.headers?.get('content-type') ?? ''
+  logger.error('Backend text review request failed', {
+    status: response.status,
+    statusText: response.statusText,
+    contentType: backendContentType,
+    backendRequestTime,
+    sourceType: sourceType || 'text',
+    contentLengthKB: textInfo.lengthKB
+  })
+  return h
+    .response({
+      success: false,
+      message: 'Failed to submit text content to backend'
+    })
+    .code(HTTP_STATUS.INTERNAL_SERVER_ERROR)
+}
+
+/**
  * Handle text content submission for review
  */
 async function reviewText(request, h) {
@@ -108,22 +149,13 @@ async function reviewText(request, h) {
   try {
     const { textContent, title, sourceType, sourceUrl } = request.payload
 
-    // Validate text content
     const validationError = validateTextContent(textContent, h)
     if (validationError) {
       return validationError
     }
 
     const finalTitle = generateTitle(textContent, title)
-
-    const textInfo = {
-      length: textContent.length,
-      lengthKB: (textContent.length / 1024).toFixed(2),
-      wordCount: textContent
-        .trim()
-        .split(/\s+/)
-        .filter((word) => word.length > 0).length
-    }
+    const textInfo = getTextInfo(textContent)
 
     logger.info(
       {
@@ -144,25 +176,16 @@ async function reviewText(request, h) {
     )
 
     if (!response.ok) {
-      const backendContentType = response.headers?.get('content-type') ?? ''
-      logger.error('Backend text review request failed', {
-        status: response.status,
-        statusText: response.statusText,
-        contentType: backendContentType,
+      return handleBackendFailure(
+        response,
+        sourceType,
+        textInfo,
         backendRequestTime,
-        sourceType: sourceType || 'text',
-        contentLengthKB: textInfo.lengthKB
-      })
-      return h
-        .response({
-          success: false,
-          message: 'Failed to submit text content to backend'
-        })
-        .code(HTTP_STATUS.INTERNAL_SERVER_ERROR)
+        h
+      )
     }
 
     const result = await response.json()
-
     const totalProcessingTime = (Date.now() - startTime) / 1000
 
     logger.info('Text review request successful', {
@@ -182,11 +205,9 @@ async function reviewText(request, h) {
       .code(HTTP_STATUS.OK)
   } catch (error) {
     const totalProcessingTime = (Date.now() - startTime) / 1000
-
     logger.error(
       `Text review API request failed with error - error: ${error.message}, totalProcessingTime: ${totalProcessingTime}s`
     )
-
     return h
       .response({
         success: false,
