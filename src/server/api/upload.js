@@ -242,6 +242,26 @@ async function processSuccessfulUpload(
 }
 
 /**
+ * Handle unexpected errors thrown during uploadFile
+ */
+function handleUploadError(error, startTime, h) {
+  const totalProcessingTime = (Date.now() - startTime) / 1000
+
+  logger.error('Upload API request failed with error', {
+    error: error.message,
+    stack: error.stack,
+    totalProcessingTime: `${totalProcessingTime}s`
+  })
+
+  return h
+    .response({
+      success: false,
+      message: error.message || 'Internal server error'
+    })
+    .code(HTTP_STATUS_INTERNAL_SERVER_ERROR)
+}
+
+/**
  * API controller for handling file uploads
  */
 export const uploadApiController = {
@@ -331,19 +351,7 @@ export const uploadApiController = {
         h
       )
     } catch (error) {
-      const totalProcessingTime = (Date.now() - startTime) / 1000
-
-      logger.error('Upload API request failed with error', {
-        error: error.message,
-        stack: error.stack,
-        totalProcessingTime: `${totalProcessingTime}s`
-      })
-      return h
-        .response({
-          success: false,
-          message: error.message || 'Internal server error'
-        })
-        .code(HTTP_STATUS_INTERNAL_SERVER_ERROR)
+      return handleUploadError(error, startTime, h)
     }
   }
 }

@@ -86,6 +86,7 @@ async function handleUrlSubmit(elements) {
     } else if (error.message.startsWith('Could not extract')) {
       showUrlError(ERROR_UNSUPPORTED_LAYOUT)
     }
+    // No else: submitUrlReview already displayed its own error for all other cases. // NOSONAR
     enableSubmit(elements)
   }
 }
