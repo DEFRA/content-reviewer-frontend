@@ -54,19 +54,21 @@ function validateFilePresent(file, h) {
 }
 
 /**
- * Validate file size does not exceed maximum
+ * Validate file size does not exceed maximum.
+ * Receives the actual byte length from the buffered content.
  */
-function validateFileSize(file, fileInfo, h) {
-  if (file.bytes > MAX_FILE_SIZE_BYTES) {
+function validateFileSize(byteLength, fileInfo, h) {
+  if (byteLength > MAX_FILE_SIZE_BYTES) {
+    const sizeMB = (byteLength / 1024 / 1024).toFixed(2)
     logger.warn('Upload validation failed: File too large', {
       filename: fileInfo.filename,
-      size: fileInfo.sizeMB + 'MB',
+      size: sizeMB + 'MB',
       maxSize: MAX_FILE_SIZE_MB + 'MB'
     })
     return h
       .response({
         success: false,
-        message: `File too large. Maximum size is ${MAX_FILE_SIZE_MB}MB. Your file is ${fileInfo.sizeMB}MB.`
+        message: `File too large. Maximum size is ${MAX_FILE_SIZE_MB}MB. Your file is ${sizeMB}MB.`
       })
       .code(HTTP_STATUS_BAD_REQUEST)
   }
@@ -103,13 +105,27 @@ function validateFileType(file, fileInfo, h) {
 }
 
 /**
- * Create FormData for backend upload
+ * Buffer a Node.js readable stream into a single Buffer.
  */
-function createUploadFormData(file) {
+async function streamToBuffer(stream) {
+  const chunks = []
+  for await (const chunk of stream) {
+    chunks.push(chunk)
+  }
+  return Buffer.concat(chunks)
+}
+
+/**
+ * Create FormData for backend upload from a pre-buffered file.
+ * Using a Buffer (with knownLength) ensures form-data includes a Content-Length
+ * header for the part, which prevents multipart parsing errors on the backend.
+ */
+function createUploadFormData(fileBuffer, filename, contentType) {
   const formData = new FormData()
-  formData.append('file', file, {
-    filename: file.hapi.filename,
-    contentType: file.hapi.headers['content-type']
+  formData.append('file', fileBuffer, {
+    filename,
+    contentType,
+    knownLength: fileBuffer.length
   })
   return formData
 }
@@ -117,25 +133,27 @@ function createUploadFormData(file) {
 /**
  * Send file to backend service
  */
-async function sendFileToBackend(file, fileInfo, request) {
+async function sendFileToBackend(file, fileBuffer, fileInfo, request) {
   const backendUrl = config.get('backendUrl')
   logger.info('Preparing to forward file to backend', {
     backendUrl,
     filename: fileInfo.filename
   })
 
-  const formData = createUploadFormData(file)
+  const formData = createUploadFormData(
+    fileBuffer,
+    file.hapi.filename,
+    file.hapi.headers['content-type']
+  )
   const backendRequestStart = Date.now()
 
   logger.info('Initiating backend upload request', {
     filename: fileInfo.filename,
-    size: fileInfo.sizeMB + 'MB',
+    contentType: file.hapi.headers['content-type'],
     backendEndpoint: `${backendUrl}/api/upload`
   })
 
-  request.logger.info(
-    `Uploading file to backend: ${file.hapi.filename} (${file.bytes} bytes)`
-  )
+  request.logger.info(`Uploading file to backend: ${file.hapi.filename}`)
 
   const userId = getUserIdentifier(request)
   const response = await undiciFetch(`${backendUrl}/api/upload`, {
@@ -224,6 +242,26 @@ async function processSuccessfulUpload(
 }
 
 /**
+ * Handle unexpected errors thrown during uploadFile
+ */
+function handleUploadError(error, startTime, h) {
+  const totalProcessingTime = (Date.now() - startTime) / 1000
+
+  logger.error('Upload API request failed with error', {
+    error: error.message,
+    stack: error.stack,
+    totalProcessingTime: `${totalProcessingTime}s`
+  })
+
+  return h
+    .response({
+      success: false,
+      message: error.message || 'Internal server error'
+    })
+    .code(HTTP_STATUS_INTERNAL_SERVER_ERROR)
+}
+
+/**
  * API controller for handling file uploads
  */
 export const uploadApiController = {
@@ -257,33 +295,40 @@ export const uploadApiController = {
 
       const fileInfo = extractFileInfo(file)
 
-      logger.info('File received for processing', {
-        filename: fileInfo.filename,
-        size: fileInfo.size,
-        sizeMB: fileInfo.sizeMB,
-        contentType: fileInfo.contentType
-      })
-
-      // Validate file size
-      const fileSizeError = validateFileSize(file, fileInfo, h)
-      if (fileSizeError) {
-        return fileSizeError
-      }
-
-      // Validate file type
+      // Validate file type before buffering (cheap check, no I/O)
       const fileTypeError = validateFileType(file, fileInfo, h)
       if (fileTypeError) {
         return fileTypeError
       }
 
-      logger.info('File validation passed successfully', {
+      // Buffer the stream once — needed for size validation and form-data forwarding
+      const fileBuffer = await streamToBuffer(file)
+
+      logger.info('File received for processing', {
         filename: fileInfo.filename,
-        sizeMB: fileInfo.sizeMB,
+        byteLength: fileBuffer.length,
         contentType: fileInfo.contentType
       })
 
-      // Send file to backend
-      const backendResult = await sendFileToBackend(file, fileInfo, request)
+      // Validate file size using actual buffered byte count
+      const fileSizeError = validateFileSize(fileBuffer.length, fileInfo, h)
+      if (fileSizeError) {
+        return fileSizeError
+      }
+
+      logger.info('File validation passed successfully', {
+        filename: fileInfo.filename,
+        byteLength: fileBuffer.length,
+        contentType: fileInfo.contentType
+      })
+
+      // Send file to backend using the pre-buffered content
+      const backendResult = await sendFileToBackend(
+        file,
+        fileBuffer,
+        fileInfo,
+        request
+      )
       const response = backendResult.response
       const backendRequestTime = backendResult.backendRequestTime
 
@@ -306,19 +351,7 @@ export const uploadApiController = {
         h
       )
     } catch (error) {
-      const totalProcessingTime = (Date.now() - startTime) / 1000
-
-      logger.error('Upload API request failed with error', {
-        error: error.message,
-        stack: error.stack,
-        totalProcessingTime: `${totalProcessingTime}s`
-      })
-      return h
-        .response({
-          success: false,
-          message: error.message || 'Internal server error'
-        })
-        .code(HTTP_STATUS_INTERNAL_SERVER_ERROR)
+      return handleUploadError(error, startTime, h)
     }
   }
 }
