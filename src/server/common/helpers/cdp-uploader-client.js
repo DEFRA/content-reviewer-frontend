@@ -7,7 +7,6 @@ import { fetch } from 'undici'
  */
 
 const uploaderUrl = config.get('cdpUploader.url')
-const NOT_SET_VALUE = 'NOT SET'
 
 /**
  * Initiate an upload session with CDP Uploader
@@ -81,21 +80,6 @@ async function getUploadStatus(uploadId, debug = false) {
   }
 
   const statusData = await response.json()
-
-  // Log S3 details if available
-  if (statusData.form?.file?.s3Bucket || statusData.form?.file?.s3Key) {
-    console.log('S3 DETAILS:')
-    console.log(
-      '- S3 Bucket:',
-      statusData.form?.file?.s3Bucket || NOT_SET_VALUE
-    )
-    console.log('- S3 Key:', statusData.form?.file?.s3Key || NOT_SET_VALUE)
-    console.log('- Filename:', statusData.form?.file?.filename || NOT_SET_VALUE)
-    console.log(
-      '- Content Type:',
-      statusData.form?.file?.detectedContentType || NOT_SET_VALUE
-    )
-  }
 
   return statusData
 }

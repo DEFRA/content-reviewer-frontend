@@ -49,7 +49,7 @@ describe('uploadController', () => {
       server: { info: { protocol: 'http' } },
       info: { host: 'localhost' },
       yar: { id: 'session-1', set: vi.fn() },
-      logger: { error: vi.fn() }
+      logger: { info: vi.fn(), error: vi.fn() }
     }
 
     await uploadController.initiateUpload(request, h)
@@ -60,7 +60,7 @@ describe('uploadController', () => {
     const h = { response: vi.fn().mockReturnValue({ code: vi.fn() }) }
     const request = {
       params: { uploadId: '123' },
-      logger: { error: vi.fn() }
+      logger: { info: vi.fn(), error: vi.fn() }
     }
 
     await uploadController.getStatus(request, h)
@@ -83,7 +83,7 @@ describe('uploadController', () => {
       server: {
         app: { config: { get: vi.fn().mockReturnValue('http://backend') } }
       },
-      logger: { error: vi.fn() }
+      logger: { info: vi.fn(), error: vi.fn() }
     }
 
     await uploadController.uploadComplete(request, h)
@@ -96,7 +96,7 @@ describe('uploadController', () => {
       server: { info: { protocol: 'http' } },
       info: { host: 'localhost' },
       yar: { id: undefined, set: vi.fn() }, // id is undefined → 'anonymous'
-      logger: { error: vi.fn() }
+      logger: { info: vi.fn(), error: vi.fn() }
     }
 
     await uploadController.initiateUpload(request, h)
@@ -118,7 +118,7 @@ describe('uploadController - initiateUpload error', () => {
       server: { info: { protocol: 'http' } },
       info: { host: 'localhost' },
       yar: { id: 'session-1', set: vi.fn() },
-      logger: { error: vi.fn() }
+      logger: { info: vi.fn(), error: vi.fn() }
     }
 
     await uploadController.initiateUpload(request, h)
@@ -178,7 +178,7 @@ describe('uploadController - getStatus error', () => {
     }
     const request = {
       params: { uploadId: 'fail-id' },
-      logger: { error: vi.fn() }
+      logger: { info: vi.fn(), error: vi.fn() }
     }
 
     await uploadController.getStatus(request, h)
@@ -210,7 +210,7 @@ describe('uploadController - handleSuccessfulUpload AI review failure', () => {
     const h = { view: vi.fn(), redirect: vi.fn() }
     const request = {
       yar: { set: vi.fn(), flash: vi.fn() },
-      logger: { error: vi.fn() }
+      logger: { info: vi.fn(), error: vi.fn() }
     }
     const fileDetails = {
       filename: 'doc.pdf',
@@ -279,7 +279,7 @@ describe('uploadController - uploadComplete no uploadId', () => {
     const h = { redirect: vi.fn() }
     const request = {
       yar: { get: vi.fn().mockReturnValue(null) },
-      logger: { error: vi.fn() }
+      logger: { info: vi.fn(), error: vi.fn() }
     }
 
     await uploadController.uploadComplete(request, h)
@@ -313,7 +313,7 @@ describe('uploadController - uploadComplete rejected files', () => {
       server: {
         app: { config: { get: vi.fn().mockReturnValue('http://backend') } }
       },
-      logger: { error: vi.fn() }
+      logger: { info: vi.fn(), error: vi.fn() }
     }
 
     await uploadController.uploadComplete(request, h)
@@ -341,7 +341,7 @@ describe('uploadController - uploadComplete rejected files', () => {
       server: {
         app: { config: { get: vi.fn().mockReturnValue('http://backend') } }
       },
-      logger: { error: vi.fn() }
+      logger: { info: vi.fn(), error: vi.fn() }
     }
 
     await uploadController.uploadComplete(request, h)
@@ -375,7 +375,7 @@ describe('uploadController - uploadComplete error', () => {
       server: {
         app: { config: { get: vi.fn().mockReturnValue('http://backend') } }
       },
-      logger: { error: vi.fn() }
+      logger: { info: vi.fn(), error: vi.fn() }
     }
 
     await uploadController.uploadComplete(request, h)
@@ -420,7 +420,7 @@ describe('uploadController - uploadComplete missing form.file', () => {
       server: {
         app: { config: { get: vi.fn().mockReturnValue('http://backend') } }
       },
-      logger: { error: vi.fn() }
+      logger: { info: vi.fn(), error: vi.fn() }
     }
 
     // Should complete without throwing (fileDetails = {})

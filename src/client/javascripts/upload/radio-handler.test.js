@@ -29,6 +29,9 @@ vi.mock('./character-counter.js', () => ({
 const ACTION_URL_ID = 'action-url'
 const ACTION_TEXT_ID = 'action-text'
 const ACTION_DOCUMENT_ID = 'action-document'
+const URL_FORM_GROUP_ID = 'urlFormGroup'
+const TEXT_FORM_GROUP_ID = 'textFormGroup'
+const DOCUMENT_FORM_GROUP_ID = 'documentFormGroup'
 
 function buildDom() {
   document.body.innerHTML = `
@@ -88,9 +91,9 @@ describe('upload/radio-handler - initializeRadioHandler', () => {
 
   it('should hide both panels on initialisation', () => {
     initializeRadioHandler()
-    expect(document.getElementById('urlFormGroup').hidden).toBe(true)
-    expect(document.getElementById('textFormGroup').hidden).toBe(true)
-    expect(document.getElementById('documentFormGroup').hidden).toBe(true)
+    expect(document.getElementById(URL_FORM_GROUP_ID).hidden).toBe(true)
+    expect(document.getElementById(TEXT_FORM_GROUP_ID).hidden).toBe(true)
+    expect(document.getElementById(DOCUMENT_FORM_GROUP_ID).hidden).toBe(true)
   })
 
   it('should show URL panel when URL radio is selected', () => {
@@ -99,8 +102,8 @@ describe('upload/radio-handler - initializeRadioHandler', () => {
     urlRadio.checked = true
     urlRadio.dispatchEvent(new Event('change'))
 
-    expect(document.getElementById('urlFormGroup').hidden).toBe(false)
-    expect(document.getElementById('textFormGroup').hidden).toBe(true)
+    expect(document.getElementById(URL_FORM_GROUP_ID).hidden).toBe(false)
+    expect(document.getElementById(TEXT_FORM_GROUP_ID).hidden).toBe(true)
   })
 
   it('should show text panel when text radio is selected', () => {
@@ -109,8 +112,8 @@ describe('upload/radio-handler - initializeRadioHandler', () => {
     textRadio.checked = true
     textRadio.dispatchEvent(new Event('change'))
 
-    expect(document.getElementById('textFormGroup').hidden).toBe(false)
-    expect(document.getElementById('urlFormGroup').hidden).toBe(true)
+    expect(document.getElementById(TEXT_FORM_GROUP_ID).hidden).toBe(false)
+    expect(document.getElementById(URL_FORM_GROUP_ID).hidden).toBe(true)
   })
 
   it('should call hideRadioError when a radio button is changed', () => {
@@ -157,9 +160,9 @@ describe('upload/radio-handler - initializeRadioHandler', () => {
     docRadio.checked = true
     docRadio.dispatchEvent(new Event('change'))
 
-    expect(document.getElementById('documentFormGroup').hidden).toBe(false)
-    expect(document.getElementById('urlFormGroup').hidden).toBe(true)
-    expect(document.getElementById('textFormGroup').hidden).toBe(true)
+    expect(document.getElementById(DOCUMENT_FORM_GROUP_ID).hidden).toBe(false)
+    expect(document.getElementById(URL_FORM_GROUP_ID).hidden).toBe(true)
+    expect(document.getElementById(TEXT_FORM_GROUP_ID).hidden).toBe(true)
   })
 
   it('should hide documentFormGroup when URL radio is selected', () => {
@@ -174,7 +177,7 @@ describe('upload/radio-handler - initializeRadioHandler', () => {
     urlRadio.checked = true
     urlRadio.dispatchEvent(new Event('change'))
 
-    expect(document.getElementById('documentFormGroup').hidden).toBe(true)
+    expect(document.getElementById(DOCUMENT_FORM_GROUP_ID).hidden).toBe(true)
   })
 
   it('should hide documentFormGroup when text radio is selected', () => {
@@ -189,7 +192,7 @@ describe('upload/radio-handler - initializeRadioHandler', () => {
     textRadio.checked = true
     textRadio.dispatchEvent(new Event('change'))
 
-    expect(document.getElementById('documentFormGroup').hidden).toBe(true)
+    expect(document.getElementById(DOCUMENT_FORM_GROUP_ID).hidden).toBe(true)
   })
 
   it('should not throw when radio elements are absent', () => {
@@ -260,15 +263,15 @@ describe('upload/radio-handler - hideBothPanels on unknown radio value', () => {
     initializeRadioHandler()
 
     // First show both panels so we can verify they get hidden
-    document.getElementById('urlFormGroup').hidden = false
-    document.getElementById('textFormGroup').hidden = false
+    document.getElementById(URL_FORM_GROUP_ID).hidden = false
+    document.getElementById(TEXT_FORM_GROUP_ID).hidden = false
 
     const otherRadio = document.getElementById('action-other')
     otherRadio.checked = true
     otherRadio.dispatchEvent(new Event('change'))
 
-    expect(document.getElementById('urlFormGroup').hidden).toBe(true)
-    expect(document.getElementById('textFormGroup').hidden).toBe(true)
+    expect(document.getElementById(URL_FORM_GROUP_ID).hidden).toBe(true)
+    expect(document.getElementById(TEXT_FORM_GROUP_ID).hidden).toBe(true)
   })
 
   it('should call hideTextClearButton when an unknown radio value fires change', () => {
