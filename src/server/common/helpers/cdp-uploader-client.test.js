@@ -214,13 +214,9 @@ describe('getUploadStatus - basic fetch and query params', () => {
   })
 })
 
-// Group: S3 details logging tests
-describe('getUploadStatus - S3 details logging', () => {
-  const S3_DETAILS_LABEL = 'S3 DETAILS:'
-
-  it('should log S3 details when s3Bucket is present in response', async () => {
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-
+// Group: S3 details in response
+describe('getUploadStatus - S3 details in response', () => {
+  it('should return S3 details when present in response', async () => {
     const mockStatus = {
       uploadStatus: 'ready',
       form: {
@@ -238,51 +234,21 @@ describe('getUploadStatus - S3 details logging', () => {
       json: vi.fn().mockResolvedValue(mockStatus)
     })
 
-    await getUploadStatus(UPLOAD_ID)
+    const result = await getUploadStatus(UPLOAD_ID)
 
-    expect(consoleSpy).toHaveBeenCalledWith(S3_DETAILS_LABEL)
-    expect(consoleSpy).toHaveBeenCalledWith('- S3 Bucket:', 'my-bucket')
-    expect(consoleSpy).toHaveBeenCalledWith('- S3 Key:', 'my-key')
-    expect(consoleSpy).toHaveBeenCalledWith('- Filename:', 'doc.pdf')
-    expect(consoleSpy).toHaveBeenCalledWith(
-      '- Content Type:',
-      'application/pdf'
-    )
+    expect(result.form.file.s3Bucket).toBe('my-bucket')
+    expect(result.form.file.s3Key).toBe('my-key')
   })
 
-  it('should log S3 details when s3Key is present (but no s3Bucket)', async () => {
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-
-    const mockStatus = {
-      uploadStatus: 'ready',
-      form: { file: { s3Key: 'my-key' } }
-    }
-
-    fetch.mockResolvedValue({
-      ok: true,
-      json: vi.fn().mockResolvedValue(mockStatus)
-    })
-
-    await getUploadStatus(UPLOAD_ID)
-
-    expect(consoleSpy).toHaveBeenCalledWith(S3_DETAILS_LABEL)
-    expect(consoleSpy).toHaveBeenCalledWith('- S3 Bucket:', 'NOT SET')
-    expect(consoleSpy).toHaveBeenCalledWith('- S3 Key:', 'my-key')
-    expect(consoleSpy).toHaveBeenCalledWith('- Filename:', 'NOT SET')
-    expect(consoleSpy).toHaveBeenCalledWith('- Content Type:', 'NOT SET')
-  })
-
-  it('should NOT log S3 details when neither s3Bucket nor s3Key is present', async () => {
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-
+  it('should return status data when no S3 details are present', async () => {
     fetch.mockResolvedValue({
       ok: true,
       json: vi.fn().mockResolvedValue({ uploadStatus: 'ready', form: {} })
     })
 
-    await getUploadStatus(UPLOAD_ID)
+    const result = await getUploadStatus(UPLOAD_ID)
 
-    expect(consoleSpy).not.toHaveBeenCalledWith(S3_DETAILS_LABEL)
+    expect(result.uploadStatus).toBe('ready')
   })
 })
 

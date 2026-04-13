@@ -44,7 +44,14 @@ const { undiciFetchMock, formDataMock } = vi.hoisted(() => {
   const fetchMock = vi.fn()
   function formDataConstructor() {
     this.append = vi.fn()
-    this.getHeaders = vi.fn(() => ({ 'content-type': 'multipart/form-data' }))
+    this.getHeaders = vi.fn(() => ({
+      'content-type': 'multipart/form-data; boundary=test'
+    }))
+    this.getBuffer = vi.fn(() =>
+      Buffer.from(
+        '--test\r\nContent-Disposition: form-data\r\n\r\nbody\r\n--test--'
+      )
+    )
   }
   return { undiciFetchMock: fetchMock, formDataMock: formDataConstructor }
 })

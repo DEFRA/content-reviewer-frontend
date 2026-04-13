@@ -72,7 +72,6 @@ const uploadController = {
       // Redirect to CDP uploader upload page
       return h.redirect(uploadSession.uploadUrl)
     } catch (error) {
-      console.error('UPLOAD INITIATION FAILED:', error)
       request.logger.error(error, 'Failed to initiate upload')
       return h.view('upload/index', {
         pageTitle: 'Upload Document',
@@ -174,7 +173,6 @@ const uploadController = {
 
       return h.redirect(`/review/status-poller/${reviewId}`)
     } catch (error) {
-      console.error('Backend request failed:', error.message)
       request.logger.error(error, 'Error triggering AI review')
 
       // Still set success flag since file uploaded successfully to S3
@@ -211,7 +209,7 @@ const uploadController = {
    */
   async uploadComplete(request, h) {
     const uploadId = request.yar.get('currentUploadId')
-    console.log('[UPLOAD-CONTROLLER] Upload complete for:', uploadId)
+    request.logger.info({ uploadId }, 'Upload complete')
 
     if (!uploadId) {
       return h.redirect('/')
@@ -250,7 +248,6 @@ const uploadController = {
 
       return h.redirect('/')
     } catch (error) {
-      console.error('Upload complete error:', error.message)
       request.logger.error(error, 'Failed to process upload completion')
 
       request.yar.set('hasUploadSuccess', false)
