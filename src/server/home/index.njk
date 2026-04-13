@@ -118,7 +118,8 @@
                     URL upload
                   </label>
                 </div>
-                <div class="govuk-radios__item">
+                {# TEMPORARILY DISABLED — document upload feature hidden pending backend fix #}
+                {# <div class="govuk-radios__item">
                   <input
                     class="govuk-radios__input"
                     id="action-document"
@@ -129,7 +130,7 @@
                   <label class="govuk-label govuk-radios__label" for="action-document">
                     Document upload
                   </label>
-                </div>
+                </div> #}
               </div>
             </fieldset>
           </div>
@@ -160,8 +161,8 @@
             >
           </div>
 
-          <!-- Document upload panel — shown when Document upload radio is selected -->
-          <div class="govuk-form-group" id="documentFormGroup" hidden>
+          {# TEMPORARILY DISABLED — document upload panel hidden pending backend fix #}
+          {# <div class="govuk-form-group" id="documentFormGroup" hidden>
             <h1 class="govuk-label-wrapper">
               <label class="govuk-label govuk-label--l" for="file-upload">
                 Upload a file
@@ -202,7 +203,7 @@
                 id="fileClearButton"
               >Clear file</button>
             </div>
-          </div>
+          </div> #}
 
           <!-- Text Content Option — hidden until Text content radio is selected -->
           <div class="govuk-form-group app-text-form-group{% if errorMessage %} govuk-form-group--error{% endif %}" id="textFormGroup" hidden>
