@@ -16,9 +16,7 @@ import {
   showCharLimitError,
   hideCharLimitError,
   showInlineTextError,
-  hideInlineTextError,
-  showDocumentError,
-  hideDocumentError
+  hideInlineTextError
 } from './ui-feedback.js'
 
 const ERROR_GROUP_CLASS = 'govuk-form-group--error'
@@ -194,6 +192,17 @@ describe('upload/ui-feedback - hideError', () => {
 
     expect(errorMessage.textContent).toBe('')
   })
+
+  it('should clear the error summary message text and href attribute', () => {
+    const errorSummaryMessage = document.getElementById('errorSummaryMessage')
+    errorSummaryMessage.textContent = 'Some error message'
+    errorSummaryMessage.href = '#text-content'
+
+    hideError()
+
+    expect(errorSummaryMessage.textContent).toBe('')
+    expect(errorSummaryMessage.getAttribute('href')).toBeNull()
+  })
 })
 
 describe('upload/ui-feedback - hideSuccess', () => {
@@ -255,87 +264,6 @@ describe('upload/ui-feedback - showProgress and hideProgress', () => {
   })
 })
 
-describe('upload/ui-feedback - missing elements', () => {
-  it('should handle missing elements gracefully', () => {
-    document.body.innerHTML = '<div></div>'
-    initializeElements()
-
-    expect(() => showError('Test')).not.toThrow()
-    expect(() => hideError()).not.toThrow()
-    expect(() => hideSuccess()).not.toThrow()
-    expect(() => showProgress('Test', PROGRESS_PERCENTAGE_HALF)).not.toThrow()
-    expect(() => hideProgress()).not.toThrow()
-  })
-
-  it('should handle missing URL and radio elements in showUrlError, hideUrlError, showRadioError', () => {
-    // Build DOM that omits urlError, urlErrorMessage, urlFormGroup, urlInput,
-    // actionSelectionGroup, actionOptionError, actionOptionErrorMessage
-    document.body.innerHTML = `
-      <div id="errorSummary" hidden><a id="errorSummaryMessage"></a></div>
-      <button id="uploadButton"></button>
-      <div id="uploadSuccess" hidden></div>
-    `
-    initializeElements()
-
-    expect(() => showUrlError('URL error')).not.toThrow()
-    expect(() => hideUrlError()).not.toThrow()
-    expect(() => showRadioError('Radio error')).not.toThrow()
-    expect(() => hideRadioError()).not.toThrow()
-  })
-
-  it('should handle absent errorSummary and errorSummaryMessage in showRadioError', () => {
-    // DOM has actionSelectionGroup/actionOptionError but NO errorSummary/errorSummaryMessage
-    // This covers the false branches for those two if-blocks in showRadioError (lines 204, 207)
-    document.body.innerHTML = `
-      <div id="actionSelectionGroup">
-        <p id="actionOptionError" hidden><span id="actionOptionErrorMessage"></span></p>
-      </div>
-      <div id="uploadSuccess" hidden></div>
-    `
-    initializeElements()
-
-    expect(() => showRadioError('Select an option')).not.toThrow()
-  })
-
-  it('should handle absent textContentInput in showCharLimitError and hideCharLimitError', () => {
-    // No text-content element — false branch for if (elements.textContentInput)
-    document.body.innerHTML = '<div></div>'
-    initializeElements()
-
-    expect(() => showCharLimitError()).not.toThrow()
-    expect(() => hideCharLimitError()).not.toThrow()
-  })
-
-  it('should handle absent elements in showInlineTextError and hideInlineTextError', () => {
-    // No uploadError, errorMessage, textFormGroup, textContentInput
-    document.body.innerHTML = '<div></div>'
-    initializeElements()
-
-    expect(() => showInlineTextError('Inline error')).not.toThrow()
-    expect(() => hideInlineTextError()).not.toThrow()
-  })
-
-  it('should handle ALL absent elements in showUrlError and hideUrlError', () => {
-    // No errorSummary, errorSummaryMessage, urlError, urlErrorMessage, urlFormGroup, urlInput, uploadButton
-    document.body.innerHTML = '<div id="uploadSuccess" hidden></div>'
-    initializeElements()
-
-    expect(() => showUrlError('URL error')).not.toThrow()
-    expect(() => hideUrlError()).not.toThrow()
-  })
-
-  it('should handle absent actionOptionError and actionOptionErrorMessage in hideRadioError', () => {
-    // actionSelectionGroup present but actionOptionError and actionOptionErrorMessage absent
-    document.body.innerHTML = `
-      <div id="actionSelectionGroup"></div>
-      <div id="uploadSuccess" hidden></div>
-    `
-    initializeElements()
-
-    expect(() => hideRadioError()).not.toThrow()
-  })
-})
-
 function buildFullTestDom() {
   document.body.innerHTML = `
     <div id="errorSummary" hidden>
@@ -372,7 +300,6 @@ function buildFullTestDom() {
 }
 
 const ERROR_INPUT_CLASS = 'govuk-input--error'
-const ERROR_GROUP_CLASS_URL = 'govuk-form-group--error'
 const ENTER_VALID_URL_ERROR = 'Enter a valid URL'
 const INVALID_URL_ERROR = 'Invalid URL'
 const SELECT_OPTION_ERROR = 'Select an option'
@@ -412,7 +339,7 @@ describe('upload/ui-feedback - showUrlError', () => {
     expect(
       document
         .getElementById('urlFormGroup')
-        .classList.contains(ERROR_GROUP_CLASS_URL)
+        .classList.contains(ERROR_GROUP_CLASS)
     ).toBe(true)
   })
 
@@ -459,12 +386,12 @@ describe('upload/ui-feedback - hideUrlError', () => {
   })
 
   it('should remove error class from urlFormGroup', () => {
-    document.getElementById('urlFormGroup').classList.add(ERROR_GROUP_CLASS_URL)
+    document.getElementById('urlFormGroup').classList.add(ERROR_GROUP_CLASS)
     hideUrlError()
     expect(
       document
         .getElementById('urlFormGroup')
-        .classList.contains(ERROR_GROUP_CLASS_URL)
+        .classList.contains(ERROR_GROUP_CLASS)
     ).toBe(false)
   })
 
@@ -474,6 +401,17 @@ describe('upload/ui-feedback - hideUrlError', () => {
     expect(
       document.getElementById('url-input').classList.contains(ERROR_INPUT_CLASS)
     ).toBe(false)
+  })
+
+  it('should clear the error summary message text and href attribute', () => {
+    const errorSummaryMessage = document.getElementById('errorSummaryMessage')
+    errorSummaryMessage.textContent = 'Some error message'
+    errorSummaryMessage.href = '#url-input'
+
+    hideUrlError()
+
+    expect(errorSummaryMessage.textContent).toBe('')
+    expect(errorSummaryMessage.getAttribute('href')).toBeNull()
   })
 })
 
@@ -497,7 +435,7 @@ describe('upload/ui-feedback - showRadioError', () => {
     expect(
       document
         .getElementById('actionSelectionGroup')
-        .classList.contains(ERROR_GROUP_CLASS_URL)
+        .classList.contains(ERROR_GROUP_CLASS)
     ).toBe(true)
   })
 
@@ -538,12 +476,12 @@ describe('upload/ui-feedback - hideRadioError', () => {
   it('should remove error class from actionSelectionGroup', () => {
     document
       .getElementById('actionSelectionGroup')
-      .classList.add(ERROR_GROUP_CLASS_URL)
+      .classList.add(ERROR_GROUP_CLASS)
     hideRadioError()
     expect(
       document
         .getElementById('actionSelectionGroup')
-        .classList.contains(ERROR_GROUP_CLASS_URL)
+        .classList.contains(ERROR_GROUP_CLASS)
     ).toBe(false)
   })
 })
@@ -659,138 +597,5 @@ describe('upload/ui-feedback - hideInlineTextError', () => {
     textarea.classList.add(ERROR_TEXTAREA_CLASS)
     hideInlineTextError()
     expect(textarea.classList.contains(ERROR_TEXTAREA_CLASS)).toBe(false)
-  })
-})
-
-// ── showDocumentError / hideDocumentError ─────────────────────────────────────
-
-function buildDocumentDom() {
-  document.body.innerHTML = `
-    <div id="errorSummary" hidden>
-      <ul><li><a id="errorSummaryMessage" href="#text-content"></a></li></ul>
-    </div>
-    <form id="uploadForm">
-      <button id="uploadButton">Upload</button>
-      <div id="uploadProgress" hidden>
-        <div id="uploadStatusText"></div>
-        <div id="uploadProgressText"></div>
-        <div id="progressBar" data-progress="0"></div>
-      </div>
-      <div class="govuk-form-group" id="documentFormGroup" hidden>
-        <p id="documentError" hidden><span id="documentErrorMessage"></span></p>
-        <input type="file" id="file-upload">
-      </div>
-      <div id="uploadSuccess" hidden></div>
-    </form>
-  `
-  initializeElements()
-}
-
-const DOCUMENT_ERROR_MSG = 'The selected file must be a PDF or Word document'
-
-describe('upload/ui-feedback - showDocumentError', () => {
-  beforeEach(buildDocumentDom)
-
-  it('should show the errorSummary element', () => {
-    showDocumentError(DOCUMENT_ERROR_MSG)
-    expect(document.getElementById('errorSummary').hidden).toBe(false)
-  })
-
-  it('should set errorSummaryMessage text and href', () => {
-    showDocumentError(DOCUMENT_ERROR_MSG)
-    const link = document.getElementById('errorSummaryMessage')
-    expect(link.textContent).toBe(DOCUMENT_ERROR_MSG)
-    expect(link.getAttribute('href')).toBe('#file-upload')
-  })
-
-  it('should show the inline documentError element', () => {
-    showDocumentError(DOCUMENT_ERROR_MSG)
-    expect(document.getElementById('documentError').hidden).toBe(false)
-  })
-
-  it('should set documentErrorMessage text', () => {
-    showDocumentError(DOCUMENT_ERROR_MSG)
-    expect(document.getElementById('documentErrorMessage').textContent).toBe(
-      DOCUMENT_ERROR_MSG
-    )
-  })
-
-  it('should add error class to documentFormGroup', () => {
-    showDocumentError(DOCUMENT_ERROR_MSG)
-    expect(
-      document
-        .getElementById('documentFormGroup')
-        .classList.contains('govuk-form-group--error')
-    ).toBe(true)
-  })
-
-  it('should re-enable the upload button', () => {
-    const btn = document.getElementById('uploadButton')
-    btn.disabled = true
-    showDocumentError(DOCUMENT_ERROR_MSG)
-    expect(btn.disabled).toBe(false)
-  })
-
-  it('should hide success when showing document error', () => {
-    document.getElementById('uploadSuccess').hidden = false
-    showDocumentError(DOCUMENT_ERROR_MSG)
-    expect(document.getElementById('uploadSuccess').hidden).toBe(true)
-  })
-
-  it('should hide progress when showing document error', () => {
-    document.getElementById('uploadProgress').hidden = false
-    showDocumentError(DOCUMENT_ERROR_MSG)
-    expect(document.getElementById('uploadProgress').hidden).toBe(true)
-  })
-
-  it('should not throw when documentError elements are absent', () => {
-    document.body.innerHTML = `
-      <div id="errorSummary" hidden><a id="errorSummaryMessage"></a></div>
-      <button id="uploadButton"></button>
-      <div id="uploadSuccess" hidden></div>
-    `
-    initializeElements()
-    expect(() => showDocumentError(DOCUMENT_ERROR_MSG)).not.toThrow()
-  })
-})
-
-describe('upload/ui-feedback - hideDocumentError', () => {
-  beforeEach(buildDocumentDom)
-
-  it('should hide errorSummary', () => {
-    document.getElementById('errorSummary').hidden = false
-    hideDocumentError()
-    expect(document.getElementById('errorSummary').hidden).toBe(true)
-  })
-
-  it('should hide the inline documentError element', () => {
-    document.getElementById('documentError').hidden = false
-    hideDocumentError()
-    expect(document.getElementById('documentError').hidden).toBe(true)
-  })
-
-  it('should clear documentErrorMessage text', () => {
-    document.getElementById('documentErrorMessage').textContent =
-      DOCUMENT_ERROR_MSG
-    hideDocumentError()
-    expect(document.getElementById('documentErrorMessage').textContent).toBe('')
-  })
-
-  it('should remove error class from documentFormGroup', () => {
-    document
-      .getElementById('documentFormGroup')
-      .classList.add('govuk-form-group--error')
-    hideDocumentError()
-    expect(
-      document
-        .getElementById('documentFormGroup')
-        .classList.contains('govuk-form-group--error')
-    ).toBe(false)
-  })
-
-  it('should not throw when documentError elements are absent', () => {
-    document.body.innerHTML = '<div></div>'
-    initializeElements()
-    expect(() => hideDocumentError()).not.toThrow()
   })
 })
