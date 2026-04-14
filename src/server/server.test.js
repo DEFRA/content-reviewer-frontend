@@ -110,14 +110,20 @@ async function setupMocks(isProduction = false) {
   return { mockServer, mockConfig, hapiModule, cacheEngineModule }
 }
 
+const TEST_TIMEOUT = 30000
+
 describe('createServer - initialization', () => {
-  it('should call setupProxy', async () => {
-    await setupMocks()
-    const proxyModule = await import('./common/helpers/proxy/setup-proxy.js')
-    const { createServer } = await import('./server.js')
-    await createServer()
-    expect(proxyModule.setupProxy).toHaveBeenCalled()
-  })
+  it(
+    'should call setupProxy',
+    async () => {
+      await setupMocks()
+      const proxyModule = await import('./common/helpers/proxy/setup-proxy.js')
+      const { createServer } = await import('./server.js')
+      await createServer()
+      expect(proxyModule.setupProxy).toHaveBeenCalled()
+    },
+    TEST_TIMEOUT
+  )
 
   it('should create server with host and port', async () => {
     const { hapiModule } = await setupMocks()

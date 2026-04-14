@@ -56,6 +56,11 @@ const OVER_LIMIT_LENGTH = CHARACTER_LIMIT + 1
 
 const TEXT_CONTENT_ID = 'text-content'
 const GOVUK_TEST_URL = 'https://www.gov.uk/test'
+const FILE_UPLOAD_ID = 'file-upload'
+const URL_INPUT_ID = 'url-input'
+const RADIO_ACTION_TEXT = 'text'
+const RADIO_ACTION_URL = 'url'
+const RADIO_ACTION_DOCUMENT = 'document'
 
 function buildDom() {
   document.body.innerHTML = `
@@ -136,7 +141,7 @@ describe('upload/form-handler - hideError before valid submit', () => {
     vi.clearAllMocks()
     // Set action to 'text' so text-submit path is exercised
     const radioMod = await import('./radio-handler.js')
-    radioMod.getSelectedAction.mockReturnValue('text')
+    radioMod.getSelectedAction.mockReturnValue(RADIO_ACTION_TEXT)
   })
 
   it('should call hideError before submitTextReview when text is valid', async () => {
@@ -195,7 +200,7 @@ describe('upload/form-handler - URL action validation', () => {
     getSelectedAction = radioMod.getSelectedAction
     const feedbackMod = await import('./ui-feedback.js')
     showUrlError = feedbackMod.showUrlError
-    getSelectedAction.mockReturnValue('url')
+    getSelectedAction.mockReturnValue(RADIO_ACTION_URL)
   })
 
   it('should show empty-URL error when url input is blank', async () => {
@@ -216,7 +221,7 @@ describe('upload/form-handler - URL action validation', () => {
     const { parseGovUkUrl } = await import('./url-extractor.js')
     parseGovUkUrl.mockReturnValue(null)
 
-    const urlInput = document.getElementById('url-input')
+    const urlInput = document.getElementById(URL_INPUT_ID)
     urlInput.value = 'https://example.com/page'
 
     const event = makeSubmitEvent()
@@ -231,7 +236,7 @@ describe('upload/form-handler - URL action validation', () => {
     parseGovUkUrl.mockReturnValue(new URL(GOVUK_ROOT_URL))
     submitUrlReview.mockResolvedValue(undefined)
 
-    const urlInput = document.getElementById('url-input')
+    const urlInput = document.getElementById(URL_INPUT_ID)
     urlInput.value = GOVUK_ROOT_URL
 
     const event = makeSubmitEvent()
@@ -250,7 +255,7 @@ describe('upload/form-handler - URL action submission', () => {
     vi.clearAllMocks()
     const radioMod = await import('./radio-handler.js')
     getSelectedAction = radioMod.getSelectedAction
-    getSelectedAction.mockReturnValue('url')
+    getSelectedAction.mockReturnValue(RADIO_ACTION_URL)
   })
 
   it('should call submitUrlReview with URL for valid gov.uk URL', async () => {
@@ -258,7 +263,7 @@ describe('upload/form-handler - URL action submission', () => {
     parseGovUkUrl.mockReturnValue(new URL(GOVUK_TEST_URL))
     submitUrlReview.mockResolvedValue(undefined)
 
-    const urlInput = document.getElementById('url-input')
+    const urlInput = document.getElementById(URL_INPUT_ID)
     urlInput.value = GOVUK_TEST_URL
 
     const event = makeSubmitEvent()
@@ -279,7 +284,7 @@ describe('upload/form-handler - URL action error handling', () => {
     getSelectedAction = radioMod.getSelectedAction
     const feedbackMod = await import('./ui-feedback.js')
     showUrlError = feedbackMod.showUrlError
-    getSelectedAction.mockReturnValue('url')
+    getSelectedAction.mockReturnValue(RADIO_ACTION_URL)
   })
 
   it('should show fetch-failed error when submitUrlReview throws a network error', async () => {
@@ -287,7 +292,7 @@ describe('upload/form-handler - URL action error handling', () => {
     parseGovUkUrl.mockReturnValue(new URL(GOVUK_TEST_URL))
     submitUrlReview.mockRejectedValue(new Error('NetworkError when fetching'))
 
-    const urlInput = document.getElementById('url-input')
+    const urlInput = document.getElementById(URL_INPUT_ID)
     urlInput.value = GOVUK_TEST_URL
 
     const event = makeSubmitEvent()
@@ -307,7 +312,7 @@ describe('upload/form-handler - URL action error handling', () => {
       )
     )
 
-    const urlInput = document.getElementById('url-input')
+    const urlInput = document.getElementById(URL_INPUT_ID)
     urlInput.value = GOVUK_TEST_URL
 
     const event = makeSubmitEvent()
@@ -327,7 +332,7 @@ describe('upload/form-handler - URL action error handling', () => {
       )
     )
 
-    const urlInput = document.getElementById('url-input')
+    const urlInput = document.getElementById(URL_INPUT_ID)
     urlInput.value = GOVUK_TEST_URL
 
     const event = makeSubmitEvent()
@@ -347,7 +352,7 @@ describe('upload/form-handler - URL clear and refocus after success', () => {
     vi.clearAllMocks()
     const radioMod = await import('./radio-handler.js')
     getSelectedAction = radioMod.getSelectedAction
-    getSelectedAction.mockReturnValue('url')
+    getSelectedAction.mockReturnValue(RADIO_ACTION_URL)
   })
 
   it('should clear the URL input after a successful URL review submission', async () => {
@@ -355,7 +360,7 @@ describe('upload/form-handler - URL clear and refocus after success', () => {
     parseGovUkUrl.mockReturnValue(new URL(GOVUK_TEST_URL))
     submitUrlReview.mockResolvedValue(undefined)
 
-    const urlInput = document.getElementById('url-input')
+    const urlInput = document.getElementById(URL_INPUT_ID)
     urlInput.value = GOVUK_TEST_URL
 
     const event = makeSubmitEvent()
@@ -369,7 +374,7 @@ describe('upload/form-handler - URL clear and refocus after success', () => {
     parseGovUkUrl.mockReturnValue(new URL(GOVUK_TEST_URL))
     submitUrlReview.mockResolvedValue(undefined)
 
-    const urlInput = document.getElementById('url-input')
+    const urlInput = document.getElementById(URL_INPUT_ID)
     urlInput.value = GOVUK_TEST_URL
     const focusSpy = vi.spyOn(urlInput, 'focus')
 
@@ -384,7 +389,7 @@ describe('upload/form-handler - URL clear and refocus after success', () => {
     parseGovUkUrl.mockReturnValue(new URL(GOVUK_TEST_URL))
     submitUrlReview.mockRejectedValue(new Error('NetworkError'))
 
-    const urlInput = document.getElementById('url-input')
+    const urlInput = document.getElementById(URL_INPUT_ID)
     urlInput.value = GOVUK_TEST_URL
 
     const event = makeSubmitEvent()
@@ -400,7 +405,7 @@ describe('upload/form-handler - URL clear and refocus after success', () => {
     const specificError = new Error('Rate limit exceeded on GOV.UK')
     submitUrlReview.mockRejectedValue(specificError)
 
-    const urlInput = document.getElementById('url-input')
+    const urlInput = document.getElementById(URL_INPUT_ID)
     urlInput.value = GOVUK_TEST_URL
 
     const event = makeSubmitEvent()
@@ -417,13 +422,13 @@ describe('upload/form-handler - document action file submit', () => {
     buildDom()
     vi.clearAllMocks()
     const radioMod = await import('./radio-handler.js')
-    radioMod.getSelectedAction.mockReturnValue('document')
+    radioMod.getSelectedAction.mockReturnValue(RADIO_ACTION_DOCUMENT)
     const { submitFileUpload } = await import('./api-client.js')
     submitFileUpload.mockResolvedValue({ reviewId: 'file-review-1' })
   })
 
   it('should call submitFileUpload when a file is selected (document action)', async () => {
-    const fileInput = document.getElementById('file-upload')
+    const fileInput = document.getElementById(FILE_UPLOAD_ID)
     const mockFile = new File(['content'], 'report.pdf', {
       type: 'application/pdf'
     })
@@ -440,7 +445,7 @@ describe('upload/form-handler - document action file submit', () => {
   })
 
   it('should not call submitTextReview when submitting a file (document action)', async () => {
-    const fileInput = document.getElementById('file-upload')
+    const fileInput = document.getElementById(FILE_UPLOAD_ID)
     Object.defineProperty(fileInput, 'files', {
       value: { 0: new File(['x'], 'test.txt'), length: 1 },
       configurable: true
@@ -460,13 +465,13 @@ describe('upload/form-handler - document action no file selected', () => {
     buildDom()
     vi.clearAllMocks()
     const radioMod = await import('./radio-handler.js')
-    radioMod.getSelectedAction.mockReturnValue('document')
+    radioMod.getSelectedAction.mockReturnValue(RADIO_ACTION_DOCUMENT)
     const feedbackMod = await import('./ui-feedback.js')
     showDocumentError = feedbackMod.showDocumentError
   })
 
   it('should call showDocumentError when no file is selected (document action)', async () => {
-    const fileInput = document.getElementById('file-upload')
+    const fileInput = document.getElementById(FILE_UPLOAD_ID)
     Object.defineProperty(fileInput, 'files', {
       value: { length: 0 },
       configurable: true
@@ -487,13 +492,13 @@ describe('upload/form-handler - document action invalid file type', () => {
     buildDom()
     vi.clearAllMocks()
     const radioMod = await import('./radio-handler.js')
-    radioMod.getSelectedAction.mockReturnValue('document')
+    radioMod.getSelectedAction.mockReturnValue(RADIO_ACTION_DOCUMENT)
     const feedbackMod = await import('./ui-feedback.js')
     showDocumentError = feedbackMod.showDocumentError
   })
 
   it('should call showDocumentError when an invalid file type is selected', async () => {
-    const fileInput = document.getElementById('file-upload')
+    const fileInput = document.getElementById(FILE_UPLOAD_ID)
     const invalidFile = new File(['content'], 'image.png', {
       type: 'image/png'
     })
@@ -511,7 +516,7 @@ describe('upload/form-handler - document action invalid file type', () => {
   })
 
   it('should not call submitFileUpload when file type is invalid', async () => {
-    const fileInput = document.getElementById('file-upload')
+    const fileInput = document.getElementById(FILE_UPLOAD_ID)
     Object.defineProperty(fileInput, 'files', {
       value: {
         0: new File(['x'], 'photo.jpg', { type: 'image/jpeg' }),
@@ -533,7 +538,7 @@ describe('upload/form-handler - handleFormSubmit catch block', () => {
     buildDom()
     vi.clearAllMocks()
     const radioMod = await import('./radio-handler.js')
-    radioMod.getSelectedAction.mockReturnValue('text')
+    radioMod.getSelectedAction.mockReturnValue(RADIO_ACTION_TEXT)
   })
 
   it('should log the error when handleTextSubmit throws (catch block at line 144)', async () => {
@@ -558,7 +563,7 @@ describe('upload/form-handler - text action text-too-long', () => {
     buildDom()
     vi.clearAllMocks()
     const radioMod = await import('./radio-handler.js')
-    radioMod.getSelectedAction.mockReturnValue('text')
+    radioMod.getSelectedAction.mockReturnValue(RADIO_ACTION_TEXT)
   })
 
   it('should show error when text exceeds 100000 characters', async () => {
@@ -621,7 +626,7 @@ describe('upload/form-handler - absent uploadButton (disableSubmit/enableSubmit 
     initializeElements()
     vi.clearAllMocks()
     const radioMod = await import('./radio-handler.js')
-    radioMod.getSelectedAction.mockReturnValue('text')
+    radioMod.getSelectedAction.mockReturnValue(RADIO_ACTION_TEXT)
   })
 
   it('should not throw when uploadButton is absent (disableSubmit/enableSubmit false branch)', async () => {
@@ -685,7 +690,7 @@ describe('upload/form-handler - clearAndRefocusUrlInput with absent urlInput', (
     initializeElements()
     vi.clearAllMocks()
     const radioMod = await import('./radio-handler.js')
-    radioMod.getSelectedAction.mockReturnValue('url')
+    radioMod.getSelectedAction.mockReturnValue(RADIO_ACTION_URL)
   })
 
   it('should not throw when urlInput is absent after successful URL submit', async () => {

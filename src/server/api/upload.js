@@ -31,8 +31,6 @@ const ALLOWED_EXTENSIONS = ['pdf', 'doc', 'docx']
 function extractFileInfo(file) {
   return {
     filename: file.hapi.filename,
-    size: file.bytes,
-    sizeMB: (file.bytes / 1024 / 1024).toFixed(2),
     contentType: file.hapi.headers['content-type']
   }
 }
@@ -145,11 +143,19 @@ async function sendFileToBackend(file, fileBuffer, fileInfo, request) {
     file.hapi.filename,
     file.hapi.headers['content-type']
   )
+
+  // Serialise the entire multipart body to a Buffer so we can send it with
+  // an explicit Content-Length.  Sending a Node.js stream via undici fetch
+  // results in chunked transfer-encoding, which causes Hapi's multipart
+  // parser to reject the request ("Invalid multipart payload format").
+  const bodyBuffer = formData.getBuffer()
+
   const backendRequestStart = Date.now()
 
   logger.info('Initiating backend upload request', {
     filename: fileInfo.filename,
     contentType: file.hapi.headers['content-type'],
+    bodyBytes: bodyBuffer.length,
     backendEndpoint: `${backendUrl}/api/upload`
   })
 
@@ -158,9 +164,10 @@ async function sendFileToBackend(file, fileBuffer, fileInfo, request) {
   const userId = getUserIdentifier(request)
   const response = await undiciFetch(`${backendUrl}/api/upload`, {
     method: 'POST',
-    body: formData,
+    body: bodyBuffer,
     headers: {
       ...formData.getHeaders(),
+      'content-length': String(bodyBuffer.length),
       ...(userId ? { 'x-user-id': userId } : {})
     },
     dispatcher: keepAliveAgent

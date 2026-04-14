@@ -5,9 +5,14 @@ const HTTP_STATUS_OK = 200
 const HTTP_STATUS_BAD_REQUEST = 400
 const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500
 
+const GOVUK_URL = 'https://www.gov.uk/test-page'
+const MOCK_HTML =
+  '<html><body><div data-module="govspeak">Content</div></body></html>'
+const ABORT_ERROR_NAME = 'AbortError'
+const ABORT_ERROR_MESSAGE = 'The operation was aborted'
+
 // Helper to build a minimal Hapi-style request / response toolkit pair
 function buildRequestAndH(url) {
-  const responses = []
   const h = {
     response: vi.fn((body) => {
       const chain = {
@@ -23,10 +28,8 @@ function buildRequestAndH(url) {
           return this
         }
       }
-      responses.push(chain)
       return chain
-    }),
-    lastResponse: () => responses.at(-1)
+    })
   }
   const request = { query: { url } }
   return { request, h }
@@ -55,10 +58,6 @@ describe('fetchUrlController - invalid / missing URLs', () => {
 })
 
 describe('fetchUrlController - valid gov.uk URLs', () => {
-  const GOVUK_URL = 'https://www.gov.uk/test-page'
-  const MOCK_HTML =
-    '<html><body><div data-module="govspeak">Content</div></body></html>'
-
   beforeEach(() => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -122,10 +121,6 @@ describe('fetchUrlController - valid gov.uk URLs', () => {
 })
 
 describe('fetchUrlController - valid gov.uk URLs with Fastly headers', () => {
-  const GOVUK_URL = 'https://www.gov.uk/test-page'
-  const MOCK_HTML =
-    '<html><body><div data-module="govspeak">Content</div></body></html>'
-
   afterEach(() => {
     vi.restoreAllMocks()
   })
@@ -180,15 +175,13 @@ describe('fetchUrlController - valid gov.uk URLs with Fastly headers', () => {
 })
 
 describe('fetchUrlController - upstream error message variants', () => {
-  const GOVUK_URL = 'https://www.gov.uk/test-page'
-
   afterEach(() => {
     vi.restoreAllMocks()
   })
 
   it('should return timeout message when fetch is aborted (AbortError)', async () => {
-    const abortError = new Error('The operation was aborted')
-    abortError.name = 'AbortError'
+    const abortError = new Error(ABORT_ERROR_MESSAGE)
+    abortError.name = ABORT_ERROR_NAME
     globalThis.fetch = vi.fn().mockRejectedValue(abortError)
 
     const { request, h } = buildRequestAndH(GOVUK_URL)
@@ -230,8 +223,6 @@ describe('fetchUrlController - upstream error message variants', () => {
 })
 
 describe('fetchUrlController - setTimeout abort arrow function', () => {
-  const GOVUK_URL = 'https://www.gov.uk/test-page'
-
   afterEach(() => {
     vi.restoreAllMocks()
     vi.useRealTimers()
@@ -244,8 +235,8 @@ describe('fetchUrlController - setTimeout abort arrow function', () => {
     globalThis.fetch = vi.fn((_url, opts) => {
       return new Promise((_resolve, reject) => {
         opts.signal.addEventListener('abort', () => {
-          const err = new Error('The operation was aborted')
-          err.name = 'AbortError'
+          const err = new Error(ABORT_ERROR_MESSAGE)
+          err.name = ABORT_ERROR_NAME
           reject(err)
         })
       })

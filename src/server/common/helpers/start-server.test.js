@@ -50,8 +50,6 @@ describe('startServer - server creation and startup', () => {
     const serverModule = await import('../../server.js')
     createServer = serverModule.createServer
     createServer.mockResolvedValue(mockServer)
-
-    vi.spyOn(console, 'log').mockImplementation(() => {})
   })
 
   it('should call createServer', async () => {
@@ -91,8 +89,6 @@ describe('startServer - logging and environment', () => {
     const serverModule = await import('../../server.js')
     createServer = serverModule.createServer
     createServer.mockResolvedValue(mockServer)
-
-    vi.spyOn(console, 'log').mockImplementation(() => {})
   })
 
   it('should log server started info with port and environment', async () => {
@@ -135,10 +131,9 @@ describe('startServer - logging and environment', () => {
   })
 })
 
-describe('startServer - configuration and environment variable logging', () => {
+describe('startServer - configuration logging', () => {
   let createServer
   let mockServer
-  let consoleSpy
 
   beforeEach(async () => {
     vi.resetModules()
@@ -154,105 +149,33 @@ describe('startServer - configuration and environment variable logging', () => {
     const serverModule = await import('../../server.js')
     createServer = serverModule.createServer
     createServer.mockResolvedValue(mockServer)
-
-    consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
   })
 
-  it('should output configuration debug block via console.log', async () => {
+  it('should log server configuration via server.logger.info', async () => {
     const { startServer } = await import('./start-server.js')
     await startServer()
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining('CONFIGURATION DEBUG - CRITICAL SETTINGS:')
-    )
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining('CDP UPLOADER CONFIG:')
-    )
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining('SESSION CONFIG:')
-    )
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining('REDIS CONFIG (if applicable):')
-    )
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining('LOGGING CONFIG:')
+    expect(mockServer.logger.info).toHaveBeenCalledWith(
+      expect.objectContaining({
+        port: 3000,
+        backendUrl: 'http://localhost:3001',
+        cdpUploaderUrl: 'http://localhost:7337',
+        s3Bucket: 'my-bucket',
+        sessionCacheEngine: 'memory',
+        redisHost: 'localhost'
+      }),
+      'Server configuration'
     )
   })
 
-  it('should output environment variables debug block via console.log', async () => {
-    const { startServer } = await import('./start-server.js')
-    await startServer()
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining('ENVIRONMENT VARIABLES RELEVANT TO CDP:')
-    )
-    expect(consoleSpy).toHaveBeenCalledWith(
-      'NODE_ENV:',
-      process.env.NODE_ENV || 'NOT SET'
-    )
-    expect(consoleSpy).toHaveBeenCalledWith(
-      'ENVIRONMENT:',
-      process.env.ENVIRONMENT || 'NOT SET'
-    )
-  })
-
-  it('should log "NOT SET" for NODE_ENV when it is not defined', async () => {
+  it('should log nodeEnv as undefined when NODE_ENV is not set', async () => {
     const origNodeEnv = process.env.NODE_ENV
     delete process.env.NODE_ENV
     const { startServer } = await import('./start-server.js')
     await startServer()
-    expect(consoleSpy).toHaveBeenCalledWith('NODE_ENV:', 'NOT SET')
-    process.env.NODE_ENV = origNodeEnv
-  })
-})
-
-describe('startServer - config values logging', () => {
-  let createServer
-  let mockServer
-  let consoleSpy
-
-  beforeEach(async () => {
-    vi.resetModules()
-    vi.clearAllMocks()
-
-    mockServer = {
-      start: vi.fn().mockResolvedValue(undefined),
-      logger: {
-        info: vi.fn()
-      }
-    }
-
-    const serverModule = await import('../../server.js')
-    createServer = serverModule.createServer
-    createServer.mockResolvedValue(mockServer)
-
-    consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-  })
-
-  it('should log all cdpUploader config values', async () => {
-    const { startServer } = await import('./start-server.js')
-    await startServer()
-    expect(consoleSpy).toHaveBeenCalledWith(
-      '- Uploader URL:',
-      'http://localhost:7337'
+    expect(mockServer.logger.info).toHaveBeenCalledWith(
+      expect.objectContaining({ nodeEnv: undefined }),
+      'Server configuration'
     )
-    expect(consoleSpy).toHaveBeenCalledWith('- S3 Bucket:', 'my-bucket')
-    expect(consoleSpy).toHaveBeenCalledWith('- S3 Path:', 'uploads/')
-    const MAX_FILE_SIZE = 52428800 // 50 MB
-    expect(consoleSpy).toHaveBeenCalledWith('- Max File Size:', MAX_FILE_SIZE)
-    expect(consoleSpy).toHaveBeenCalledWith('- Allowed MIME Types:', [
-      'application/pdf'
-    ])
-  })
-
-  it('should log all session, redis, and logging config values', async () => {
-    const { startServer } = await import('./start-server.js')
-    await startServer()
-    expect(consoleSpy).toHaveBeenCalledWith('- Cache Engine:', 'memory')
-    expect(consoleSpy).toHaveBeenCalledWith('- Cookie Secure:', false)
-    expect(consoleSpy).toHaveBeenCalledWith('- Host:', 'localhost')
-    expect(consoleSpy).toHaveBeenCalledWith('- Use TLS:', false)
-    expect(consoleSpy).toHaveBeenCalledWith('- Single Instance:', true)
-    expect(consoleSpy).toHaveBeenCalledWith('- Log Level:', 'info')
-    expect(consoleSpy).toHaveBeenCalledWith('- Log Format:', 'pino-pretty')
-    expect(consoleSpy).toHaveBeenCalledWith('- Log Enabled:', true)
+    process.env.NODE_ENV = origNodeEnv
   })
 })
