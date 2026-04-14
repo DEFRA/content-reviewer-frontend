@@ -59,7 +59,6 @@ function setupDOM() {
 }
 
 async function loadModule() {
-  vi.resetModules()
   await import('./upload-handler.js')
   document.dispatchEvent(new Event('DOMContentLoaded'))
 }

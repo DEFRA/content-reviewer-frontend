@@ -1,4 +1,3 @@
-import FormData from 'form-data'
 import { Agent, fetch as undiciFetch } from 'undici'
 import { config } from '../../config/config.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
@@ -114,22 +113,7 @@ async function streamToBuffer(stream) {
 }
 
 /**
- * Create FormData for backend upload from a pre-buffered file.
- * Using a Buffer (with knownLength) ensures form-data includes a Content-Length
- * header for the part, which prevents multipart parsing errors on the backend.
- */
-function createUploadFormData(fileBuffer, filename, contentType) {
-  const formData = new FormData()
-  formData.append('file', fileBuffer, {
-    filename,
-    contentType,
-    knownLength: fileBuffer.length
-  })
-  return formData
-}
-
-/**
- * Send file to backend service
+ * Send file to backend service as application/octet-stream
  */
 async function sendFileToBackend(file, fileBuffer, fileInfo, request) {
   const backendUrl = config.get('backendUrl')
@@ -138,24 +122,12 @@ async function sendFileToBackend(file, fileBuffer, fileInfo, request) {
     filename: fileInfo.filename
   })
 
-  const formData = createUploadFormData(
-    fileBuffer,
-    file.hapi.filename,
-    file.hapi.headers['content-type']
-  )
-
-  // Serialise the entire multipart body to a Buffer so we can send it with
-  // an explicit Content-Length.  Sending a Node.js stream via undici fetch
-  // results in chunked transfer-encoding, which causes Hapi's multipart
-  // parser to reject the request ("Invalid multipart payload format").
-  const bodyBuffer = formData.getBuffer()
-
   const backendRequestStart = Date.now()
 
   logger.info('Initiating backend upload request', {
     filename: fileInfo.filename,
-    contentType: file.hapi.headers['content-type'],
-    bodyBytes: bodyBuffer.length,
+    contentType: 'application/octet-stream',
+    bodyBytes: fileBuffer.length,
     backendEndpoint: `${backendUrl}/api/upload`
   })
 
@@ -164,10 +136,11 @@ async function sendFileToBackend(file, fileBuffer, fileInfo, request) {
   const userId = getUserIdentifier(request)
   const response = await undiciFetch(`${backendUrl}/api/upload`, {
     method: 'POST',
-    body: bodyBuffer,
+    body: fileBuffer,
     headers: {
-      ...formData.getHeaders(),
-      'content-length': String(bodyBuffer.length),
+      'content-type': 'application/octet-stream',
+      'content-length': String(fileBuffer.length),
+      'x-file-name': encodeURIComponent(file.hapi.filename),
       ...(userId ? { 'x-user-id': userId } : {})
     },
     dispatcher: keepAliveAgent
