@@ -90,6 +90,7 @@ const createMockServer = () => ({
 })
 
 async function setupMocks(isProduction = false) {
+  vi.resetModules()
   vi.clearAllMocks()
   const mockServer = createMockServer()
   const mockConfig = createMockConfig(isProduction)
