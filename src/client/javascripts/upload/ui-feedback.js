@@ -95,6 +95,10 @@ export function hideError() {
   if (elements.errorSummary) {
     elements.errorSummary.hidden = true
   }
+  if (elements.errorSummaryMessage) {
+    elements.errorSummaryMessage.textContent = ''
+    elements.errorSummaryMessage.removeAttribute('href')
+  }
   if (elements.uploadError) {
     elements.uploadError.hidden = true
   }
@@ -142,6 +146,10 @@ export function hideUrlError() {
   const elements = getElements()
   if (elements.errorSummary) {
     elements.errorSummary.hidden = true
+  }
+  if (elements.errorSummaryMessage) {
+    elements.errorSummaryMessage.textContent = ''
+    elements.errorSummaryMessage.removeAttribute('href')
   }
   if (elements.urlError) {
     elements.urlError.hidden = true
