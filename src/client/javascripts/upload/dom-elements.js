@@ -44,6 +44,7 @@ export function initializeElements() {
     'documentErrorMessage'
   )
   elements.fileClearButton = document.getElementById('fileClearButton')
+  elements.fileBrowseButton = document.getElementById('fileBrowseButton')
 }
 
 export function getElements() {
