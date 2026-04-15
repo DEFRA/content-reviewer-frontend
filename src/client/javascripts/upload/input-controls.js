@@ -48,6 +48,13 @@ export function initializeFileInput() {
     }
   })
 
+  // Wire the browse button to open the native file picker
+  if (elements.fileBrowseButton) {
+    elements.fileBrowseButton.addEventListener('click', () => {
+      fileInput.click()
+    })
+  }
+
   // Wire the HTML clear button
   if (elements.fileClearButton) {
     elements.fileClearButton.addEventListener('click', () => {

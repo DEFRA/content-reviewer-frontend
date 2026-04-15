@@ -179,6 +179,7 @@ function buildFileInputDom() {
       <div class="govuk-form-group" id="documentFormGroup">
         <p id="documentError" hidden><span id="documentErrorMessage"></span></p>
         <div id="fileNameDisplay">No file chosen</div>
+        <button type="button" id="fileBrowseButton" class="govuk-button govuk-button--secondary app-file-browse-btn">Choose file</button>
         <input type="file" id="file-upload">
         <button type="button" id="fileClearButton" class="app-clear-button">Clear file</button>
       </div>
@@ -216,6 +217,15 @@ describe('upload/input-controls - initializeFileInput', () => {
     const btn = document.getElementById('fileClearButton')
     expect(btn).not.toBeNull()
     expect(btn.textContent).toBe('Clear file')
+  })
+
+  it('should trigger file input click when Browse button is clicked', () => {
+    initializeFileInput()
+    const fileInput = document.getElementById('file-upload')
+    const clickSpy = vi.spyOn(fileInput, 'click')
+    const browseBtn = document.getElementById('fileBrowseButton')
+    browseBtn.click()
+    expect(clickSpy).toHaveBeenCalledTimes(1)
   })
 
   it('should not throw when called twice', () => {
