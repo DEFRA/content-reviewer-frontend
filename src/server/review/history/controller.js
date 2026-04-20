@@ -9,6 +9,8 @@ import { Agent } from 'undici'
 const logger = createLogger()
 const REVIEW_HISTORY_TITLE = 'Review History'
 const DEFAULT_FILENAME = 'this review'
+const HISTORY_VIEW = 'review/history/index'
+const CONFIRM_DELETE_VIEW = 'review/history/confirm-delete'
 
 // Reuse a single undici Agent with keep-alive for all history page backend calls
 const keepAliveAgent = new Agent({
@@ -56,7 +58,7 @@ export const reviewHistoryController = {
         `Review history processed - count: ${data.reviews?.length ?? 0}, total: ${data.total ?? data.count ?? 0}, time: ${totalProcessingTime}s`
       )
 
-      return h.view('review/history/index', {
+      return h.view(HISTORY_VIEW, {
         pageTitle: REVIEW_HISTORY_TITLE,
         heading: REVIEW_HISTORY_TITLE,
         breadcrumbs: [
@@ -77,7 +79,7 @@ export const reviewHistoryController = {
 
       request.logger.error(error, 'Failed to fetch review history')
 
-      return h.view('review/history/index', {
+      return h.view(HISTORY_VIEW, {
         pageTitle: REVIEW_HISTORY_TITLE,
         heading: REVIEW_HISTORY_TITLE,
         breadcrumbs: [
@@ -98,7 +100,7 @@ export const reviewHistoryController = {
     const { reviewId } = request.params
     const { filename } = request.query
 
-    return h.view('review/history/confirm-delete', {
+    return h.view(CONFIRM_DELETE_VIEW, {
       pageTitle: 'Delete review',
       reviewId,
       filename: filename || DEFAULT_FILENAME
@@ -138,7 +140,7 @@ export const reviewHistoryController = {
         `Review deleted - id: ${reviewId}, time: ${totalProcessingTime}s`
       )
 
-      return h.view('review/history/confirm-delete', {
+      return h.view(CONFIRM_DELETE_VIEW, {
         pageTitle: 'Review deleted',
         reviewId,
         filename,
@@ -155,7 +157,7 @@ export const reviewHistoryController = {
 
       request.logger.error(error, 'Failed to delete review')
 
-      return h.view('review/history/confirm-delete', {
+      return h.view(CONFIRM_DELETE_VIEW, {
         pageTitle: 'Delete review',
         reviewId,
         filename,
