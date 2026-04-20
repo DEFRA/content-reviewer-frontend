@@ -95,6 +95,18 @@ describe('upload/ui-feedback - showDocumentError', () => {
     initializeElements()
     expect(() => showDocumentError(DOCUMENT_ERROR_MSG)).not.toThrow()
   })
+
+  it('should not throw when errorSummary, errorSummaryMessage and uploadButton are absent', () => {
+    // Covers the false branches of if (elements.errorSummary), if (elements.errorSummaryMessage)
+    // and if (elements.uploadButton) in showDocumentError
+    document.body.innerHTML = `
+      <div id="documentError" hidden><span id="documentErrorMessage"></span></div>
+      <div class="govuk-form-group" id="documentFormGroup"></div>
+      <div id="uploadSuccess" hidden></div>
+    `
+    initializeElements()
+    expect(() => showDocumentError(DOCUMENT_ERROR_MSG)).not.toThrow()
+  })
 })
 
 describe('upload/ui-feedback - hideDocumentError', () => {
