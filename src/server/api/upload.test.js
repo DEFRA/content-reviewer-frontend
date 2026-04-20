@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { uploadApiController } from './upload.js'
+import { getUserIdentifier } from '../common/helpers/get-user-identifier.js'
 
 const BACKEND_URL = 'http://localhost:4000'
 const UPLOAD_ENDPOINT = `${BACKEND_URL}/api/upload`
@@ -337,5 +338,49 @@ describe('uploadApiController.uploadFile - backend errors', () => {
     expect(mockH._responseMock.code).toHaveBeenCalledWith(
       HTTP_STATUS_INTERNAL_SERVER_ERROR
     )
+  })
+
+  it('falls back to default message when backend error JSON has no message field', async () => {
+    undiciFetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: HTTP_STATUS_SERVICE_UNAVAILABLE,
+      statusText: 'Service Unavailable',
+      json: vi.fn().mockResolvedValueOnce({}) // valid JSON but no message field
+    })
+
+    const req = createMockRequest()
+    await uploadApiController.uploadFile(req, mockH)
+
+    expect(mockH.response).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        message: 'Failed to upload file to backend'
+      })
+    )
+    expect(mockH._responseMock.code).toHaveBeenCalledWith(
+      HTTP_STATUS_INTERNAL_SERVER_ERROR
+    )
+  })
+
+  it('includes x-user-id header when userId is available', async () => {
+    getUserIdentifier.mockReturnValueOnce('user-123')
+    undiciFetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: vi.fn().mockResolvedValueOnce({
+        reviewId: TEST_REVIEW_ID,
+        filename: TEST_FILENAME
+      })
+    })
+
+    const req = createMockRequest()
+    await uploadApiController.uploadFile(req, mockH)
+
+    expect(undiciFetchMock).toHaveBeenCalledWith(
+      UPLOAD_ENDPOINT,
+      expect.objectContaining({
+        headers: expect.objectContaining({ 'x-user-id': 'user-123' })
+      })
+    )
+    expect(mockH._responseMock.code).toHaveBeenCalledWith(HTTP_STATUS_OK)
   })
 })
