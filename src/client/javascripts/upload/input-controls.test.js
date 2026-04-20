@@ -47,6 +47,40 @@ function buildDom() {
   `
 }
 
+// These tests must run FIRST — before any describe block calls initializeTextInput()
+// or initializeUrlInput() — because textClearBtn and urlClearBtn are module-level
+// variables that persist for the lifetime of the test file.
+describe('upload/input-controls - null guards before any initialisation', () => {
+  it('showTextClearButton does not throw when textClearBtn is not yet initialised', () => {
+    expect(() => showTextClearButton()).not.toThrow()
+  })
+
+  it('hideTextClearButton does not throw when textClearBtn is not yet initialised', () => {
+    expect(() => hideTextClearButton()).not.toThrow()
+  })
+
+  it('showUrlClearButton does not throw when urlClearBtn is not yet initialised', () => {
+    expect(() => showUrlClearButton()).not.toThrow()
+  })
+
+  it('hideUrlClearButton does not throw when urlClearBtn is not yet initialised', () => {
+    expect(() => hideUrlClearButton()).not.toThrow()
+  })
+
+  it('updateMutualExclusion does not throw when textContentInput is absent', () => {
+    document.body.innerHTML = '<div></div>'
+    initializeElements()
+    expect(() => updateMutualExclusion()).not.toThrow()
+  })
+
+  it('updateMutualExclusion does not set clearBtn when textClearBtn is not yet initialised', () => {
+    buildDom()
+    initializeElements()
+    document.getElementById('text-content').value = ''
+    expect(() => updateMutualExclusion()).not.toThrow()
+  })
+})
+
 describe('upload/input-controls', () => {
   beforeEach(() => {
     buildDom()
@@ -289,6 +323,34 @@ describe('upload/input-controls - initializeFileInput', () => {
     })
     fileInput.dispatchEvent(new Event('change'))
     expect(errorEl.hidden).toBe(true)
+  })
+
+  it('should show "No file chosen" when change fires with no file selected', () => {
+    initializeFileInput()
+    const fileInput = document.getElementById('file-upload')
+    Object.defineProperty(fileInput, 'files', {
+      value: { length: 0 },
+      configurable: true
+    })
+    fileInput.dispatchEvent(new Event('change'))
+    expect(document.getElementById('fileNameDisplay').textContent).toBe(
+      'No file chosen'
+    )
+  })
+
+  it('should not throw when fileClearButton is absent', () => {
+    document.getElementById('fileClearButton').remove()
+    initializeElements()
+    expect(() => initializeFileInput()).not.toThrow()
+  })
+
+  it('should not throw when fileNameDisplay is absent and Clear File is clicked', () => {
+    document.getElementById('fileNameDisplay').remove()
+    initializeElements()
+    initializeFileInput()
+    expect(() =>
+      document.getElementById('fileClearButton').click()
+    ).not.toThrow()
   })
 })
 
@@ -551,5 +613,13 @@ describe('upload/input-controls - null guard branches', () => {
     document.getElementById('text-content').value = 'some text'
 
     expect(() => updateMutualExclusion()).not.toThrow()
+  })
+
+  it('should not throw when characterCountMessage is detached after being cached by initializeElements', () => {
+    buildDom()
+    initializeElements()
+    // Detach after caching so the cached reference has parentNode === null
+    document.getElementById('characterCountMessage').remove()
+    expect(() => initializeTextInput()).not.toThrow()
   })
 })

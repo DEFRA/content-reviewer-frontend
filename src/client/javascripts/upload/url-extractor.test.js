@@ -431,4 +431,13 @@ describe('upload/url-extractor - buildExtractedHtml link edge cases', () => {
     // The whitespace-only node is skipped; the real content node is included
     expect(result).toContain('Real content here')
   })
+
+  it('should throw when extracted HTML bytes exceed the byte limit', () => {
+    // large data attribute pushes HTML bytes above 500 KB while keeping text chars under 100 K
+    const largeAttr = 'x'.repeat(500_001)
+    const html = `<html><body><div data-module="govspeak"><p data-attr="${largeAttr}">short</p></div></body></html>`
+    expect(() => buildExtractedHtml(html, GOVUK_URL)).toThrow(
+      /Extracted content is too large to process/
+    )
+  })
 })
