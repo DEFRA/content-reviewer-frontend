@@ -359,6 +359,16 @@ describe('urlReviewController.handler - link conversion in extracted HTML', () =
     )
     expect(content).toContain('Bad link')
   })
+
+  it('keeps an already-absolute href without re-resolving it', async () => {
+    // Covers the false branch of if (!/^https?:\/\//i.test(href)) at line 112
+    const content = await getSubmittedContent(
+      `<a href="https://www.gov.uk/absolute-path">Absolute link</a>${'x'.repeat(200)}`
+    )
+    expect(content).toContain(
+      '[Absolute link](https://www.gov.uk/absolute-path)'
+    )
+  })
 })
 
 // ── overlap detection in extractContent ──────────────────────────────────────
@@ -367,6 +377,22 @@ describe('urlReviewController.handler - overlap detection', () => {
   beforeEach(() => {
     vi.resetAllMocks()
     parseAllowedUrlMock.mockReturnValue(PARSED_URL)
+  })
+
+  it('skips a matched element whose text is whitespace-only', async () => {
+    // Covers the true branch of if (!text) at line 169:
+    // first govspeak div has only whitespace → text.trim() = '' → skipped
+    // second govspeak div has real content → contributes to sections → 200 returned
+    fetchGovUkHtmlMock.mockResolvedValue(
+      `<html><body>
+        <div data-module="govspeak">   </div>
+        <div data-module="govspeak">${SUFFICIENT_TEXT}</div>
+      </body></html>`
+    )
+    mockBackendSuccess()
+    const h = createH()
+    await urlReviewController.handler(createRequest(), h)
+    expect(h._mock.code).toHaveBeenCalledWith(200)
   })
 
   it('skips ancestor elements already covered by a matched descendant', async () => {

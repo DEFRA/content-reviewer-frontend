@@ -222,6 +222,42 @@ describe('fetchUrlController - upstream error message variants', () => {
   })
 })
 
+describe('fetchUrlController - isFastlyErrorPage sub-conditions', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('should return 200 when HTML contains "x-varnish" but no "error" keyword (C=true, D=false)', async () => {
+    // Covers arm3 of the isFastlyErrorPage binary-expr: C (x-varnish) truthy but D (/error/i) falsy
+    const html = '<html><body><p>x-varnish cdn-node info</p></body></html>'
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve(html),
+      headers: { get: () => null }
+    })
+    const { request, h } = buildRequestAndH(GOVUK_URL)
+    const result = await fetchUrlController.handler(request, h)
+    expect(result._code).toBe(HTTP_STATUS_OK)
+    expect(result._body).toBe(html)
+  })
+
+  it('should return 500 when HTML has "x-varnish" and "error" and is short (C=true, D=true, E=true)', async () => {
+    // Covers arm4 of the isFastlyErrorPage binary-expr: C && D both truthy, E (length < 10_000) truthy
+    // The expression evaluates to true → fetchGovUkHtml throws → retries → 500
+    const html =
+      '<html><body><p>x-varnish cdn had an error in processing</p></body></html>'
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve(html),
+      headers: { get: () => null }
+    })
+    const { request, h } = buildRequestAndH(GOVUK_URL)
+    const result = await fetchUrlController.handler(request, h)
+    expect(result._code).toBe(HTTP_STATUS_INTERNAL_SERVER_ERROR)
+    expect(result._body.message).toContain('CDN')
+  })
+})
+
 describe('fetchUrlController - setTimeout abort arrow function', () => {
   afterEach(() => {
     vi.restoreAllMocks()
