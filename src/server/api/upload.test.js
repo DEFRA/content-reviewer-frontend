@@ -7,8 +7,6 @@ import { getUserIdentifier } from '../common/helpers/get-user-identifier.js'
 import { readFile } from 'fs/promises'
 import { fetch as undiciFetch } from 'undici'
 
-const logger = createLogger()
-
 // Mock dependencies
 vi.mock('undici', () => {
   const mockAgent = class Agent {
