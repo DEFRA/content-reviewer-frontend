@@ -31,8 +31,7 @@ const ALLOWED_EXTENSIONS = ['pdf', 'doc', 'docx']
 function extractFileInfo(file) {
   return {
     filename: file?.hapi?.filename || file?.filename,
-    contentType:
-      file?.hapi?.headers?.['content-type'] || file?.headers?.['content-type']
+    contentType: file?.hapi?.headers?.['content-type'] || file?.headers?.['content-type'] || file?.contentType
   }
 }
 
@@ -106,7 +105,7 @@ function validateFileType(fileInfo, h) {
 /**
  * Send file to backend service as application/octet-stream
  */
-async function sendFileToBackend(fileBuffer, fileInfo, request) {
+async function sendFileToBackend(file, fileBuffer, fileInfo, request) {
   const backendUrl = config.get('backendUrl')
   logger.info('Preparing to forward file to backend', {
     backendUrl,
@@ -127,11 +126,7 @@ async function sendFileToBackend(fileBuffer, fileInfo, request) {
   const userId = getUserIdentifier(request)
   try {
     const formData = new FormData()
-    formData.append(
-      'file',
-      new Blob([fileBuffer], { type: fileInfo.contentType }),
-      fileInfo.filename
-    )
+    formData.append('file', file)
 
     const response = await undiciFetch(`${backendUrl}/api/upload`, {
       method: 'POST',
@@ -310,6 +305,7 @@ export const uploadApiController = {
 
       // Send file to backend using the pre-buffered content
       const backendResult = await sendFileToBackend(
+        file,
         fileBuffer,
         fileInfo,
         request
