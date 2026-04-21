@@ -3,7 +3,7 @@ import inert from '@hapi/inert'
 import { home } from './home/index.js'
 import { about } from './about/index.js'
 import { health } from './health/index.js'
-// import { upload } from './upload/index.js' // Removed - upload now handled via AJAX on homepage
+//import { upload } from './upload/index.js' // Removed - upload now handled via AJAX on homepage
 import review from './review/index.js'
 import { cookies } from './cookies/index.js'
 import { privacy } from './privacy/index.js'
@@ -29,11 +29,12 @@ function registerApiRoutes(server) {
     handler: async (request, h) => uploadApiController.uploadFile(request, h),
     options: {
       payload: {
-        output: 'stream',
+        output: 'file',
         parse: true,
         multipart: true,
         maxBytes: 10 * 1024 * 1024, // 10MB
-        allow: 'multipart/form-data'
+        allow: 'multipart/form-data',
+        uploads: '/tmp'
       }
     }
   })
