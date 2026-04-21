@@ -104,17 +104,6 @@ function validateFileType(file, fileInfo, h) {
 }
 
 /**
- * Buffer a Node.js readable stream into a single Buffer.
- */
-async function streamToBuffer(stream) {
-  const chunks = []
-  for await (const chunk of stream) {
-    chunks.push(chunk)
-  }
-  return Buffer.concat(chunks)
-}
-
-/**
  * Send file to backend service as application/octet-stream
  */
 async function sendFileToBackend(file, fileBuffer, fileInfo, request) {
