@@ -2,6 +2,8 @@ import { Agent, fetch as undiciFetch } from 'undici'
 import { config } from '../../config/config.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
 import { getUserIdentifier } from '../common/helpers/get-user-identifier.js'
+import { readFile } from 'node:fs/promises'
+import { FormData } from 'form-data'
 
 const logger = createLogger()
 
@@ -102,17 +104,6 @@ function validateFileType(file, fileInfo, h) {
 }
 
 /**
- * Buffer a Node.js readable stream into a single Buffer.
- */
-async function streamToBuffer(stream) {
-  const chunks = []
-  for await (const chunk of stream) {
-    chunks.push(chunk)
-  }
-  return Buffer.concat(chunks)
-}
-
-/**
  * Send file to backend service as application/octet-stream
  */
 async function sendFileToBackend(file, fileBuffer, fileInfo, request) {
@@ -126,38 +117,56 @@ async function sendFileToBackend(file, fileBuffer, fileInfo, request) {
 
   logger.info('Initiating backend upload request', {
     filename: fileInfo.filename,
-    contentType: 'application/octet-stream',
+    contentType: fileInfo.contentType,
     bodyBytes: fileBuffer.length,
     backendEndpoint: `${backendUrl}/api/upload`
   })
 
-  request.logger.info(`Uploading file to backend: ${file.hapi.filename}`)
+  logger.info(`Uploading file to backend: ${file.hapi.filename}`)
 
   const userId = getUserIdentifier(request)
-  const response = await undiciFetch(`${backendUrl}/api/upload`, {
-    method: 'POST',
-    body: fileBuffer,
-    headers: {
-      'content-type': 'application/octet-stream',
-      'content-length': String(fileBuffer.length),
-      'x-file-name': encodeURIComponent(file.hapi.filename),
-      ...(userId ? { 'x-user-id': userId } : {})
-    },
-    dispatcher: keepAliveAgent
-  })
+  try {
+    const formData = new FormData()
+    formData.append(
+      'file',
+      new Blob([fileBuffer], { type: fileInfo.contentType }),
+      fileInfo.filename
+    )
 
-  const backendRequestEnd = Date.now()
-  const backendRequestTime = (backendRequestEnd - backendRequestStart) / 1000
+    const response = await undiciFetch(`${backendUrl}/api/upload`, {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'x-file-name': encodeURIComponent(file.hapi.filename),
+        ...(userId ? { 'x-user-id': userId } : {})
+      },
+      dispatcher: keepAliveAgent
+    })
 
-  logger.info('Backend upload request completed', {
-    filename: fileInfo.filename,
-    responseStatus: response.status,
-    responseStatusText: response.statusText,
-    requestTime: `${backendRequestTime}s`,
-    success: response.ok
-  })
+    const backendRequestEnd = Date.now()
+    const backendRequestTime = (backendRequestEnd - backendRequestStart) / 1000
 
-  return { response, backendRequestTime }
+    logger.info('Backend upload request completed', {
+      filename: fileInfo.filename,
+      responseStatus: response.status,
+      responseStatusText: response.statusText,
+      requestTime: `${backendRequestTime}s`,
+      success: response.ok
+    })
+
+    return { response, backendRequestTime }
+  } catch (error) {
+    const backendRequestEnd = Date.now()
+    const backendRequestTime = (backendRequestEnd - backendRequestStart) / 1000
+    logger.error('Backend upload network error', {
+      filename: fileInfo.filename, // ✅ Use fileInfo
+      error: error.message,
+      errorCode: error.code,
+      requestTime: `${backendRequestTime}s`,
+      userId
+    })
+    throw error
+  }
 }
 
 /**
@@ -207,9 +216,7 @@ async function processSuccessfulUpload(
     backendRequestTime: `${backendRequestTime}s`
   })
 
-  request.logger.info(
-    `File uploaded successfully: ${result.reviewId || 'unknown'}`
-  )
+  logger.info(`File uploaded successfully: ${result.reviewId || 'unknown'}`)
 
   return h
     .response({
@@ -281,8 +288,8 @@ export const uploadApiController = {
         return fileTypeError
       }
 
-      // Buffer the stream once — needed for size validation and form-data forwarding
-      const fileBuffer = await streamToBuffer(file)
+      // Buffer the file once — needed for size validation and form-data forwarding
+      const fileBuffer = await readFile(file.path)
 
       logger.info('File received for processing', {
         filename: fileInfo.filename,
