@@ -2,7 +2,7 @@ import { Agent, fetch as undiciFetch } from 'undici'
 import { config } from '../../config/config.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
 import { getUserIdentifier } from '../common/helpers/get-user-identifier.js'
-import { readFile } from 'fs/promises'
+import { readFile } from 'node:fs/promises'
 import { FormData } from 'form-data'
 
 const logger = createLogger()
