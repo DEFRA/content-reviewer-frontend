@@ -203,7 +203,6 @@ async function processSuccessfulUpload(
   fileInfo,
   backendRequestTime,
   startTime,
-  request,
   h
 ) {
   const result = await response.json()
@@ -334,7 +333,6 @@ export const uploadApiController = {
         fileInfo,
         backendRequestTime,
         startTime,
-        request,
         h
       )
     } catch (error) {
