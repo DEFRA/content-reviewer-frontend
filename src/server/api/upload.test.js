@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 // Import after mocks
 import { uploadApiController } from './upload.js'
 import { config } from '../../config/config.js'
-import { createLogger } from '../common/helpers/logging/logger.js'
 import { getUserIdentifier } from '../common/helpers/get-user-identifier.js'
 import { readFile } from 'fs/promises'
 import { fetch as undiciFetch } from 'undici'
