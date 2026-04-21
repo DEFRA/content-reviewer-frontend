@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 // Import after mocks
 import { uploadApiController } from './upload.js'
 import { config } from '../../config/config.js'
-import { createLogger } from '../common/helpers/logging/logger.js'
 import { getUserIdentifier } from '../common/helpers/get-user-identifier.js'
 import { readFile } from 'fs/promises'
 import { fetch as undiciFetch } from 'undici'
@@ -71,11 +70,10 @@ describe('uploadApiController - uploadFile', () => {
       payload: {
         file: {
           path: '/tmp/upload-abc123.pdf',
-          hapi: {
-            filename: 'document.pdf',
-            headers: {
-              'content-type': 'application/pdf'
-            }
+
+          filename: 'document.pdf',
+          headers: {
+            'content-type': 'application/pdf'
           }
         }
       },
@@ -149,9 +147,8 @@ describe('uploadApiController - uploadFile', () => {
     })
 
     it('should accept .doc files', async () => {
-      mockRequest.payload.file.hapi.filename = 'document.doc'
-      mockRequest.payload.file.hapi.headers['content-type'] =
-        'application/msword'
+      mockRequest.payload.file.filename = 'document.doc'
+      mockRequest.payload.file.headers['content-type'] = 'application/msword'
 
       readFile.mockResolvedValueOnce(Buffer.from('DOC content'))
       undiciFetch.mockResolvedValueOnce({
@@ -169,8 +166,8 @@ describe('uploadApiController - uploadFile', () => {
     })
 
     it('should accept .docx files', async () => {
-      mockRequest.payload.file.hapi.filename = 'document.docx'
-      mockRequest.payload.file.hapi.headers['content-type'] =
+      mockRequest.payload.file.filename = 'document.docx'
+      mockRequest.payload.file.headers['content-type'] =
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
       readFile.mockResolvedValueOnce(Buffer.from('DOCX content'))
@@ -189,8 +186,8 @@ describe('uploadApiController - uploadFile', () => {
     })
 
     it('should reject .exe files', async () => {
-      mockRequest.payload.file.hapi.filename = 'malware.exe'
-      mockRequest.payload.file.hapi.headers['content-type'] = 'application/exe'
+      mockRequest.payload.file.filename = 'malware.exe'
+      mockRequest.payload.file.headers['content-type'] = 'application/exe'
 
       const result = await uploadApiController.uploadFile(mockRequest, mockH)
 
@@ -200,8 +197,8 @@ describe('uploadApiController - uploadFile', () => {
     })
 
     it('should reject .zip files', async () => {
-      mockRequest.payload.file.hapi.filename = 'archive.zip'
-      mockRequest.payload.file.hapi.headers['content-type'] = 'application/zip'
+      mockRequest.payload.file.filename = 'archive.zip'
+      mockRequest.payload.file.headers['content-type'] = 'application/zip'
 
       const result = await uploadApiController.uploadFile(mockRequest, mockH)
 
@@ -210,8 +207,8 @@ describe('uploadApiController - uploadFile', () => {
     })
 
     it('should reject image files', async () => {
-      mockRequest.payload.file.hapi.filename = 'photo.jpg'
-      mockRequest.payload.file.hapi.headers['content-type'] = 'image/jpeg'
+      mockRequest.payload.file.filename = 'photo.jpg'
+      mockRequest.payload.file.headers['content-type'] = 'image/jpeg'
 
       const result = await uploadApiController.uploadFile(mockRequest, mockH)
 
@@ -220,8 +217,8 @@ describe('uploadApiController - uploadFile', () => {
     })
 
     it('should be case-insensitive for extension validation', async () => {
-      mockRequest.payload.file.hapi.filename = 'document.PDF'
-      mockRequest.payload.file.hapi.headers['content-type'] = 'application/pdf'
+      mockRequest.payload.file.filename = 'document.PDF'
+      mockRequest.payload.file.headers['content-type'] = 'application/pdf'
 
       readFile.mockResolvedValueOnce(Buffer.from('PDF content'))
       undiciFetch.mockResolvedValueOnce({
@@ -239,8 +236,8 @@ describe('uploadApiController - uploadFile', () => {
     })
 
     it('should validate extension before buffering file', async () => {
-      mockRequest.payload.file.hapi.filename = 'notallowed.exe'
-      mockRequest.payload.file.hapi.headers['content-type'] = 'application/exe'
+      mockRequest.payload.file.filename = 'notallowed.exe'
+      mockRequest.payload.file.headers['content-type'] = 'application/exe'
 
       const result = await uploadApiController.uploadFile(mockRequest, mockH)
 
@@ -249,9 +246,8 @@ describe('uploadApiController - uploadFile', () => {
     })
 
     it('should accept uppercase DOC extension', async () => {
-      mockRequest.payload.file.hapi.filename = 'contract.DOC'
-      mockRequest.payload.file.hapi.headers['content-type'] =
-        'application/msword'
+      mockRequest.payload.file.filename = 'contract.DOC'
+      mockRequest.payload.file.headers['content-type'] = 'application/msword'
 
       readFile.mockResolvedValueOnce(Buffer.from('DOC content'))
       undiciFetch.mockResolvedValueOnce({
@@ -269,8 +265,8 @@ describe('uploadApiController - uploadFile', () => {
     })
 
     it('should accept uppercase DOCX extension', async () => {
-      mockRequest.payload.file.hapi.filename = 'contract.DOCX'
-      mockRequest.payload.file.hapi.headers['content-type'] =
+      mockRequest.payload.file.filename = 'contract.DOCX'
+      mockRequest.payload.file.headers['content-type'] =
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
       readFile.mockResolvedValueOnce(Buffer.from('DOCX content'))
@@ -289,8 +285,8 @@ describe('uploadApiController - uploadFile', () => {
     })
 
     it('should accept mixed case extensions', async () => {
-      mockRequest.payload.file.hapi.filename = 'document.PdF'
-      mockRequest.payload.file.hapi.headers['content-type'] = 'application/pdf'
+      mockRequest.payload.file.filename = 'document.PdF'
+      mockRequest.payload.file.headers['content-type'] = 'application/pdf'
 
       readFile.mockResolvedValueOnce(Buffer.from('PDF content'))
       undiciFetch.mockResolvedValueOnce({
@@ -308,8 +304,8 @@ describe('uploadApiController - uploadFile', () => {
     })
 
     it('should validate by MIME type if extension validation passes', async () => {
-      mockRequest.payload.file.hapi.filename = 'document.pdf'
-      mockRequest.payload.file.hapi.headers['content-type'] = 'application/pdf'
+      mockRequest.payload.file.filename = 'document.pdf'
+      mockRequest.payload.file.headers['content-type'] = 'application/pdf'
 
       readFile.mockResolvedValueOnce(Buffer.from('PDF content'))
       undiciFetch.mockResolvedValueOnce({
@@ -551,7 +547,7 @@ describe('uploadApiController - uploadFile', () => {
     })
 
     it('should URL encode filename in header', async () => {
-      mockRequest.payload.file.hapi.filename = 'contract 2024!.pdf'
+      mockRequest.payload.file.filename = 'contract 2024!.pdf'
       readFile.mockResolvedValueOnce(Buffer.from('PDF content'))
       undiciFetch.mockResolvedValueOnce({
         ok: true,
@@ -996,7 +992,7 @@ describe('uploadApiController - uploadFile', () => {
 
   describe('Edge Cases', () => {
     it('should handle filename with spaces', async () => {
-      mockRequest.payload.file.hapi.filename = 'my document.pdf'
+      mockRequest.payload.file.filename = 'my document.pdf'
       readFile.mockResolvedValueOnce(Buffer.from('PDF content'))
       undiciFetch.mockResolvedValueOnce({
         ok: true,
@@ -1021,7 +1017,7 @@ describe('uploadApiController - uploadFile', () => {
     })
 
     it('should handle filename with special characters', async () => {
-      mockRequest.payload.file.hapi.filename = 'contract_2024!@#$.pdf'
+      mockRequest.payload.file.filename = 'contract_2024!@#$.pdf'
       readFile.mockResolvedValueOnce(Buffer.from('PDF content'))
       undiciFetch.mockResolvedValueOnce({
         ok: true,
@@ -1038,7 +1034,7 @@ describe('uploadApiController - uploadFile', () => {
     })
 
     it('should handle very long filenames', async () => {
-      mockRequest.payload.file.hapi.filename = 'a'.repeat(255) + '.pdf'
+      mockRequest.payload.file.filename = 'a'.repeat(255) + '.pdf'
       readFile.mockResolvedValueOnce(Buffer.from('PDF content'))
       undiciFetch.mockResolvedValueOnce({
         ok: true,
@@ -1055,7 +1051,7 @@ describe('uploadApiController - uploadFile', () => {
     })
 
     it('should handle filename with unicode characters', async () => {
-      mockRequest.payload.file.hapi.filename = 'документ.pdf'
+      mockRequest.payload.file.filename = 'документ.pdf'
       readFile.mockResolvedValueOnce(Buffer.from('PDF content'))
       undiciFetch.mockResolvedValueOnce({
         ok: true,
@@ -1106,7 +1102,7 @@ describe('uploadApiController - uploadFile', () => {
     })
 
     it('should handle filename with multiple dots', async () => {
-      mockRequest.payload.file.hapi.filename = 'document.backup.2024.pdf'
+      mockRequest.payload.file.filename = 'document.backup.2024.pdf'
       readFile.mockResolvedValueOnce(Buffer.from('PDF content'))
       undiciFetch.mockResolvedValueOnce({
         ok: true,
@@ -1123,7 +1119,7 @@ describe('uploadApiController - uploadFile', () => {
     })
 
     it('should handle path traversal attempt in filename', async () => {
-      mockRequest.payload.file.hapi.filename = '../../../etc/passwd.pdf'
+      mockRequest.payload.file.filename = '../../../etc/passwd.pdf'
 
       const result = await uploadApiController.uploadFile(mockRequest, mockH)
 
@@ -1166,8 +1162,8 @@ describe('uploadApiController - uploadFile', () => {
 
   describe('Integration - Full Upload Flow', () => {
     it('should not read file if type validation fails early', async () => {
-      mockRequest.payload.file.hapi.filename = 'notallowed.exe'
-      mockRequest.payload.file.hapi.headers['content-type'] = 'application/exe'
+      mockRequest.payload.file.filename = 'notallowed.exe'
+      mockRequest.payload.file.headers['content-type'] = 'application/exe'
 
       await uploadApiController.uploadFile(mockRequest, mockH)
 
@@ -1412,8 +1408,8 @@ describe('uploadApiController - uploadFile', () => {
     })
 
     it('should validate type before buffering', async () => {
-      mockRequest.payload.file.hapi.filename = 'malware.exe'
-      mockRequest.payload.file.hapi.headers['content-type'] = 'application/exe'
+      mockRequest.payload.file.filename = 'malware.exe'
+      mockRequest.payload.file.headers['content-type'] = 'application/exe'
 
       await uploadApiController.uploadFile(mockRequest, mockH)
 

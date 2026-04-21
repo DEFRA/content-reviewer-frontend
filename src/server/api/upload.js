@@ -30,8 +30,9 @@ const ALLOWED_EXTENSIONS = ['pdf', 'doc', 'docx']
  */
 function extractFileInfo(file) {
   return {
-    filename: file.hapi.filename,
-    contentType: file.hapi.headers['content-type']
+    filename: file?.hapi?.filename || file?.filename,
+    contentType:
+      file?.hapi?.headers?.['content-type'] || file?.headers?.['content-type']
   }
 }
 
@@ -76,9 +77,9 @@ function validateFileSize(byteLength, fileInfo, h) {
 /**
  * Validate file type is allowed
  */
-function validateFileType(file, fileInfo, h) {
-  const extension = file.hapi.filename.split('.').pop().toLowerCase()
-  const contentType = file.hapi.headers['content-type']
+function validateFileType(fileInfo, h) {
+  const extension = fileInfo.filename.split('.').pop().toLowerCase()
+  const contentType = fileInfo.contentType
 
   if (
     !ALLOWED_MIME_TYPES.includes(contentType) &&
@@ -105,7 +106,7 @@ function validateFileType(file, fileInfo, h) {
 /**
  * Send file to backend service as application/octet-stream
  */
-async function sendFileToBackend(file, fileBuffer, fileInfo, request) {
+async function sendFileToBackend(fileBuffer, fileInfo, request) {
   const backendUrl = config.get('backendUrl')
   logger.info('Preparing to forward file to backend', {
     backendUrl,
@@ -121,7 +122,7 @@ async function sendFileToBackend(file, fileBuffer, fileInfo, request) {
     backendEndpoint: `${backendUrl}/api/upload`
   })
 
-  logger.info(`Uploading file to backend: ${file.hapi.filename}`)
+  logger.info(`Uploading file to backend: ${fileInfo.filename}`)
 
   const userId = getUserIdentifier(request)
   try {
@@ -136,7 +137,7 @@ async function sendFileToBackend(file, fileBuffer, fileInfo, request) {
       method: 'POST',
       body: formData,
       headers: {
-        'x-file-name': encodeURIComponent(file.hapi.filename),
+        'x-file-name': encodeURIComponent(fileInfo.filename),
         ...(userId ? { 'x-user-id': userId } : {})
       },
       dispatcher: keepAliveAgent
@@ -281,7 +282,7 @@ export const uploadApiController = {
       const fileInfo = extractFileInfo(file)
 
       // Validate file type before buffering (cheap check, no I/O)
-      const fileTypeError = validateFileType(file, fileInfo, h)
+      const fileTypeError = validateFileType(fileInfo, h)
       if (fileTypeError) {
         return fileTypeError
       }
@@ -309,7 +310,6 @@ export const uploadApiController = {
 
       // Send file to backend using the pre-buffered content
       const backendResult = await sendFileToBackend(
-        file,
         fileBuffer,
         fileInfo,
         request
