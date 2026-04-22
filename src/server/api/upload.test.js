@@ -108,6 +108,56 @@ describe('uploadApiController - uploadFile', () => {
     vi.clearAllMocks()
   })
 
+  describe('extractFileInfo - hapi multipart file structure', () => {
+    it('should read filename from file.hapi.filename when present', async () => {
+      // Hapi streams multipart uploads with a .hapi sub-object containing filename and headers.
+      // extractFileInfo must fall through to file.hapi.filename when file.filename is absent.
+      mockRequest.payload.file = {
+        path: '/tmp/upload-hapi.pdf',
+        hapi: {
+          filename: 'hapi-document.pdf',
+          headers: { 'content-type': 'application/pdf' }
+        }
+      }
+      readFile.mockResolvedValueOnce(Buffer.from('PDF content'))
+      undiciFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: vi.fn().mockResolvedValueOnce({ reviewId: 'review-hapi' })
+      })
+
+      const result = await uploadApiController.uploadFile(mockRequest, mockH)
+
+      expect(result._statusCode).toBe(200)
+      // Confirm the hapi filename was used in the x-file-name header
+      const call = undiciFetch.mock.calls[0]
+      expect(call[1].headers['x-file-name']).toBe('hapi-document.pdf')
+    })
+
+    it('should read content-type from file.contentType fallback when headers are absent', async () => {
+      // Covers the third branch: file?.contentType (when both hapi headers and headers
+      // are absent). Extension-based validation still passes for .pdf.
+      mockRequest.payload.file = {
+        path: '/tmp/upload-alt.pdf',
+        filename: 'alt-document.pdf',
+        contentType: 'application/pdf'
+        // no .headers, no .hapi
+      }
+      readFile.mockResolvedValueOnce(Buffer.from('PDF content'))
+      undiciFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: vi.fn().mockResolvedValueOnce({ reviewId: 'review-alt' })
+      })
+
+      const result = await uploadApiController.uploadFile(mockRequest, mockH)
+
+      expect(result._statusCode).toBe(200)
+    })
+  })
+
   describe('File Presence Validation', () => {
     it('should accept request with valid file object', async () => {
       readFile.mockResolvedValueOnce(Buffer.from('PDF content'))

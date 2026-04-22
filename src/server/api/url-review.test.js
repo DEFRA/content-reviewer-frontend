@@ -176,6 +176,18 @@ describe('urlReviewController.handler - redirect check', () => {
     await urlReviewController.handler(createRequest(), h)
     expect(h._mock.code).toHaveBeenCalledWith(200)
   })
+
+  it('allows through when finalUrl is an unparseable string', async () => {
+    // Covers the catch branch in checkRedirectTarget: new URL('://bad') throws,
+    // the catch returns {} (allow through) rather than a 400 error response.
+    fetchGovUkHtmlMock.mockResolvedValue(
+      mockFetchHtml(VALID_HTML, '://not-a-valid-url')
+    )
+    mockBackendSuccess()
+    const h = createH()
+    await urlReviewController.handler(createRequest(), h)
+    expect(h._mock.code).toHaveBeenCalledWith(200)
+  })
 })
 
 // ── handler: content extraction failures ─────────────────────────────────────

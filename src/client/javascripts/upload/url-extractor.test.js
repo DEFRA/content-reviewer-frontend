@@ -59,6 +59,28 @@ describe('upload/url-extractor - parseGovUkUrl', () => {
     const result = parseGovUkUrl('https://example.com/gov.uk/page')
     expect(result).toBeNull()
   })
+
+  it('should return null for a javascript: scheme URL', () => {
+    expect(parseGovUkUrl('javascript:alert(1)')).toBeNull()
+  })
+
+  it('should return null for a ftp: scheme URL', () => {
+    expect(parseGovUkUrl('ftp://www.gov.uk/test')).toBeNull()
+  })
+
+  it('should return null when URL contains a username and password', () => {
+    expect(parseGovUkUrl('https://user:pass@www.gov.uk/test')).toBeNull()
+  })
+
+  it('should return null when URL contains only a username (no password)', () => {
+    expect(parseGovUkUrl('https://user@www.gov.uk/test')).toBeNull()
+  })
+
+  it('should normalise the URL path to lower-case', () => {
+    const result = parseGovUkUrl('https://www.gov.uk/Guidance/Test-Page')
+    expect(result).toBeInstanceOf(URL)
+    expect(result.pathname).toBe('/guidance/test-page')
+  })
 })
 
 describe('upload/url-extractor - buildExtractedHtml content extraction', () => {
