@@ -484,10 +484,39 @@ describe('resultsController - failed review status', () => {
       'review/results/error',
       expect.objectContaining({
         pageTitle: 'Error',
-        error: expect.stringContaining('failed to process')
+        error: expect.stringContaining('failed to process'),
+        errorDetail: null
       })
     )
     expect(result.template).toBe('review/results/error')
+  })
+
+  it('should include guardrail detail when errorMessage indicates a guardrail block', async () => {
+    const mockRequest = createMockRequest({ id: 'guardrail-review' })
+    const mockH = createMockH()
+
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        success: true,
+        data: {
+          status: 'failed',
+          documentId: 'guardrail-review',
+          errorMessage: 'Content blocked by guardrails'
+        }
+      })
+    })
+
+    await resultsController.handler(mockRequest, mockH)
+
+    expect(mockH.view).toHaveBeenCalledWith(
+      'review/results/error',
+      expect.objectContaining({
+        error: expect.stringContaining('failed to process'),
+        errorDetail: 'Content blocked by AI guardrails.'
+      })
+    )
   })
 })
 

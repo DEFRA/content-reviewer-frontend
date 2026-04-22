@@ -22,9 +22,13 @@ export const resultsController = {
       }
 
       if (envelope.status === 'failed') {
+        const isGuardrailBlock =
+          envelope.errorMessage?.toLowerCase().includes('guardrail') ||
+          envelope.errorMessage?.toLowerCase().includes('blocked')
         return renderErrorView(
           h,
-          'The review failed to process. Please try again.'
+          'The review failed to process. Please try again.',
+          isGuardrailBlock ? 'Content blocked by AI guardrails.' : null
         )
       }
 
@@ -221,11 +225,12 @@ function renderResultsView(h, reviewId, reviewResults) {
   })
 }
 
-function renderErrorView(h, message) {
+function renderErrorView(h, message, errorDetail = null) {
   return h.view('review/results/error', {
     pageTitle: 'Error',
     heading: 'Error Loading Results',
-    error: message
+    error: message,
+    errorDetail
   })
 }
 
