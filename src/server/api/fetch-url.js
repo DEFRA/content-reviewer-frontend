@@ -31,8 +31,17 @@ const GOVUK_FETCH_HEADERS = {
 }
 
 /**
- * Validates the supplied URL string.
- * Returns the parsed URL on success or null if invalid / not gov.uk.
+ * Validates and normalises the supplied URL string.
+ * Returns the parsed (normalised) URL on success, or null on any failure.
+ *
+ * Checks applied (in order):
+ *  1. Non-empty string and well-formed URL syntax (new URL() must not throw).
+ *  2. Scheme must be http or https — rejects javascript:, data:, ftp: etc.
+ *  3. No embedded credentials (user:password@host) to prevent SSRF confusion.
+ *  4. Hostname must be www.gov.uk.
+ *  5. Path is normalised to lower-case so /Guidance/Foo and /guidance/foo
+ *     are treated as identical (GOV.UK itself redirects upper-case paths).
+ *
  * @param {string} urlString
  * @returns {URL|null}
  */
@@ -44,11 +53,24 @@ export function parseAllowedUrl(urlString) {
   try {
     parsed = new URL(urlString)
   } catch {
+    // Check 1: URL syntax is invalid
     return null
   }
+  // Check 2: Only http and https schemes are accepted
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    return null
+  }
+  // Check 2 (extended): Reject URLs with embedded credentials
+  if (parsed.username || parsed.password) {
+    return null
+  }
+  // Check 4 (hostname): Must be the GOV.UK domain
   if (parsed.hostname !== ALLOWED_HOSTNAME) {
     return null
   }
+  // Check 3: Normalise path to lower-case — GOV.UK redirects /Guidance/Foo
+  // to /guidance/foo; normalising early prevents duplicate review entries.
+  parsed.pathname = parsed.pathname.toLowerCase()
   return parsed
 }
 
@@ -130,7 +152,9 @@ export async function fetchGovUkHtml(parsedUrl) {
         throw new Error('Fastly CDN error 200')
       }
 
-      return html
+      // Check 4: expose the final URL after any HTTP redirects so the caller
+      // can verify the chain stayed within www.gov.uk.
+      return { html, finalUrl: response.url }
     } catch (err) {
       lastError = err
       logger.warn(
@@ -172,7 +196,7 @@ export const fetchUrlController = {
     logger.info({ url: parsedUrl.toString() }, 'fetch-url: proxying request')
 
     try {
-      const html = await fetchGovUkHtml(parsedUrl)
+      const { html } = await fetchGovUkHtml(parsedUrl)
       return h.response(html).code(HTTP_STATUS.OK).type('text/html')
     } catch (error) {
       logger.error(

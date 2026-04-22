@@ -31,7 +31,10 @@ const ALLOWED_EXTENSIONS = ['pdf', 'doc', 'docx']
 function extractFileInfo(file) {
   return {
     filename: file?.hapi?.filename || file?.filename,
-    contentType: file?.hapi?.headers?.['content-type'] || file?.headers?.['content-type'] || file?.contentType
+    contentType:
+      file?.hapi?.headers?.['content-type'] ||
+      file?.headers?.['content-type'] ||
+      file?.contentType
   }
 }
 
