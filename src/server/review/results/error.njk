@@ -12,6 +12,9 @@
         </h2>
         <div class="govuk-error-summary__body">
           <p class="govuk-body">{{ error }}</p>
+          {% if errorDetail %}
+            <p class="govuk-body">{{ errorDetail }}</p>
+          {% endif %}
         </div>
       </div>
 
