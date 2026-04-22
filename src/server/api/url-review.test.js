@@ -42,26 +42,16 @@ vi.stubGlobal('fetch', fetchMock)
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-// All default-generated pages include an Environment topic signal so that the
-// isEnvironmentPage guard passes without extra setup in each test.
-function makeGovUkHtml(bodyText, h1 = 'Test Page Title', envTagged = true) {
-  const metaTopics = envTagged
-    ? '<meta name="govuk:topics" content="environment">'
-    : ''
-  return `<html><head>${metaTopics}</head><body>
+function makeGovUkHtml(bodyText, h1 = 'Test Page Title') {
+  return `<html><head></head><body>
     <h1 class="gem-c-title__text">${h1}</h1>
     <div data-module="govspeak">${bodyText}</div>
   </body></html>`
 }
 
-function makeNonEnvHtml(bodyText) {
-  return makeGovUkHtml(bodyText, 'Test Page Title', false)
-}
-
-// Wrap arbitrary body HTML with the environment meta tag so the
-// isEnvironmentPage guard passes in tests that use custom markup.
+// Wrap arbitrary body HTML in a minimal HTML document for tests that use custom markup.
 function withEnvMeta(bodyHtml) {
-  return `<html><head><meta name="govuk:topics" content="environment"></head><body>${bodyHtml}</body></html>`
+  return `<html><head></head><body>${bodyHtml}</body></html>`
 }
 
 // Returns a resolved fetchGovUkHtml mock value with the standard shape { html, finalUrl }
@@ -342,82 +332,6 @@ describe('urlReviewController.handler - successful submission', () => {
     expect(h.response).toHaveBeenCalledWith(
       expect.objectContaining({ message: 'Internal server error' })
     )
-  })
-})
-
-// ── handler: Environment topic check ─────────────────────────────────────────
-
-describe('urlReviewController.handler - Environment topic check', () => {
-  beforeEach(() => {
-    vi.resetAllMocks()
-    parseAllowedUrlMock.mockReturnValue(PARSED_URL)
-  })
-
-  it('returns 400 when the page has no Environment tag', async () => {
-    fetchGovUkHtmlMock.mockResolvedValue(
-      mockFetchHtml(makeNonEnvHtml(SUFFICIENT_TEXT))
-    )
-    const h = createH()
-    await urlReviewController.handler(createRequest(), h)
-    expect(h.response).toHaveBeenCalledWith(
-      expect.objectContaining({
-        success: false,
-        message: expect.stringContaining('Environment topic')
-      })
-    )
-    expect(h._mock.code).toHaveBeenCalledWith(400)
-  })
-
-  it('does not call extractContent when Environment check fails', async () => {
-    fetchGovUkHtmlMock.mockResolvedValue(
-      mockFetchHtml(makeNonEnvHtml(SUFFICIENT_TEXT))
-    )
-    const h = createH()
-    await urlReviewController.handler(createRequest(), h)
-    // Backend fetch should never be reached
-    expect(fetchMock).not.toHaveBeenCalled()
-  })
-
-  it('passes when page has a breadcrumb link to /environment', async () => {
-    const html = `<html><body>
-      <nav class="gem-c-breadcrumbs">
-        <ol><li><a href="/">Home</a></li><li><a href="/environment">Environment</a></li></ol>
-      </nav>
-      <h1 class="gem-c-title__text">Test</h1>
-      <div data-module="govspeak">${SUFFICIENT_TEXT}</div>
-    </body></html>`
-    fetchGovUkHtmlMock.mockResolvedValue(mockFetchHtml(html))
-    mockBackendSuccess()
-    const h = createH()
-    await urlReviewController.handler(createRequest(), h)
-    expect(h._mock.code).toHaveBeenCalledWith(200)
-  })
-
-  it('passes when page has govuk:topics meta containing "environment"', async () => {
-    const html = `<html><head>
-      <meta name="govuk:topics" content="environment,flooding">
-    </head><body>
-      <h1 class="gem-c-title__text">Flood guidance</h1>
-      <div data-module="govspeak">${SUFFICIENT_TEXT}</div>
-    </body></html>`
-    fetchGovUkHtmlMock.mockResolvedValue(mockFetchHtml(html))
-    mockBackendSuccess()
-    const h = createH()
-    await urlReviewController.handler(createRequest(), h)
-    expect(h._mock.code).toHaveBeenCalledWith(200)
-  })
-
-  it('returns 400 when govuk:topics meta does not contain "environment"', async () => {
-    const html = `<html><head>
-      <meta name="govuk:topics" content="transport,roads">
-    </head><body>
-      <h1 class="gem-c-title__text">Road guidance</h1>
-      <div data-module="govspeak">${SUFFICIENT_TEXT}</div>
-    </body></html>`
-    fetchGovUkHtmlMock.mockResolvedValue(mockFetchHtml(html))
-    const h = createH()
-    await urlReviewController.handler(createRequest(), h)
-    expect(h._mock.code).toHaveBeenCalledWith(400)
   })
 })
 
