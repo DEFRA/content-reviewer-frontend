@@ -114,6 +114,8 @@ export function initializeUrlInput() {
     hideUrlError()
   })
   if (urlClearBtn) {
+    // Space the button midway between the URL input and the Review content button
+    urlClearBtn.classList.add('govuk-!-margin-top-6')
     urlClearBtn.style.display = 'none'
   }
 }
