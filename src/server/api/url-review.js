@@ -22,6 +22,7 @@ const HTTP_STATUS = {
 }
 
 const GOVUK_BASE_URL = 'https://www.gov.uk'
+const GOVUK_HOSTNAME = 'www.gov.uk'
 const MAX_EXTRACTED_CHARS = 100_000
 const MIN_USEFUL_CONTENT_CHARS = 200
 const SLUG_MAX_LENGTH = 50
@@ -252,11 +253,13 @@ function mapFetchError(error) {
 
 /**
  * Step 1: Fetch the GOV.UK page server-side.
- * @returns {Promise<{ html: string } | { errorResponse: object }>}
+ * Returns { html, finalUrl } on success so the caller can verify the redirect
+ * chain stayed within www.gov.uk (Check 4).
+ * @returns {Promise<{ html: string, finalUrl: string } | { errorResponse: object }>}
  */
 function fetchPage(parsedUrl, url, h) {
   return fetchGovUkHtml(parsedUrl)
-    .then((html) => ({ html }))
+    .then(({ html, finalUrl }) => ({ html, finalUrl }))
     .catch((fetchError) => {
       logger.error(
         { err: fetchError, url },
@@ -268,6 +271,103 @@ function fetchPage(parsedUrl, url, h) {
           .code(HTTP_STATUS.INTERNAL_SERVER_ERROR)
       }
     })
+}
+
+/**
+ * Step 1b: Verify the HTTP redirect chain remained within www.gov.uk.
+ *
+ * node-fetch / undici follow 3xx redirects automatically, so `finalUrl` is the
+ * URL that ultimately served the response.  If a redirect leads outside GOV.UK
+ * (e.g. a misconfigured domain alias), we must reject the request rather than
+ * silently extracting off-domain content.
+ *
+ * @param {string} finalUrl - response.url from the fetch (final URL after redirects)
+ * @param {string} url - original URL submitted by the user (for logging)
+ * @param {object} h - Hapi response toolkit
+ * @returns {{ errorResponse?: object }}
+ */
+function checkRedirectTarget(finalUrl, url, h) {
+  if (!finalUrl) {
+    return {} // Can't determine final URL — allow through (unexpected edge case)
+  }
+  let finalHostname
+  try {
+    finalHostname = new URL(finalUrl).hostname
+  } catch {
+    return {} // Unparseable finalUrl — allow through
+  }
+  if (finalHostname !== GOVUK_HOSTNAME) {
+    logger.warn(
+      { url, finalUrl, finalHostname },
+      'url-review: redirect led outside www.gov.uk'
+    )
+    return {
+      errorResponse: h
+        .response({
+          success: false,
+          message:
+            'The URL redirected to a page outside GOV.UK. ' +
+            'Please provide a direct GOV.UK link.'
+        })
+        .code(HTTP_STATUS.BAD_REQUEST)
+    }
+  }
+  return {}
+}
+
+/**
+ * Detect whether a fetched GOV.UK page belongs to the Environment topic.
+ *
+ * Two signals are checked — either is sufficient to pass:
+ *  1. A link whose href is "/environment" — present in the breadcrumb trail of
+ *     every page that sits beneath the Environment browse topic on GOV.UK
+ *     (https://www.gov.uk/environment#sub-topics).
+ *  2. The machine-readable "govuk:topics" <meta> tag containing the token
+ *     "environment" — set by Whitehall / Search for all Environment-tagged content.
+ *
+ * Both checks run on the raw, unmodified HTML so that breadcrumbs are still
+ * present (they are stripped later in extractContent as noise).
+ *
+ * @param {string} html - raw GOV.UK page HTML
+ * @returns {boolean}
+ */
+function isEnvironmentPage(html) {
+  const $ = load(html)
+  // Signal 1: breadcrumb (or any) link pointing to the /environment browse page
+  if ($('a[href="/environment"]').length > 0) {
+    return true
+  }
+  // Signal 2: GOV.UK machine-readable taxonomy meta tag
+  const topics = $('meta[name="govuk:topics"]').attr('content') ?? ''
+  return topics
+    .toLowerCase()
+    .split(/[\s,]+/)
+    .includes('environment')
+}
+
+/**
+ * Step 1b: Verify the fetched page belongs to the GOV.UK Environment topic.
+ * Returns { errorResponse } when the check fails, empty object otherwise.
+ * @param {string} html
+ * @param {string} url
+ * @param {object} h - Hapi response toolkit
+ * @returns {{ errorResponse?: object }}
+ */
+function checkEnvironmentTag(html, url, h) {
+  if (isEnvironmentPage(html)) {
+    return {}
+  }
+  logger.warn({ url }, 'url-review: page is not tagged as Environment topic')
+  return {
+    errorResponse: h
+      .response({
+        success: false,
+        message:
+          'This page does not belong to the GOV.UK Environment topic. ' +
+          'Only pages listed under https://www.gov.uk/environment can be reviewed.'
+      })
+      .code(HTTP_STATUS.BAD_REQUEST)
+  }
 }
 
 /**
@@ -376,9 +476,23 @@ export const urlReviewController = {
 
     logger.info({ url: parsedUrl.toString() }, 'url-review: fetching page')
 
-    const { html, errorResponse: fetchErr } = await fetchPage(parsedUrl, url, h)
+    const {
+      html,
+      finalUrl,
+      errorResponse: fetchErr
+    } = await fetchPage(parsedUrl, url, h)
     if (fetchErr) {
       return fetchErr
+    }
+
+    const { errorResponse: redirectErr } = checkRedirectTarget(finalUrl, url, h)
+    if (redirectErr) {
+      return redirectErr
+    }
+
+    const { errorResponse: envErr } = checkEnvironmentTag(html, url, h)
+    if (envErr) {
+      return envErr
     }
 
     const { extracted, errorResponse: extractErr } = extractPage(html, url, h)

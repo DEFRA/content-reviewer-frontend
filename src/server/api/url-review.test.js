@@ -42,11 +42,31 @@ vi.stubGlobal('fetch', fetchMock)
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function makeGovUkHtml(bodyText, h1 = 'Test Page Title') {
-  return `<html><body>
+// All default-generated pages include an Environment topic signal so that the
+// isEnvironmentPage guard passes without extra setup in each test.
+function makeGovUkHtml(bodyText, h1 = 'Test Page Title', envTagged = true) {
+  const metaTopics = envTagged
+    ? '<meta name="govuk:topics" content="environment">'
+    : ''
+  return `<html><head>${metaTopics}</head><body>
     <h1 class="gem-c-title__text">${h1}</h1>
     <div data-module="govspeak">${bodyText}</div>
   </body></html>`
+}
+
+function makeNonEnvHtml(bodyText) {
+  return makeGovUkHtml(bodyText, 'Test Page Title', false)
+}
+
+// Wrap arbitrary body HTML with the environment meta tag so the
+// isEnvironmentPage guard passes in tests that use custom markup.
+function withEnvMeta(bodyHtml) {
+  return `<html><head><meta name="govuk:topics" content="environment"></head><body>${bodyHtml}</body></html>`
+}
+
+// Returns a resolved fetchGovUkHtml mock value with the standard shape { html, finalUrl }
+function mockFetchHtml(html, finalUrl = TEST_URL) {
+  return { html, finalUrl }
 }
 
 // 300 chars of plain text — well above the 200-char minimum
@@ -113,6 +133,51 @@ describe('urlReviewController.handler - GOV.UK fetch failure', () => {
   })
 })
 
+// ── handler: redirect check ───────────────────────────────────────────────────
+
+describe('urlReviewController.handler - redirect check', () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+    parseAllowedUrlMock.mockReturnValue(PARSED_URL)
+  })
+
+  it('returns 400 when fetch redirects to a non-gov.uk URL', async () => {
+    fetchGovUkHtmlMock.mockResolvedValue(
+      mockFetchHtml(VALID_HTML, 'https://www.external-site.com/page')
+    )
+    const h = createH()
+    await urlReviewController.handler(createRequest(), h)
+    expect(h.response).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        message: expect.stringContaining('redirected')
+      })
+    )
+    expect(h._mock.code).toHaveBeenCalledWith(400)
+  })
+
+  it('continues normally when fetch stays within www.gov.uk', async () => {
+    fetchGovUkHtmlMock.mockResolvedValue(
+      mockFetchHtml(
+        VALID_HTML,
+        'https://www.gov.uk/guidance/test-page-redirected'
+      )
+    )
+    mockBackendSuccess()
+    const h = createH()
+    await urlReviewController.handler(createRequest(), h)
+    expect(h._mock.code).toHaveBeenCalledWith(200)
+  })
+
+  it('allows through when finalUrl is missing (edge case)', async () => {
+    fetchGovUkHtmlMock.mockResolvedValue(mockFetchHtml(VALID_HTML, undefined))
+    mockBackendSuccess()
+    const h = createH()
+    await urlReviewController.handler(createRequest(), h)
+    expect(h._mock.code).toHaveBeenCalledWith(200)
+  })
+})
+
 // ── handler: content extraction failures ─────────────────────────────────────
 
 describe('urlReviewController.handler - content extraction failures', () => {
@@ -123,7 +188,7 @@ describe('urlReviewController.handler - content extraction failures', () => {
 
   it('returns 400 when no content selectors match the page', async () => {
     fetchGovUkHtmlMock.mockResolvedValue(
-      '<html><body><p>No matching content</p></body></html>'
+      mockFetchHtml(withEnvMeta('<p>No matching content</p>'))
     )
     const h = createH()
     await urlReviewController.handler(createRequest(), h)
@@ -134,14 +199,18 @@ describe('urlReviewController.handler - content extraction failures', () => {
   })
 
   it('returns 400 when extracted text is below the minimum useful length', async () => {
-    fetchGovUkHtmlMock.mockResolvedValue(makeGovUkHtml('Too short'))
+    fetchGovUkHtmlMock.mockResolvedValue(
+      mockFetchHtml(makeGovUkHtml('Too short'))
+    )
     const h = createH()
     await urlReviewController.handler(createRequest(), h)
     expect(h._mock.code).toHaveBeenCalledWith(400)
   })
 
   it('returns 400 when extracted text exceeds MAX_EXTRACTED_CHARS', async () => {
-    fetchGovUkHtmlMock.mockResolvedValue(makeGovUkHtml('a'.repeat(110_000)))
+    fetchGovUkHtmlMock.mockResolvedValue(
+      mockFetchHtml(makeGovUkHtml('a'.repeat(110_000)))
+    )
     const h = createH()
     await urlReviewController.handler(createRequest(), h)
     expect(h._mock.code).toHaveBeenCalledWith(400)
@@ -154,7 +223,7 @@ describe('urlReviewController.handler - successful submission', () => {
   beforeEach(() => {
     vi.resetAllMocks()
     parseAllowedUrlMock.mockReturnValue(PARSED_URL)
-    fetchGovUkHtmlMock.mockResolvedValue(VALID_HTML)
+    fetchGovUkHtmlMock.mockResolvedValue(mockFetchHtml(VALID_HTML))
   })
 
   it('returns 200 with reviewId on successful backend response', async () => {
@@ -200,7 +269,9 @@ describe('urlReviewController.handler - successful submission', () => {
 
   it('uses sourceUrl as title when no H1 is found in the page', async () => {
     fetchGovUkHtmlMock.mockResolvedValue(
-      `<html><body><div data-module="govspeak">${SUFFICIENT_TEXT}</div></body></html>`
+      mockFetchHtml(
+        withEnvMeta(`<div data-module="govspeak">${SUFFICIENT_TEXT}</div>`)
+      )
     )
     mockBackendSuccess()
     const h = createH()
@@ -213,10 +284,12 @@ describe('urlReviewController.handler - successful submission', () => {
 
   it('uses gem-c-heading__text H1 as title when gem-c-title__text is absent', async () => {
     fetchGovUkHtmlMock.mockResolvedValue(
-      `<html><body>
+      mockFetchHtml(
+        withEnvMeta(`
         <h1 class="gem-c-heading__text">HMRC Manual Page</h1>
         <div data-module="govspeak">${SUFFICIENT_TEXT}</div>
-      </body></html>`
+      `)
+      )
     )
     mockBackendSuccess()
     const h = createH()
@@ -257,6 +330,82 @@ describe('urlReviewController.handler - successful submission', () => {
     expect(h.response).toHaveBeenCalledWith(
       expect.objectContaining({ message: 'Internal server error' })
     )
+  })
+})
+
+// ── handler: Environment topic check ─────────────────────────────────────────
+
+describe('urlReviewController.handler - Environment topic check', () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+    parseAllowedUrlMock.mockReturnValue(PARSED_URL)
+  })
+
+  it('returns 400 when the page has no Environment tag', async () => {
+    fetchGovUkHtmlMock.mockResolvedValue(
+      mockFetchHtml(makeNonEnvHtml(SUFFICIENT_TEXT))
+    )
+    const h = createH()
+    await urlReviewController.handler(createRequest(), h)
+    expect(h.response).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        message: expect.stringContaining('Environment topic')
+      })
+    )
+    expect(h._mock.code).toHaveBeenCalledWith(400)
+  })
+
+  it('does not call extractContent when Environment check fails', async () => {
+    fetchGovUkHtmlMock.mockResolvedValue(
+      mockFetchHtml(makeNonEnvHtml(SUFFICIENT_TEXT))
+    )
+    const h = createH()
+    await urlReviewController.handler(createRequest(), h)
+    // Backend fetch should never be reached
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('passes when page has a breadcrumb link to /environment', async () => {
+    const html = `<html><body>
+      <nav class="gem-c-breadcrumbs">
+        <ol><li><a href="/">Home</a></li><li><a href="/environment">Environment</a></li></ol>
+      </nav>
+      <h1 class="gem-c-title__text">Test</h1>
+      <div data-module="govspeak">${SUFFICIENT_TEXT}</div>
+    </body></html>`
+    fetchGovUkHtmlMock.mockResolvedValue(mockFetchHtml(html))
+    mockBackendSuccess()
+    const h = createH()
+    await urlReviewController.handler(createRequest(), h)
+    expect(h._mock.code).toHaveBeenCalledWith(200)
+  })
+
+  it('passes when page has govuk:topics meta containing "environment"', async () => {
+    const html = `<html><head>
+      <meta name="govuk:topics" content="environment,flooding">
+    </head><body>
+      <h1 class="gem-c-title__text">Flood guidance</h1>
+      <div data-module="govspeak">${SUFFICIENT_TEXT}</div>
+    </body></html>`
+    fetchGovUkHtmlMock.mockResolvedValue(mockFetchHtml(html))
+    mockBackendSuccess()
+    const h = createH()
+    await urlReviewController.handler(createRequest(), h)
+    expect(h._mock.code).toHaveBeenCalledWith(200)
+  })
+
+  it('returns 400 when govuk:topics meta does not contain "environment"', async () => {
+    const html = `<html><head>
+      <meta name="govuk:topics" content="transport,roads">
+    </head><body>
+      <h1 class="gem-c-title__text">Road guidance</h1>
+      <div data-module="govspeak">${SUFFICIENT_TEXT}</div>
+    </body></html>`
+    fetchGovUkHtmlMock.mockResolvedValue(mockFetchHtml(html))
+    const h = createH()
+    await urlReviewController.handler(createRequest(), h)
+    expect(h._mock.code).toHaveBeenCalledWith(400)
   })
 })
 
@@ -321,7 +470,7 @@ describe('urlReviewController.handler - link conversion in extracted HTML', () =
   })
 
   async function getSubmittedContent(bodyHtml) {
-    fetchGovUkHtmlMock.mockResolvedValue(makeGovUkHtml(bodyHtml))
+    fetchGovUkHtmlMock.mockResolvedValue(mockFetchHtml(makeGovUkHtml(bodyHtml)))
     fetchMock.mockResolvedValueOnce({
       ok: true,
       json: vi.fn().mockResolvedValueOnce({ reviewId: 'rev-links' })
@@ -384,10 +533,12 @@ describe('urlReviewController.handler - overlap detection', () => {
     // first govspeak div has only whitespace → text.trim() = '' → skipped
     // second govspeak div has real content → contributes to sections → 200 returned
     fetchGovUkHtmlMock.mockResolvedValue(
-      `<html><body>
+      mockFetchHtml(
+        withEnvMeta(`
         <div data-module="govspeak">   </div>
         <div data-module="govspeak">${SUFFICIENT_TEXT}</div>
-      </body></html>`
+      `)
+      )
     )
     mockBackendSuccess()
     const h = createH()
@@ -400,12 +551,12 @@ describe('urlReviewController.handler - overlap detection', () => {
     // div[data-module="govspeak"] (index 5). When the govspeak div is processed
     // the overlap check detects it contains the already-matched lead paragraph
     // and skips it, so no content is duplicated.
-    const html = `<html><body>
+    const html = withEnvMeta(`
       <div data-module="govspeak">
         <div class="gem-c-lead-paragraph">${SUFFICIENT_TEXT}</div>
       </div>
-    </body></html>`
-    fetchGovUkHtmlMock.mockResolvedValue(html)
+    `)
+    fetchGovUkHtmlMock.mockResolvedValue(mockFetchHtml(html))
     fetchMock.mockResolvedValueOnce({
       ok: true,
       json: vi.fn().mockResolvedValueOnce({ reviewId: 'rev-overlap' })
