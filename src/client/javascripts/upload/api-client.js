@@ -23,8 +23,22 @@ import {
   hideError
 } from './ui-feedback.js'
 import { addReviewToHistory } from './review-history.js'
+const ACCEPTED_MIME_TYPES = [
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+]
+
+const MAX_FILE_BYTES = 10 * 1024 * 1024 // 10 MB
 
 const JSON_PARSE_ERROR_PATTERNS = ['not valid JSON', 'Unexpected token']
+
+const ENDPOINT_CALLBACK = '/upload-callback'
+const serverUrl = 'http://localhost:3001'
+  const rawS3Path = 'content-uploads'
+  const callbackUrl = `${serverUrl}${ENDPOINT_CALLBACK}`
+  const CDP_UPLOADER = 'https://cdp-uploader.dev.cdp-int.defra.cloud'
+  const S3_BUCKET = 'dev-service-optimisation-c63f2'
+
 
 async function extractJsonErrorMessage(response, contentType, defaultMessage) {
   try {
@@ -171,13 +185,70 @@ export async function submitTextReview(textContent) {
 export async function submitFileUpload(file) {
   try {
     showProgress('Uploading to server...', PROGRESS_INITIAL)
+   
+    //initiate cdp upload
+  //   const serverUrl = (config.get('serverUrl') || '').replace(/\/$/, '')
+  // const rawS3Path = config.get('s3.s3Path')
+  // const callbackUrl = `${serverUrl}${ENDPOINT_CALLBACK}`
+   const redirectUrl = `/upload-success?reviewId=${encodeURIComponent('123')}`
+  // const CDP_UPLOADER = (config.get('cdpUploader.url') || '').replace(
+  //     /\/$/,
+  //     ''
+  //   )
+  // const S3_BUCKET = config.get('s3.bucket')
+
+  const initBody = {
+    s3Bucket: S3_BUCKET,
+    s3Path: rawS3Path,
+    redirect: redirectUrl,
+    callback: callbackUrl,
+    mimeTypes: ACCEPTED_MIME_TYPES,
+    maxFileSize: MAX_FILE_BYTES,
+    metadata: { reviewId: '123' } // This can be used to correlate the callback with the review
+  }
+
+  const initResp = await fetch(`${CDP_UPLOADER}/initiate`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'User-Agent': 'content-reviewer-backend'
+    },
+    body: JSON.stringify(initBody)
+  })
+
+    if (!initResp.ok) {
+    const txt = await initResp.text().catch(() => '')
+    logger.error(
+      { status: initResp.status, body: txt },
+      'cdp-uploader /initiate failed'
+    )
+    throw new Error(`cdp-uploader /initiate failed: ${initResp.status}`)
+  }
+
+  const initJson = await initResp.json().catch(() => ({}))
+  const { uploadId, uploadUrl } = initJson
+  
+  // upload and scan file using cdp-uploader
+  const uploadAndScanUrl = new URL(uploadUrl, CDP_UPLOADER).href
     const formData = new FormData()
     formData.append('file', file)
-    const response = await fetch('/api/upload', {
+
+   const uploadRes = await fetch(uploadAndScanUrl, {
       method: 'POST',
-      credentials: CREDENTIALS_SAME_ORIGIN,
-      body: formData
+      body: formData,
+      redirect: 'follow'
     })
+    if (!uploadRes.ok) {
+      const txt = await uploadRes.text().catch(() => '')
+      logger.error(
+        { status: uploadRes.status, body: txt },
+        'cdp-uploader /upload-and-scan failed'
+      )
+      throw new Error(
+        `cdp-uploader /upload-and-scan failed: ${uploadRes.status}`
+      )
+    }
+
     showProgress('Processing upload...', PROGRESS_PROCESSING)
     if (!response.ok) {
       const errorData = await response.json()

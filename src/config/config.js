@@ -46,6 +46,20 @@ export const config = convict({
     format: String,
     default: 'Content Review Tool'
   },
+  serverUrl: {
+    doc: 'The public base URL of this service — used as the CDP Uploader callbackUrl so CDP Uploader can POST back when scanning is complete',
+    format: String,
+    default: 'http://localhost:3001',
+    env: 'SERVER_URL'
+  },
+  cdpUploader: {
+    url: {
+      doc: 'cdp-uploader service URL for file uploads',
+      format: String,
+      default: 'https://cdp-uploader.dev.cdp-int.defra.cloud',
+      env: 'CDP_UPLOADER_URL'
+    }
+  },
   root: {
     doc: 'Project root',
     format: String,

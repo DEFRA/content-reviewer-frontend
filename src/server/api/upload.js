@@ -336,5 +336,142 @@ export const uploadApiController = {
     } catch (error) {
       return handleUploadError(error, startTime, h)
     }
+  },
+
+  async handleUploadSuccess (request, h) {
+  try {
+    const { reviewId } = request.query
+
+    request.logger.info(
+      {
+        reviewId,
+        source: 'browser-redirect'
+      },
+      '[REDIRECT] Browser redirected from CDP Uploader'
+    )
+
+    // ✅ Can either:
+    // 1. Return JSON response (for frontend to handle)
+
+    // Option 1: Return JSON (for single-page app)
+    return h
+      .response({
+        success: true,
+        message: 'File upload completed successfully',
+        reviewId,
+        status: 'processing' // Pipeline is running asynchronously
+      })
+      .code(200)
+  } catch (error) {
+    request.logger.error(
+      { error: error.message, query: request.query },
+      '[REDIRECT] Handler failed'
+    )
+
+    return h
+      .response({ success: false, message: error.message })
+      .code(500)
+  }
+},
+async handleUploadCallback(request, h) {
+  const requestStartTime = performance.now()
+
+  try {
+    const { uploadStatus, metadata, form, numberOfRejectedFiles } =
+      request.payload
+
+    // ✅ Extract complete metadata from CDP Uploader POST
+    request.logger.info(
+      { uploadStatus, metadata, numberOfRejectedFiles },
+      'Upload callback received from CDP Uploader'
+    )
+
+    // Get file details from form
+    const fileField = form.file
+
+    if (fileField.hasError) {
+      request.logger.error(
+        { errorMessage: fileField.errorMessage },
+        'File rejected with error in callback'
+      )
+      return h
+        .response({
+          success: false,
+          message: fileField.errorMessage || 'File validation failed'
+        })
+        .code(200)
+    }
+
+    // validateUploadCallbackPayload(
+    //   uploadStatus,
+    //   numberOfRejectedFiles,
+    //   fileField
+    // )
+
+    // const userId = metadata?.userId
+    const reviewId = metadata?.reviewId
+
+    // ✅ Return 200 OK to CDP Uploader immediately
+    return h
+      .response({
+        success: true,
+        message: 'Callback received',
+        reviewId
+      })
+      .code(200)
+  } catch (error) {
+    const totalDuration = Math.round(performance.now() - requestStartTime)
+
+    request.logger.error(
+      {
+        error: error.message,
+        stack: error.stack,
+        durationMs: totalDuration
+      },
+      '[CALLBACK] Handler failed'
+    )
+
+    return h
+      .response({ success: false, message: error.message })
+      .code(500)
+  }
+}
+}
+
+// Validate the callback payload structure and values
+function validateUploadCallbackPayload(
+  uploadStatus,
+  numberOfRejectedFiles,
+  fileField
+) {
+  if (uploadStatus !== 'ready') {
+    const error = new Error('Upload not ready yet')
+    error.statusCode = 500
+    error.details = { uploadStatus }
+    throw error
+  }
+
+  if (numberOfRejectedFiles > 0) {
+    const error = new Error(
+      `Upload validation failed: ${numberOfRejectedFiles} files rejected`
+    )
+    error.statusCode = 500
+    error.details = { numberOfRejectedFiles }
+    throw error
+  }
+
+  if (fileField?.fileStatus !== 'complete') {
+    const error = new Error('File not available or incomplete')
+    error.statusCode = 500
+    error.details = { fileStatus: fileField?.fileStatus }
+    throw error
+  }
+
+  if (fileField?.hasError) {
+    const errorMessage = fileField.errorMessage || 'File validation failed'
+    const error = new Error(errorMessage)
+    error.statusCode = 500
+    error.details = { hasError: true, errorMessage }
+    throw error
   }
 }

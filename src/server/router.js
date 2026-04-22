@@ -39,6 +39,20 @@ function registerApiRoutes(server) {
     }
   })
 
+  // route for cdp redirect 
+  server.route({
+    method: 'GET',
+    path: '/upload-success',
+    handler: async (request, h) => uploadApiController.handleUploadSuccess(request, h)
+  })
+
+  // route for cdp call back 
+  server.route({
+    method: 'POST',
+    path: '/upload-callback',
+    handler: async (request, h) => uploadApiController.handleUploadCallback(request, h)
+  })
+
   server.route({
     method: 'GET',
     path: '/api/reviews',
