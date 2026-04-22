@@ -22,6 +22,7 @@ import { azureAuth } from './plugins/azure-auth.js'
 // NOTE: In a multi-instance deployment each pod enforces independently;
 // a Redis-backed store would give a true global limit, but this still
 // protects against single-client bursts hitting one pod.
+const HTTP_TOO_MANY_REQUESTS = 429
 const rateLimitStore = new Map()
 
 function getRateLimitEntry(ip, windowMs) {
@@ -170,7 +171,7 @@ export async function createServer() {
             '<h1>429 Too Many Requests</h1><p>Please try again later.</p>'
           )
           .type('text/html')
-          .code(429)
+          .code(HTTP_TOO_MANY_REQUESTS)
           .takeover()
       }
       return h.continue
