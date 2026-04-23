@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { uploadApiController } from './upload.js'
-import { config } from '../../config/config.js'
 import { getUserIdentifier } from '../common/helpers/get-user-identifier.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
 import { fetch as undiciFetch } from 'undici'
