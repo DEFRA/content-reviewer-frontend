@@ -94,7 +94,7 @@ async function sendFileToBackend(
 /**
  * Handle backend upload failure
  */
-async function handleBackendFailure(response, fileName, backendRequestTime, h) {
+async function handleBackendFailure(response, fileName, h) {
   let errorMessage = 'Failed to upload file to backend'
   try {
     const errorData = await response.json()
