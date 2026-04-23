@@ -224,7 +224,6 @@ export const uploadApiController = {
         return await handleBackendFailure(
           response,
           fileName,
-          backendRequestTime,
           h
         )
       }
