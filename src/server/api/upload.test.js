@@ -4,26 +4,31 @@ import { getUserIdentifier } from '../common/helpers/get-user-identifier.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
 import { fetch as undiciFetch } from 'undici'
 
-// Mock FormData globally
-global.FormData = class FormData {
-  constructor() {
-    this.fields = new Map()
-  }
+// Mock form-data package BEFORE importing upload.js
+vi.mock('form-data', () => {
+  return {
+    default: class FormData {
+      constructor() {
+        this.fields = new Map()
+      }
 
-  append(name, value, options) {
-    this.fields.set(name, { value, options })
-  }
+      append(name, value, options) {
+        this.fields.set(name, { value, options })
+      }
 
-  getHeaders() {
-    return {
-      'content-type': 'multipart/form-data; boundary=----WebKitFormBoundary'
+      getHeaders() {
+        return {
+          'content-type':
+            'multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW'
+        }
+      }
+
+      *[Symbol.iterator]() {
+        yield* this.fields.entries()
+      }
     }
   }
-
-  *[Symbol.iterator]() {
-    yield* this.fields.entries()
-  }
-}
+})
 
 // Mock dependencies
 vi.mock('undici', () => ({
@@ -73,7 +78,7 @@ describe('uploadApiController - uploadFile', () => {
       error: vi.fn()
     }
 
-    // Mock file object that behaves like a stream/blob
+    // Mock file object that behaves like a stream
     const mockFile = {
       hapi: {
         filename: 'document.pdf',
@@ -81,10 +86,15 @@ describe('uploadApiController - uploadFile', () => {
           'content-type': 'application/pdf'
         }
       },
-      // Make it iterable/readable for FormData
-      [Symbol.toStringTag]: 'File',
-      // Simulate Blob-like behavior
-      toString: () => '[File]'
+      on: vi.fn((event, callback) => {
+        if (event === 'data') {
+          // Simulate file stream data
+          callback(Buffer.from('PDF file content'))
+        } else if (event === 'end') {
+          callback()
+        }
+      }),
+      once: vi.fn()
     }
 
     // Mock request with file from Hapi
@@ -439,14 +449,7 @@ describe('uploadApiController - uploadFile', () => {
   describe('Edge Cases', () => {
     it('should handle filename with special characters', async () => {
       mockRequest.payload.file.hapi.filename = 'document-2024_v1.2.pdf'
-      mockRequest.payload.file = {
-        hapi: {
-          filename: 'document-2024_v1.2.pdf',
-          headers: {
-            'content-type': ''
-          }
-        }
-      }
+      mockRequest.payload.file.hapi.headers['content-type'] = 'application/pdf'
 
       undiciFetch.mockResolvedValueOnce({
         ok: true,
@@ -463,14 +466,8 @@ describe('uploadApiController - uploadFile', () => {
     })
 
     it('should handle filename with Unicode characters', async () => {
-      mockRequest.payload.file = {
-        hapi: {
-          filename: 'документ.pdf',
-          headers: {
-            'content-type': ''
-          }
-        }
-      }
+      mockRequest.payload.file.hapi.filename = 'документ.pdf'
+      mockRequest.payload.file.hapi.headers['content-type'] = 'application/pdf'
 
       undiciFetch.mockResolvedValueOnce({
         ok: true,
@@ -487,14 +484,8 @@ describe('uploadApiController - uploadFile', () => {
     })
 
     it('should handle file without extension', async () => {
-      mockRequest.payload.file = {
-        hapi: {
-          filename: 'document',
-          headers: {
-            'content-type': ''
-          }
-        }
-      }
+      mockRequest.payload.file.hapi.filename = 'document'
+      mockRequest.payload.file.hapi.headers['content-type'] = ''
 
       const result = await uploadApiController.uploadFile(mockRequest, mockH)
 

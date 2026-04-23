@@ -1,5 +1,6 @@
 import { Agent, fetch as undiciFetch } from 'undici'
 import { config } from '../../config/config.js'
+import FormData from 'form-data'
 import { createLogger } from '../common/helpers/logging/logger.js'
 import { getUserIdentifier } from '../common/helpers/get-user-identifier.js'
 
@@ -134,13 +135,16 @@ async function sendFileToBackend(file, fileInfo, request) {
       `File converted to buffer. Size: ${fileBuffer.length} bytes for: ${fileName}`
     )
     const formData = new FormData()
-    const blob = new Blob([fileBuffer], { type: contentType })
-    formData.append('file', blob, fileName)
+    formData.append('file', fileBuffer, {
+      filename: fileName,
+      contentType: contentType // ✅ Add this
+    })
 
     const response = await undiciFetch(`${backendUrl}/api/upload`, {
       method: 'POST',
       body: formData,
       headers: {
+        ...formData.getHeaders(),
         'x-file-name': encodeURIComponent(fileInfo.filename),
         ...(userId ? { 'x-user-id': userId } : {})
       },
