@@ -77,6 +77,33 @@ function validateFileSize(byteLength, fileInfo, h) {
 }
 
 /**
+ * Convert Hapi file stream to Buffer
+ */
+async function fileStreamToBuffer(file) {
+  return new Promise((resolve, reject) => {
+    const chunks = []
+
+    if (!file.on) {
+      // File is already a buffer or blob
+      resolve(file)
+      return
+    }
+
+    file.on('data', (chunk) => {
+      chunks.push(chunk)
+    })
+
+    file.on('end', () => {
+      resolve(Buffer.concat(chunks))
+    })
+
+    file.on('error', (error) => {
+      reject(new Error(`File stream error: ${error.message}`))
+    })
+  })
+}
+
+/**
  * Validate file type is allowed
  */
 function validateFileType(fileInfo, h) {
@@ -124,11 +151,16 @@ async function sendFileToBackend(file, fileInfo, request) {
 
   const userId = getUserIdentifier(request)
   try {
+    // Convert Hapi stream to Buffer
+    logger.info('Converting file stream to buffer...')
+    const fileBuffer = await fileStreamToBuffer(file)
+
+    logger.info(
+      `File converted to buffer. Size: ${fileBuffer.length} bytes for: ${fileName}`
+    )
     const formData = new FormData()
-    formData.append('file', file, {
-      fileName,
-      contentType
-    })
+    const blob = new Blob([fileBuffer], { type: contentType })
+    formData.append('file', blob, fileName)
 
     const response = await undiciFetch(`${backendUrl}/api/upload`, {
       method: 'POST',
