@@ -29,12 +29,11 @@ function registerApiRoutes(server) {
     handler: async (request, h) => uploadApiController.uploadFile(request, h),
     options: {
       payload: {
-        output: 'file',
+        output: 'stream',
         parse: true,
         multipart: true,
         maxBytes: 10 * 1024 * 1024, // 10MB
-        allow: 'multipart/form-data',
-        uploads: '/tmp'
+        allow: 'multipart/form-data'
       }
     }
   })

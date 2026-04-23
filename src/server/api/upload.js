@@ -108,28 +108,27 @@ function validateFileType(fileInfo, h) {
 /**
  * Send file to backend service as application/octet-stream
  */
-async function sendFileToBackend(file, fileBuffer, fileInfo, request) {
+async function sendFileToBackend(file, fileInfo, request) {
   const backendUrl = config.get('backendUrl')
-  logger.info('Preparing to forward file to backend', {
-    backendUrl,
-    filename: fileInfo.filename
-  })
+  logger.info(
+    `Preparing to forward file to backend service with filename: ${fileInfo.filename}`
+  )
 
+  const fileName = fileInfo.filename
+  const contentType = fileInfo.contentType
   const backendRequestStart = Date.now()
 
-  logger.info('Initiating backend upload request', {
-    filename: fileInfo.filename,
-    contentType: fileInfo.contentType,
-    bodyBytes: fileBuffer.length,
-    backendEndpoint: `${backendUrl}/api/upload`
-  })
-
-  logger.info(`Uploading file to backend: ${fileInfo.filename}`)
+  logger.info(
+    `Initiating backend upload request for file: ${fileName} and content type: ${contentType}`
+  )
 
   const userId = getUserIdentifier(request)
   try {
     const formData = new FormData()
-    formData.append('file', file)
+    formData.append('file', file, {
+      fileName,
+      contentType
+    })
 
     const response = await undiciFetch(`${backendUrl}/api/upload`, {
       method: 'POST',
@@ -263,7 +262,11 @@ export const uploadApiController = {
     })
 
     try {
-      const file = request.payload.file
+      const file = request.payload?.file
+
+      logger.info(
+        `Extracting file information from upload request for file: ${file?.hapi?.filename || file?.filename || 'unknown'}`
+      )
 
       logger.info('Processing upload request', {
         hasFile: !!file,
@@ -278,6 +281,9 @@ export const uploadApiController = {
       }
 
       const fileInfo = extractFileInfo(file)
+      logger.info(
+        `filename and content type extracted: ${fileInfo.filename}, ${fileInfo.contentType}`
+      )
 
       // Validate file type before buffering (cheap check, no I/O)
       const fileTypeError = validateFileType(fileInfo, h)
@@ -285,34 +291,8 @@ export const uploadApiController = {
         return fileTypeError
       }
 
-      // Buffer the file once — needed for size validation and form-data forwarding
-      const fileBuffer = await readFile(file.path)
-
-      logger.info('File received for processing', {
-        filename: fileInfo.filename,
-        byteLength: fileBuffer.length,
-        contentType: fileInfo.contentType
-      })
-
-      // Validate file size using actual buffered byte count
-      const fileSizeError = validateFileSize(fileBuffer.length, fileInfo, h)
-      if (fileSizeError) {
-        return fileSizeError
-      }
-
-      logger.info('File validation passed successfully', {
-        filename: fileInfo.filename,
-        byteLength: fileBuffer.length,
-        contentType: fileInfo.contentType
-      })
-
       // Send file to backend using the pre-buffered content
-      const backendResult = await sendFileToBackend(
-        file,
-        fileBuffer,
-        fileInfo,
-        request
-      )
+      const backendResult = await sendFileToBackend(file, fileInfo, request)
       const response = backendResult.response
       const backendRequestTime = backendResult.backendRequestTime
 
