@@ -175,8 +175,8 @@ export async function submitFileUpload(file) {
     formData.append('file', file)
     const response = await fetch('/api/upload', {
       method: 'POST',
-      credentials: CREDENTIALS_SAME_ORIGIN,
-      body: formData
+      body: formData,
+      credentials: CREDENTIALS_SAME_ORIGIN
     })
     showProgress('Processing upload...', PROGRESS_PROCESSING)
     if (!response.ok) {
