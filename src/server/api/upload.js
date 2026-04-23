@@ -15,8 +15,6 @@ const keepAliveAgent = new Agent({
 const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500
 const HTTP_STATUS_BAD_REQUEST = 400
 const HTTP_STATUS_OK = 200
-const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024
-const MAX_FILE_SIZE_MB = 10
 const ALLOWED_MIME_TYPES = [
   'application/pdf',
   'application/msword',
