@@ -2,7 +2,6 @@ import { Agent, fetch as undiciFetch } from 'undici'
 import { config } from '../../config/config.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
 import { getUserIdentifier } from '../common/helpers/get-user-identifier.js'
-import { readFile } from 'node:fs/promises'
 
 const logger = createLogger()
 
@@ -48,28 +47,6 @@ function validateFilePresent(file, h) {
       .response({
         success: false,
         message: 'No file provided'
-      })
-      .code(HTTP_STATUS_BAD_REQUEST)
-  }
-  return null
-}
-
-/**
- * Validate file size does not exceed maximum.
- * Receives the actual byte length from the buffered content.
- */
-function validateFileSize(byteLength, fileInfo, h) {
-  if (byteLength > MAX_FILE_SIZE_BYTES) {
-    const sizeMB = (byteLength / 1024 / 1024).toFixed(2)
-    logger.warn('Upload validation failed: File too large', {
-      filename: fileInfo.filename,
-      size: sizeMB + 'MB',
-      maxSize: MAX_FILE_SIZE_MB + 'MB'
-    })
-    return h
-      .response({
-        success: false,
-        message: `File too large. Maximum size is ${MAX_FILE_SIZE_MB}MB. Your file is ${sizeMB}MB.`
       })
       .code(HTTP_STATUS_BAD_REQUEST)
   }
