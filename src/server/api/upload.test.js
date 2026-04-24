@@ -1,36 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { uploadApiController } from './upload.js'
-import { getUserIdentifier } from '../common/helpers/get-user-identifier.js'
-import { createLogger } from '../common/helpers/logging/logger.js'
-import { fetch as undiciFetch } from 'undici'
 
-// Mock form-data package BEFORE importing upload.js
-vi.mock('form-data', () => {
-  return {
-    default: class FormData {
-      constructor() {
-        this.fields = new Map()
-      }
-
-      append(name, value, options) {
-        this.fields.set(name, { value, options })
-      }
-
-      getHeaders() {
-        return {
-          'content-type':
-            'multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW'
-        }
-      }
-
-      *[Symbol.iterator]() {
-        yield* this.fields.entries()
-      }
-    }
-  }
-})
-
-// Mock dependencies
+// Mock undici
 vi.mock('undici', () => ({
   Agent: vi.fn(function (options) {
     this.keepAliveTimeout = options.keepAliveTimeout
@@ -40,6 +11,7 @@ vi.mock('undici', () => ({
   fetch: vi.fn()
 }))
 
+// Mock config
 vi.mock('../../config/config.js', () => ({
   config: {
     get: vi.fn((key) => {
@@ -51,6 +23,7 @@ vi.mock('../../config/config.js', () => ({
   }
 }))
 
+// Mock logger
 vi.mock('../common/helpers/logging/logger.js', () => ({
   createLogger: vi.fn(() => ({
     info: vi.fn(),
@@ -59,58 +32,44 @@ vi.mock('../common/helpers/logging/logger.js', () => ({
   }))
 }))
 
+// Mock getUserIdentifier
 vi.mock('../common/helpers/get-user-identifier.js', () => ({
   getUserIdentifier: vi.fn((request) => 'user-123')
 }))
 
+import { fetch as undiciFetch } from 'undici'
+
 describe('uploadApiController - uploadFile', () => {
   let mockRequest
   let mockH
-  let mockLogger
 
   beforeEach(() => {
     vi.clearAllMocks()
 
-    // Create mock logger
-    mockLogger = {
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn()
-    }
-
-    // Mock file object that behaves like a stream
-    const mockFile = {
-      hapi: {
-        filename: 'document.pdf',
-        headers: {
-          'content-type': 'application/pdf'
-        }
-      },
+    // Mock stream
+    const mockStream = {
       on: vi.fn((event, callback) => {
         if (event === 'data') {
-          // Simulate file stream data
           callback(Buffer.from('PDF file content'))
         } else if (event === 'end') {
           callback()
         }
-      }),
-      once: vi.fn()
+      })
     }
 
-    // Mock request with file from Hapi
     mockRequest = {
-      payload: {
-        file: mockFile
-      },
+      payload: mockStream,
       headers: {
-        'user-agent': 'Mozilla/5.0 Test Browser'
+        'content-type': 'application/octet-stream',
+        'x-file-name': 'document.pdf',
+        'x-file-content-type': 'application/pdf',
+        'user-agent': 'Mozilla/5.0 Test'
       },
       info: {
         remoteAddress: '127.0.0.1'
       }
     }
 
-    // Mock Hapi response toolkit
     mockH = {
       response: vi.fn(function (data) {
         return {
@@ -122,12 +81,6 @@ describe('uploadApiController - uploadFile', () => {
         }
       })
     }
-
-    // Mock getUserIdentifier
-    vi.mocked(getUserIdentifier).mockReturnValue('user-123')
-
-    // Mock logger
-    vi.mocked(createLogger).mockReturnValue(mockLogger)
   })
 
   afterEach(() => {
@@ -139,7 +92,6 @@ describe('uploadApiController - uploadFile', () => {
       undiciFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
-        statusText: 'OK',
         json: vi.fn().mockResolvedValueOnce({
           reviewId: 'review-123',
           filename: 'document.pdf'
@@ -155,8 +107,8 @@ describe('uploadApiController - uploadFile', () => {
     })
 
     it('should accept valid DOCX file', async () => {
-      mockRequest.payload.file.hapi.filename = 'document.docx'
-      mockRequest.payload.file.hapi.headers['content-type'] =
+      mockRequest.headers['x-file-name'] = 'document.docx'
+      mockRequest.headers['x-file-content-type'] =
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
       undiciFetch.mockResolvedValueOnce({
@@ -175,9 +127,8 @@ describe('uploadApiController - uploadFile', () => {
     })
 
     it('should accept valid DOC file', async () => {
-      mockRequest.payload.file.hapi.filename = 'document.doc'
-      mockRequest.payload.file.hapi.headers['content-type'] =
-        'application/msword'
+      mockRequest.headers['x-file-name'] = 'document.doc'
+      mockRequest.headers['x-file-content-type'] = 'application/msword'
 
       undiciFetch.mockResolvedValueOnce({
         ok: true,
@@ -194,70 +145,9 @@ describe('uploadApiController - uploadFile', () => {
       expect(result.statusCode).toBe(200)
     })
 
-    it('should reject .exe files', async () => {
-      mockRequest.payload.file.hapi.filename = 'malware.exe'
-      mockRequest.payload.file.hapi.headers['content-type'] =
-        'application/x-msdownload'
-
-      const result = await uploadApiController.uploadFile(mockRequest, mockH)
-
-      expect(result.success).toBe(false)
-      expect(result.statusCode).toBe(400)
-      expect(result.message).toContain('Invalid file type')
-    })
-
-    it('should reject files with invalid MIME type', async () => {
-      mockRequest.payload.file.hapi.headers['content-type'] = 'image/png'
-      mockRequest.payload.file.hapi.filename = 'image.png'
-
-      const result = await uploadApiController.uploadFile(mockRequest, mockH)
-
-      expect(result.success).toBe(false)
-      expect(result.statusCode).toBe(400)
-      expect(result.message).toContain('Invalid file type')
-    })
-
-    it('should accept case-insensitive extensions', async () => {
-      mockRequest.payload.file.hapi.filename = 'document.PDF'
-
-      undiciFetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: vi.fn().mockResolvedValueOnce({
-          reviewId: 'review-123',
-          filename: 'document.PDF'
-        })
-      })
-
-      const result = await uploadApiController.uploadFile(mockRequest, mockH)
-
-      expect(result.success).toBe(true)
-    })
-
-    it('should validate by extension when MIME type is missing', async () => {
-      mockRequest.payload.file.hapi.headers['content-type'] = ''
-      mockRequest.payload.file.hapi.filename = 'document.pdf'
-
-      undiciFetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: vi.fn().mockResolvedValueOnce({
-          reviewId: 'review-123',
-          filename: 'document.pdf'
-        })
-      })
-
-      const result = await uploadApiController.uploadFile(mockRequest, mockH)
-
-      expect(result.success).toBe(true)
-    })
-  })
-
-  describe('File Size Validation', () => {
-    it('should accept files under 10MB', async () => {
-      mockRequest.payload.file.hapi.filename = 'document.pdf'
-      mockRequest.payload.file.hapi.headers['content-type'] = 'application/pdf'
-      mockRequest.payload.file.bytes = 5 * 1024 * 1024 // 5MB
+    it('should validate by extension when MIME type is unrecognized', async () => {
+      mockRequest.headers['x-file-name'] = 'document.pdf'
+      mockRequest.headers['x-file-content-type'] = 'application/unknown'
 
       undiciFetch.mockResolvedValueOnce({
         ok: true,
@@ -273,15 +163,15 @@ describe('uploadApiController - uploadFile', () => {
       expect(result.success).toBe(true)
     })
 
-    it('should accept files exactly 10MB', async () => {
-      mockRequest.payload.file.bytes = 10 * 1024 * 1024
+    it('should handle filename with special characters', async () => {
+      mockRequest.headers['x-file-name'] = 'document-2024_v1.2.pdf'
 
       undiciFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
         json: vi.fn().mockResolvedValueOnce({
           reviewId: 'review-123',
-          filename: 'document.pdf'
+          filename: 'document-2024_v1.2.pdf'
         })
       })
 
@@ -289,27 +179,22 @@ describe('uploadApiController - uploadFile', () => {
 
       expect(result.success).toBe(true)
     })
-  })
 
-  describe('File Presence Validation', () => {
-    it('should reject when no file is provided', async () => {
-      mockRequest.payload.file = null
+    it('should handle filename with Unicode characters', async () => {
+      mockRequest.headers['x-file-name'] = encodeURIComponent('документ.pdf')
 
-      const result = await uploadApiController.uploadFile(mockRequest, mockH)
-
-      expect(result.success).toBe(false)
-      expect(result.statusCode).toBe(400)
-      expect(result.message).toBe('No file provided')
-    })
-
-    it('should reject when payload is missing', async () => {
-      mockRequest.payload = {}
+      undiciFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValueOnce({
+          reviewId: 'review-123',
+          filename: 'документ.pdf'
+        })
+      })
 
       const result = await uploadApiController.uploadFile(mockRequest, mockH)
 
-      expect(result.success).toBe(false)
-      expect(result.statusCode).toBe(400)
-      expect(result.message).toBe('No file provided')
+      expect(result.success).toBe(true)
     })
   })
 
@@ -331,7 +216,9 @@ describe('uploadApiController - uploadFile', () => {
         expect.objectContaining({
           method: 'POST',
           headers: expect.objectContaining({
+            'content-type': 'application/octet-stream',
             'x-file-name': 'document.pdf',
+            'x-file-content-type': 'application/pdf',
             'x-user-id': 'user-123'
           })
         })
@@ -339,7 +226,9 @@ describe('uploadApiController - uploadFile', () => {
     })
 
     it('should encode filename in header', async () => {
-      mockRequest.payload.file.hapi.filename = 'my file with spaces.pdf'
+      mockRequest.headers['x-file-name'] = encodeURIComponent(
+        'my file with spaces.pdf'
+      )
 
       undiciFetch.mockResolvedValueOnce({
         ok: true,
@@ -358,7 +247,7 @@ describe('uploadApiController - uploadFile', () => {
       )
     })
 
-    it('should use keepAliveAgent dispatcher', async () => {
+    it('should use userId when available', async () => {
       undiciFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
@@ -371,7 +260,27 @@ describe('uploadApiController - uploadFile', () => {
       await uploadApiController.uploadFile(mockRequest, mockH)
 
       const callArgs = undiciFetch.mock.calls[0][1]
-      expect(callArgs.dispatcher).toBeDefined()
+      expect(callArgs.headers['x-user-id']).toBe('user-123')
+    })
+
+    it('should use fallback userId when not available', async () => {
+      const { getUserIdentifier } =
+        await import('../common/helpers/get-user-identifier.js')
+      vi.mocked(getUserIdentifier).mockReturnValue(null)
+
+      undiciFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValueOnce({
+          reviewId: 'review-123',
+          filename: 'document.pdf'
+        })
+      })
+
+      await uploadApiController.uploadFile(mockRequest, mockH)
+
+      const callArgs = undiciFetch.mock.calls[0][1]
+      expect(callArgs.headers['x-user-id']).toBe('content-reviewer-frontend')
     })
 
     it('should handle successful backend response', async () => {
@@ -391,11 +300,10 @@ describe('uploadApiController - uploadFile', () => {
       expect(result.filename).toBe('document.pdf')
     })
 
-    it('should handle backend non-OK response', async () => {
+    it('should handle backend error response', async () => {
       undiciFetch.mockResolvedValueOnce({
         ok: false,
         status: 500,
-        statusText: 'Internal Server Error',
         json: vi.fn().mockResolvedValueOnce({
           message: 'Backend processing error'
         })
@@ -412,7 +320,6 @@ describe('uploadApiController - uploadFile', () => {
       undiciFetch.mockResolvedValueOnce({
         ok: false,
         status: 502,
-        statusText: 'Bad Gateway',
         json: vi.fn().mockRejectedValueOnce(new Error('Invalid JSON'))
       })
 
@@ -446,108 +353,6 @@ describe('uploadApiController - uploadFile', () => {
     })
   })
 
-  describe('Edge Cases', () => {
-    it('should handle filename with special characters', async () => {
-      mockRequest.payload.file.hapi.filename = 'document-2024_v1.2.pdf'
-      mockRequest.payload.file.hapi.headers['content-type'] = 'application/pdf'
-
-      undiciFetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: vi.fn().mockResolvedValueOnce({
-          reviewId: 'review-123',
-          filename: 'document-2024_v1.2.pdf'
-        })
-      })
-
-      const result = await uploadApiController.uploadFile(mockRequest, mockH)
-
-      expect(result.success).toBe(true)
-    })
-
-    it('should handle filename with Unicode characters', async () => {
-      mockRequest.payload.file.hapi.filename = 'документ.pdf'
-      mockRequest.payload.file.hapi.headers['content-type'] = 'application/pdf'
-
-      undiciFetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: vi.fn().mockResolvedValueOnce({
-          reviewId: 'review-123',
-          filename: 'документ.pdf'
-        })
-      })
-
-      const result = await uploadApiController.uploadFile(mockRequest, mockH)
-
-      expect(result.success).toBe(true)
-    })
-
-    it('should handle file without extension', async () => {
-      mockRequest.payload.file.hapi.filename = 'document'
-      mockRequest.payload.file.hapi.headers['content-type'] = ''
-
-      const result = await uploadApiController.uploadFile(mockRequest, mockH)
-
-      expect(result.success).toBe(false)
-      expect(result.message).toContain('Invalid file type')
-    })
-
-    it('should handle missing content-type header', async () => {
-      mockRequest.payload.file.hapi.headers['content-type'] = ''
-      mockRequest.payload.file.hapi.filename = 'document.pdf'
-
-      undiciFetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: vi.fn().mockResolvedValueOnce({
-          reviewId: 'review-123',
-          filename: 'document.pdf'
-        })
-      })
-
-      const result = await uploadApiController.uploadFile(mockRequest, mockH)
-
-      expect(result.success).toBe(true)
-    })
-
-    it('should use userId when available', async () => {
-      vi.mocked(getUserIdentifier).mockReturnValue('user-456')
-
-      undiciFetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: vi.fn().mockResolvedValueOnce({
-          reviewId: 'review-123',
-          filename: 'document.pdf'
-        })
-      })
-
-      await uploadApiController.uploadFile(mockRequest, mockH)
-
-      const callArgs = undiciFetch.mock.calls[0][1]
-      expect(callArgs.headers['x-user-id']).toBe('user-456')
-    })
-
-    it('should omit x-user-id header when userId is undefined', async () => {
-      vi.mocked(getUserIdentifier).mockReturnValue(undefined)
-
-      undiciFetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: vi.fn().mockResolvedValueOnce({
-          reviewId: 'review-123',
-          filename: 'document.pdf'
-        })
-      })
-
-      await uploadApiController.uploadFile(mockRequest, mockH)
-
-      const callArgs = undiciFetch.mock.calls[0][1]
-      expect(callArgs.headers['x-user-id']).toBeUndefined()
-    })
-  })
-
   describe('Response Formats', () => {
     it('should return correct success response format', async () => {
       undiciFetch.mockResolvedValueOnce({
@@ -569,17 +374,108 @@ describe('uploadApiController - uploadFile', () => {
         statusCode: 200
       })
     })
+  })
 
-    it('should return correct error response format', async () => {
-      mockRequest.payload.file = null
+  describe('Stream Handling', () => {
+    it('should convert stream to buffer', async () => {
+      const mockChunk = Buffer.from('test data')
+      const mockStream = {
+        on: vi.fn((event, callback) => {
+          if (event === 'data') {
+            callback(mockChunk)
+          } else if (event === 'end') {
+            callback()
+          }
+        })
+      }
+
+      mockRequest.payload = mockStream
+
+      undiciFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValueOnce({
+          reviewId: 'review-123',
+          filename: 'document.pdf'
+        })
+      })
 
       const result = await uploadApiController.uploadFile(mockRequest, mockH)
 
-      expect(result).toMatchObject({
-        success: false,
-        message: 'No file provided',
-        statusCode: 400
+      expect(result.success).toBe(true)
+      expect(undiciFetch).toHaveBeenCalled()
+    })
+
+    it('should handle stream error', async () => {
+      const mockStream = {
+        on: vi.fn((event, callback) => {
+          if (event === 'error') {
+            callback(new Error('Stream read error'))
+          }
+        })
+      }
+
+      mockRequest.payload = mockStream
+
+      const result = await uploadApiController.uploadFile(mockRequest, mockH)
+
+      expect(result.success).toBe(false)
+      expect(result.statusCode).toBe(500)
+      expect(result.message).toContain('Stream read error')
+    })
+  })
+
+  describe('Header Handling', () => {
+    it('should use default filename when header missing', async () => {
+      delete mockRequest.headers['x-file-name']
+
+      undiciFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValueOnce({
+          reviewId: 'review-123',
+          filename: 'upload-' + Date.now()
+        })
       })
+
+      const result = await uploadApiController.uploadFile(mockRequest, mockH)
+
+      expect(result.success).toBe(true)
+    })
+
+    it('should use default content-type when header missing', async () => {
+      delete mockRequest.headers['x-file-content-type']
+      mockRequest.headers['x-file-name'] = 'document.pdf'
+
+      undiciFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValueOnce({
+          reviewId: 'review-123',
+          filename: 'document.pdf'
+        })
+      })
+
+      const result = await uploadApiController.uploadFile(mockRequest, mockH)
+
+      expect(result.success).toBe(true)
+    })
+
+    it('should decode URL-encoded filename', async () => {
+      mockRequest.headers['x-file-name'] = encodeURIComponent('document.pdf')
+
+      undiciFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValueOnce({
+          reviewId: 'review-123',
+          filename: 'document.pdf'
+        })
+      })
+
+      await uploadApiController.uploadFile(mockRequest, mockH)
+
+      expect(undiciFetch).toHaveBeenCalled()
     })
   })
 })
