@@ -30,10 +30,9 @@ function registerApiRoutes(server) {
     options: {
       payload: {
         output: 'stream',
-        parse: true,
-        multipart: true,
+        parse: false,
         maxBytes: 10 * 1024 * 1024, // 10MB
-        allow: 'multipart/form-data'
+        allow: 'application/octet-stream' // Expect raw binary with metadata in headers, not multipart
       }
     }
   })
