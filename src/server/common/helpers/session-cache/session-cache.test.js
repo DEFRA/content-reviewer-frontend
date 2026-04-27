@@ -10,22 +10,14 @@ const MOCK_COOKIE_SECURE = false
 vi.mock('../../../../config/config.js', () => ({
   config: {
     get: vi.fn((key) => {
-      if (key === 'session') {
-        return {
-          cache: {
-            name: MOCK_CACHE_NAME,
-            ttl: MOCK_CACHE_TTL
-          },
-          cookie: {
-            password: MOCK_COOKIE_PASSWORD,
-            ttl: MOCK_COOKIE_TTL
-          }
-        }
+      const configMap = {
+        session: {
+          cache: { name: MOCK_CACHE_NAME, ttl: MOCK_CACHE_TTL },
+          cookie: { password: MOCK_COOKIE_PASSWORD, ttl: MOCK_COOKIE_TTL }
+        },
+        'session.cookie.secure': MOCK_COOKIE_SECURE
       }
-      if (key === 'session.cookie.secure') {
-        return MOCK_COOKIE_SECURE
-      }
-      return null
+      return configMap[key] ?? null
     })
   }
 }))
