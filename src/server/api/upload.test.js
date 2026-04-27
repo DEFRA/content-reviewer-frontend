@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { fetch as undiciFetch } from 'undici'
 import { uploadApiController } from './upload.js'
 
 // Mock undici
@@ -36,8 +37,6 @@ vi.mock('../common/helpers/logging/logger.js', () => ({
 vi.mock('../common/helpers/get-user-identifier.js', () => ({
   getUserIdentifier: vi.fn((request) => 'user-123')
 }))
-
-import { fetch as undiciFetch } from 'undici'
 
 describe('uploadApiController - uploadFile', () => {
   let mockRequest

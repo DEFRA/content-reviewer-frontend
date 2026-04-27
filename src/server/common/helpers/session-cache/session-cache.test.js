@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const MOCK_CACHE_NAME = 'session'
-const MOCK_CACHE_TTL = 36000000
-const MOCK_COOKIE_TTL = 36000000
+const MOCK_CACHE_TTL = 3600000
+const MOCK_COOKIE_TTL = 3600000
 const MOCK_COOKIE_PASSWORD = 'the-password-must-be-at-least-32-characters-long'
 const MOCK_COOKIE_SECURE = false
 
