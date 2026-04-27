@@ -13,14 +13,7 @@ const keepAliveAgent = new Agent({
 })
 
 const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500
-const HTTP_STATUS_BAD_REQUEST = 400
 const HTTP_STATUS_OK = 200
-const ALLOWED_MIME_TYPES = [
-  'application/pdf',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-]
-const ALLOWED_EXTENSIONS = ['pdf', 'doc', 'docx']
 
 /**
  * Convert Hapi file stream to Buffer
@@ -221,11 +214,7 @@ export const uploadApiController = {
 
       // Handle backend response
       if (!response.ok) {
-        return await handleBackendFailure(
-          response,
-          fileName,
-          h
-        )
+        return await handleBackendFailure(response, fileName, h)
       }
 
       return await processSuccessfulUpload(
