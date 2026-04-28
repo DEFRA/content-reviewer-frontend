@@ -24,6 +24,13 @@ vi.mock('../common/helpers/get-user-identifier.js', () => ({
   getUserIdentifier: vi.fn(() => null)
 }))
 
+vi.mock('../common/helpers/service-token-helper.js', () => ({
+  getServiceTokenHeaders: vi.fn(() => ({
+    'x-service-token': 'test-token',
+    'x-timestamp': '1234567890'
+  }))
+}))
+
 // Use vi.hoisted so MockAgent is available when the factory is hoisted
 const { MockAgent } = vi.hoisted(() => ({
   MockAgent: class {

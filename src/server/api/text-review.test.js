@@ -34,6 +34,13 @@ vi.mock('../common/helpers/get-user-identifier.js', () => ({
   getUserIdentifier: vi.fn(() => 'user-123')
 }))
 
+vi.mock('../common/helpers/service-token-helper.js', () => ({
+  getServiceTokenHeaders: vi.fn(() => ({
+    'x-service-token': 'test-token',
+    'x-timestamp': '1234567890'
+  }))
+}))
+
 // vi.hoisted ensures these are available inside the hoisted vi.mock() factory.
 // The Agent stub is a plain object factory – undici Agent is only used as `new Agent(opts)`
 // and the instance is passed as `dispatcher`; tests never call methods on it.

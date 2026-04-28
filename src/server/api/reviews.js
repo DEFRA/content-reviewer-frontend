@@ -1,6 +1,7 @@
 import { config } from '../../config/config.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
 import { getUserIdentifier } from '../common/helpers/get-user-identifier.js'
+import { getServiceTokenHeaders } from '../common/helpers/service-token-helper.js'
 import { Agent } from 'undici'
 
 const logger = createLogger()
@@ -90,6 +91,7 @@ async function fetchReviewsFromBackend(limit, skip, _page, userId = null) {
   const endpoint = `${backendUrl}/api/reviews?${params.toString()}`
   const startTime = Date.now()
   const response = await fetch(endpoint, {
+    headers: getServiceTokenHeaders('GET', '/api/reviews'),
     // Pass the undici Agent as dispatcher so the built-in fetch reuses TCP connections
     dispatcher: keepAliveAgent
   })

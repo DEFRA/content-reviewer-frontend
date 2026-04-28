@@ -25,6 +25,13 @@ vi.mock('../common/helpers/get-user-identifier.js', () => ({
   getUserIdentifier: vi.fn(() => 'user-abc')
 }))
 
+vi.mock('../common/helpers/service-token-helper.js', () => ({
+  getServiceTokenHeaders: vi.fn(() => ({
+    'x-service-token': 'test-token',
+    'x-timestamp': '1234567890'
+  }))
+}))
+
 const { fetchGovUkHtmlMock, parseAllowedUrlMock } = vi.hoisted(() => ({
   fetchGovUkHtmlMock: vi.fn(),
   parseAllowedUrlMock: vi.fn()

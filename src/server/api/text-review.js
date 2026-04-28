@@ -1,6 +1,7 @@
 import { config } from '../../config/config.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
 import { getUserIdentifier } from '../common/helpers/get-user-identifier.js'
+import { getServiceTokenHeaders } from '../common/helpers/service-token-helper.js'
 import { Agent } from 'undici'
 
 const logger = createLogger()
@@ -82,6 +83,7 @@ async function submitToBackend(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      ...getServiceTokenHeaders('POST', '/api/review/text'),
       ...(userId ? { 'x-user-id': userId } : {})
     },
     body: JSON.stringify({

@@ -2,6 +2,7 @@ import { load } from 'cheerio'
 import { createLogger } from '../common/helpers/logging/logger.js'
 import { config } from '../../config/config.js'
 import { getUserIdentifier } from '../common/helpers/get-user-identifier.js'
+import { getServiceTokenHeaders } from '../common/helpers/service-token-helper.js'
 import { Agent } from 'undici'
 import { fetchGovUkHtml, parseAllowedUrl } from './fetch-url.js'
 
@@ -351,6 +352,7 @@ async function submitToBackend(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...getServiceTokenHeaders('POST', '/api/review/text'),
         ...(userId ? { 'x-user-id': userId } : {})
       },
       body: JSON.stringify({

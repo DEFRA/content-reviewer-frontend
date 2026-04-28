@@ -303,6 +303,13 @@ export const config = convict({
       default: 'http://localhost:3000/auth/logout',
       env: 'AZURE_POST_LOGOUT_REDIRECT_URI'
     }
+  },
+  backendServiceToken: {
+    doc: 'Shared secret for HMAC-based service authentication with backend',
+    format: String,
+    sensitive: true,
+    default: '',
+    env: 'BACKEND_SERVICE_TOKEN'
   }
 })
 
