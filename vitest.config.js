@@ -21,7 +21,13 @@ export default defineConfig({
         'vitest.config.js',
         '.sonarlint',
         'babel.config.cjs'
-      ]
+      ],
+      thresholds: {
+        lines: 70,
+        functions: 70,
+        branches: 70,
+        statements: 70
+      }
     }
   }
 })

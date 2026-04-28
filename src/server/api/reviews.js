@@ -6,6 +6,8 @@ import { Agent } from 'undici'
 const logger = createLogger()
 const backendUrl = config.get('backendUrl')
 const PAGE_SIZE = 25
+const MAX_PAGE = 1000 // caps skip at MAX_PAGE * PAGE_SIZE = 25,000 items
+const MAX_LIMIT = 100 // hard ceiling on requested page size
 const INTERNAL_SERVER_ERROR = 500
 const OK = 200
 
@@ -26,8 +28,11 @@ const keepAliveAgent = new Agent({
  * @returns {Object} Pagination parameters
  */
 function calculatePagination(query) {
-  const page = Number.parseInt(query.page) || 1
-  const limit = Number.parseInt(query.limit) || PAGE_SIZE
+  const page = Math.min(Math.max(Number.parseInt(query.page) || 1, 1), MAX_PAGE)
+  const limit = Math.min(
+    Math.max(Number.parseInt(query.limit) || PAGE_SIZE, 1),
+    MAX_LIMIT
+  )
   // When limit exceeds PAGE_SIZE, paginate in PAGE_SIZE chunks so each page
   // returns exactly PAGE_SIZE records (matching what the SSR home controller does).
   const effectivePageSize = Math.min(limit, PAGE_SIZE)
