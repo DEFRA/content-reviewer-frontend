@@ -1,6 +1,7 @@
 import { Agent } from 'undici'
 import { config } from '../../config/config.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
+import { getServiceTokenHeaders } from '../common/helpers/service-token-helper.js'
 
 const HTTP_STATUS_OK = 200
 const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500
@@ -35,7 +36,8 @@ export async function deleteReviewController(request, h) {
     const response = await fetch(endpoint, {
       method: 'DELETE',
       headers: {
-        Accept: 'application/json'
+        Accept: 'application/json',
+        ...getServiceTokenHeaders('DELETE', `/api/reviews/${reviewId}`)
       },
       dispatcher: keepAliveAgent
     })

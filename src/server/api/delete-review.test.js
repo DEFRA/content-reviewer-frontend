@@ -29,6 +29,13 @@ vi.mock('../common/helpers/logging/logger.js', () => ({
   }))
 }))
 
+vi.mock('../common/helpers/service-token-helper.js', () => ({
+  getServiceTokenHeaders: vi.fn(() => ({
+    'x-service-token': 'test-token',
+    'x-timestamp': '1234567890'
+  }))
+}))
+
 // Use vi.hoisted so the Agent class reference is available when the factory is hoisted
 const { MockAgent } = vi.hoisted(() => {
   function MockAgent() {}
