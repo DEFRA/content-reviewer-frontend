@@ -2,7 +2,6 @@ import { Agent, fetch as undiciFetch } from 'undici'
 import { config } from '../../config/config.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
 import { getUserIdentifier } from '../common/helpers/get-user-identifier.js'
-import { readFile } from 'node:fs/promises'
 
 const logger = createLogger()
 
@@ -14,129 +13,63 @@ const keepAliveAgent = new Agent({
 })
 
 const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500
-const HTTP_STATUS_BAD_REQUEST = 400
 const HTTP_STATUS_OK = 200
-const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024
-const MAX_FILE_SIZE_MB = 10
-const ALLOWED_MIME_TYPES = [
-  'application/pdf',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-]
-const ALLOWED_EXTENSIONS = ['pdf', 'doc', 'docx']
 
 /**
- * Extract file information for logging and validation
+ * Convert Hapi file stream to Buffer
  */
-function extractFileInfo(file) {
-  return {
-    filename: file?.hapi?.filename || file?.filename,
-    contentType:
-      file?.hapi?.headers?.['content-type'] ||
-      file?.headers?.['content-type'] ||
-      file?.contentType
-  }
-}
+async function fileStreamToBuffer(file) {
+  return new Promise((resolve, reject) => {
+    const chunks = []
 
-/**
- * Validate file is present in request
- */
-function validateFilePresent(file, h) {
-  if (!file) {
-    logger.warn('Upload request failed: No file provided')
-    return h
-      .response({
-        success: false,
-        message: 'No file provided'
-      })
-      .code(HTTP_STATUS_BAD_REQUEST)
-  }
-  return null
-}
+    if (!file.on) {
+      // File is already a buffer or blob
+      resolve(file)
+      return
+    }
 
-/**
- * Validate file size does not exceed maximum.
- * Receives the actual byte length from the buffered content.
- */
-function validateFileSize(byteLength, fileInfo, h) {
-  if (byteLength > MAX_FILE_SIZE_BYTES) {
-    const sizeMB = (byteLength / 1024 / 1024).toFixed(2)
-    logger.warn('Upload validation failed: File too large', {
-      filename: fileInfo.filename,
-      size: sizeMB + 'MB',
-      maxSize: MAX_FILE_SIZE_MB + 'MB'
+    file.on('data', (chunk) => {
+      chunks.push(chunk)
     })
-    return h
-      .response({
-        success: false,
-        message: `File too large. Maximum size is ${MAX_FILE_SIZE_MB}MB. Your file is ${sizeMB}MB.`
-      })
-      .code(HTTP_STATUS_BAD_REQUEST)
-  }
-  return null
-}
 
-/**
- * Validate file type is allowed
- */
-function validateFileType(fileInfo, h) {
-  const extension = fileInfo.filename.split('.').pop().toLowerCase()
-  const contentType = fileInfo.contentType
-
-  if (
-    !ALLOWED_MIME_TYPES.includes(contentType) &&
-    !ALLOWED_EXTENSIONS.includes(extension)
-  ) {
-    logger.warn('Upload validation failed: Invalid file type', {
-      filename: fileInfo.filename,
-      contentType: fileInfo.contentType,
-      extension,
-      allowedMimeTypes: ALLOWED_MIME_TYPES,
-      allowedExtensions: ALLOWED_EXTENSIONS
+    file.on('end', () => {
+      resolve(Buffer.concat(chunks))
     })
-    return h
-      .response({
-        success: false,
-        message:
-          'Invalid file type. Please upload a PDF or Word document (.pdf, .doc, .docx).'
-      })
-      .code(HTTP_STATUS_BAD_REQUEST)
-  }
-  return null
+
+    file.on('error', (error) => {
+      reject(new Error(`File stream error: ${error.message}`))
+    })
+  })
 }
 
 /**
  * Send file to backend service as application/octet-stream
  */
-async function sendFileToBackend(file, fileBuffer, fileInfo, request) {
+async function sendFileToBackend(
+  fileBuffer,
+  fileName,
+  contentType,
+  mimeType,
+  userId
+) {
   const backendUrl = config.get('backendUrl')
-  logger.info('Preparing to forward file to backend', {
-    backendUrl,
-    filename: fileInfo.filename
-  })
-
+  logger.info(
+    `Preparing to forward file to backend service with filename: ${fileName} and content type: ${contentType}`
+  )
   const backendRequestStart = Date.now()
-
-  logger.info('Initiating backend upload request', {
-    filename: fileInfo.filename,
-    contentType: fileInfo.contentType,
-    bodyBytes: fileBuffer.length,
-    backendEndpoint: `${backendUrl}/api/upload`
-  })
-
-  logger.info(`Uploading file to backend: ${fileInfo.filename}`)
-
-  const userId = getUserIdentifier(request)
   try {
-    const formData = new FormData()
-    formData.append('file', file)
+    logger.info(
+      `File converted to buffer. Size: ${fileBuffer.length} bytes for: ${fileName}`
+    )
 
     const response = await undiciFetch(`${backendUrl}/api/upload`, {
       method: 'POST',
-      body: formData,
+      body: fileBuffer,
       headers: {
-        'x-file-name': encodeURIComponent(fileInfo.filename),
-        ...(userId ? { 'x-user-id': userId } : {})
+        'content-type': 'application/octet-stream', // ✅ Set correct content-type
+        'x-file-name': encodeURIComponent(fileName),
+        'x-file-content-type': mimeType, // ✅ Pass original MIME type
+        'x-user-id': userId || 'content-reviewer-frontend' // ✅ Pass user identifier for logging
       },
       dispatcher: keepAliveAgent
     })
@@ -144,25 +77,9 @@ async function sendFileToBackend(file, fileBuffer, fileInfo, request) {
     const backendRequestEnd = Date.now()
     const backendRequestTime = (backendRequestEnd - backendRequestStart) / 1000
 
-    logger.info('Backend upload request completed', {
-      filename: fileInfo.filename,
-      responseStatus: response.status,
-      responseStatusText: response.statusText,
-      requestTime: `${backendRequestTime}s`,
-      success: response.ok
-    })
-
     return { response, backendRequestTime }
   } catch (error) {
-    const backendRequestEnd = Date.now()
-    const backendRequestTime = (backendRequestEnd - backendRequestStart) / 1000
-    logger.error('Backend upload network error', {
-      filename: fileInfo.filename, // ✅ Use fileInfo
-      error: error.message,
-      errorCode: error.code,
-      requestTime: `${backendRequestTime}s`,
-      userId
-    })
+    logger.error('Error sending file to backend service')
     throw error
   }
 }
@@ -170,7 +87,7 @@ async function sendFileToBackend(file, fileBuffer, fileInfo, request) {
 /**
  * Handle backend upload failure
  */
-async function handleBackendFailure(response, fileInfo, backendRequestTime, h) {
+async function handleBackendFailure(response, fileName, h) {
   let errorMessage = 'Failed to upload file to backend'
   try {
     const errorData = await response.json()
@@ -178,13 +95,9 @@ async function handleBackendFailure(response, fileInfo, backendRequestTime, h) {
   } catch {
     // Response body was not JSON — keep default message
   }
-  logger.error('Backend upload request failed', {
-    filename: fileInfo.filename,
-    status: response.status,
-    statusText: response.statusText,
-    errorMessage,
-    requestTime: `${backendRequestTime}s`
-  })
+  logger.error(
+    `Backend upload failed for file: ${fileName} with status: ${response.status} and message: ${errorMessage}`
+  )
   return h
     .response({
       success: false,
@@ -198,7 +111,7 @@ async function handleBackendFailure(response, fileInfo, backendRequestTime, h) {
  */
 async function processSuccessfulUpload(
   response,
-  fileInfo,
+  fileName,
   backendRequestTime,
   startTime,
   h
@@ -206,12 +119,9 @@ async function processSuccessfulUpload(
   const result = await response.json()
   const totalProcessingTime = (Date.now() - startTime) / 1000
 
-  logger.info('Upload completed successfully', {
-    filename: fileInfo.filename,
-    reviewId: result.reviewId,
-    totalProcessingTime: `${totalProcessingTime}s`,
-    backendRequestTime: `${backendRequestTime}s`
-  })
+  logger.info(
+    `File: ${fileName} uploaded successfully to backend. Backend response time: ${backendRequestTime}s, Total processing time: ${totalProcessingTime}s`
+  )
 
   logger.info(`File uploaded successfully: ${result.reviewId || 'unknown'}`)
 
@@ -257,78 +167,59 @@ export const uploadApiController = {
    */
   async uploadFile(request, h) {
     const startTime = Date.now()
-    logger.info('Upload API request started', {
-      userAgent: request.headers['user-agent'],
-      clientIP: request.info.remoteAddress
-    })
+
+    logger.info(
+      `Received upload request with content-type: ${request.headers['content-type']}`
+    )
 
     try {
-      const file = request.payload.file
+      // ✅ With octet-stream, request.payload is the raw stream (NOT an object)
+      const fileStream = request.payload
 
-      logger.info('Processing upload request', {
-        hasFile: !!file,
-        userAgent: request.headers['user-agent'],
-        clientIP: request.info.remoteAddress
-      })
+      // ✅ Get filename from header (since we're not receiving multipart)
+      const fileName = request.headers['x-file-name']
+        ? decodeURIComponent(request.headers['x-file-name'])
+        : `upload-${Date.now()}`
 
-      // Validate file is present
-      const fileNotPresentError = validateFilePresent(file, h)
-      if (fileNotPresentError) {
-        return fileNotPresentError
-      }
+      const contentType =
+        request.headers['content-type'] || 'application/octet-stream'
+      const mimeType =
+        request.headers['x-file-content-type'] || 'application/pdf'
 
-      const fileInfo = extractFileInfo(file)
+      logger.info(
+        `Extracted file info - filename: ${fileName}, contentType: ${contentType}, mimeType: ${mimeType}`
+      )
 
-      // Validate file type before buffering (cheap check, no I/O)
-      const fileTypeError = validateFileType(fileInfo, h)
-      if (fileTypeError) {
-        return fileTypeError
-      }
+      // ✅ Convert stream to buffer
+      logger.info('Converting file stream to buffer...')
+      const fileBuffer = await fileStreamToBuffer(fileStream)
 
-      // Buffer the file once — needed for size validation and form-data forwarding
-      const fileBuffer = await readFile(file.path)
+      logger.info(
+        `File converted to buffer. Size: ${fileBuffer.length} bytes for: ${fileName}`
+      )
 
-      logger.info('File received for processing', {
-        filename: fileInfo.filename,
-        byteLength: fileBuffer.length,
-        contentType: fileInfo.contentType
-      })
-
-      // Validate file size using actual buffered byte count
-      const fileSizeError = validateFileSize(fileBuffer.length, fileInfo, h)
-      if (fileSizeError) {
-        return fileSizeError
-      }
-
-      logger.info('File validation passed successfully', {
-        filename: fileInfo.filename,
-        byteLength: fileBuffer.length,
-        contentType: fileInfo.contentType
-      })
+      const userId = getUserIdentifier(request)
+      logger.info(`User identifier for upload: ${userId}`)
 
       // Send file to backend using the pre-buffered content
       const backendResult = await sendFileToBackend(
-        file,
         fileBuffer,
-        fileInfo,
-        request
+        fileName,
+        contentType,
+        mimeType,
+        userId
       )
       const response = backendResult.response
       const backendRequestTime = backendResult.backendRequestTime
 
       // Handle backend response
       if (!response.ok) {
-        return await handleBackendFailure(
-          response,
-          fileInfo,
-          backendRequestTime,
-          h
-        )
+        return await handleBackendFailure(response, fileName, h)
       }
 
       return await processSuccessfulUpload(
         response,
-        fileInfo,
+        fileName,
         backendRequestTime,
         startTime,
         h

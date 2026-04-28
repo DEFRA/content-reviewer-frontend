@@ -22,6 +22,7 @@ const HTTP_STATUS = {
 }
 
 const GOVUK_BASE_URL = 'https://www.gov.uk'
+const GOVUK_HOSTNAME = 'www.gov.uk'
 const MAX_EXTRACTED_CHARS = 100_000
 const MIN_USEFUL_CONTENT_CHARS = 200
 const SLUG_MAX_LENGTH = 50
@@ -252,11 +253,13 @@ function mapFetchError(error) {
 
 /**
  * Step 1: Fetch the GOV.UK page server-side.
- * @returns {Promise<{ html: string } | { errorResponse: object }>}
+ * Returns { html, finalUrl } on success so the caller can verify the redirect
+ * chain stayed within www.gov.uk (Check 4).
+ * @returns {Promise<{ html: string, finalUrl: string } | { errorResponse: object }>}
  */
 function fetchPage(parsedUrl, url, h) {
   return fetchGovUkHtml(parsedUrl)
-    .then((html) => ({ html }))
+    .then(({ html, finalUrl }) => ({ html, finalUrl }))
     .catch((fetchError) => {
       logger.error(
         { err: fetchError, url },
@@ -268,6 +271,48 @@ function fetchPage(parsedUrl, url, h) {
           .code(HTTP_STATUS.INTERNAL_SERVER_ERROR)
       }
     })
+}
+
+/**
+ * Step 1b: Verify the HTTP redirect chain remained within www.gov.uk.
+ *
+ * node-fetch / undici follow 3xx redirects automatically, so `finalUrl` is the
+ * URL that ultimately served the response.  If a redirect leads outside GOV.UK
+ * (e.g. a misconfigured domain alias), we must reject the request rather than
+ * silently extracting off-domain content.
+ *
+ * @param {string} finalUrl - response.url from the fetch (final URL after redirects)
+ * @param {string} url - original URL submitted by the user (for logging)
+ * @param {object} h - Hapi response toolkit
+ * @returns {{ errorResponse?: object }}
+ */
+function checkRedirectTarget(finalUrl, url, h) {
+  if (!finalUrl) {
+    return {} // Can't determine final URL — allow through (unexpected edge case)
+  }
+  let finalHostname
+  try {
+    finalHostname = new URL(finalUrl).hostname
+  } catch {
+    return {} // Unparseable finalUrl — allow through
+  }
+  if (finalHostname !== GOVUK_HOSTNAME) {
+    logger.warn(
+      { url, finalUrl, finalHostname },
+      'url-review: redirect led outside www.gov.uk'
+    )
+    return {
+      errorResponse: h
+        .response({
+          success: false,
+          message:
+            'The URL redirected to a page outside GOV.UK. ' +
+            'Please provide a direct GOV.UK link.'
+        })
+        .code(HTTP_STATUS.BAD_REQUEST)
+    }
+  }
+  return {}
 }
 
 /**
@@ -376,9 +421,18 @@ export const urlReviewController = {
 
     logger.info({ url: parsedUrl.toString() }, 'url-review: fetching page')
 
-    const { html, errorResponse: fetchErr } = await fetchPage(parsedUrl, url, h)
+    const {
+      html,
+      finalUrl,
+      errorResponse: fetchErr
+    } = await fetchPage(parsedUrl, url, h)
     if (fetchErr) {
       return fetchErr
+    }
+
+    const { errorResponse: redirectErr } = checkRedirectTarget(finalUrl, url, h)
+    if (redirectErr) {
+      return redirectErr
     }
 
     const { extracted, errorResponse: extractErr } = extractPage(html, url, h)

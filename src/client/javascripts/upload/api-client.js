@@ -171,12 +171,18 @@ export async function submitTextReview(textContent) {
 export async function submitFileUpload(file) {
   try {
     showProgress('Uploading to server...', PROGRESS_INITIAL)
-    const formData = new FormData()
-    formData.append('file', file)
+    // ✅ Read file as ArrayBuffer
+    const arrayBuffer = await file.arrayBuffer()
+
     const response = await fetch('/api/upload', {
       method: 'POST',
-      credentials: CREDENTIALS_SAME_ORIGIN,
-      body: formData
+      body: arrayBuffer,
+      headers: {
+        'content-type': 'application/octet-stream', // ✅ Set as octet-stream
+        'x-file-name': encodeURIComponent(file.name),
+        'x-file-content-type': file.type || 'application/pdf'
+      },
+      credentials: CREDENTIALS_SAME_ORIGIN
     })
     showProgress('Processing upload...', PROGRESS_PROCESSING)
     if (!response.ok) {

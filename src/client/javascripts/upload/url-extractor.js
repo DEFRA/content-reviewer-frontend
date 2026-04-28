@@ -84,21 +84,48 @@ const NOISE_SELECTORS = [
 ].join(', ')
 
 /**
- * Validates that the provided string is a well-formed URL pointing to a gov.uk
- * page. Returns the parsed URL on success or null if invalid.
+ * Validates and normalises the provided URL string.
+ * Returns the parsed (normalised) URL on success or null if invalid.
+ *
+ * Checks applied (in order):
+ *  1. Well-formed URL syntax — new URL() must not throw.
+ *  2. Scheme must be http or https (rejects javascript:, data:, ftp: etc.).
+ *  3. No embedded credentials (user:password@host).
+ *  4. Hostname must be www.gov.uk.
+ *  5. Path normalised to lower-case so /Guidance/Foo and /guidance/foo
+ *     are treated identically (GOV.UK itself redirects upper-case paths).
+ *
+ * Note: redirect-chain validation (Check 4 from NCSC requirements) can only be
+ * performed server-side after the page is fetched.
+ *
  * @param {string} urlString
  * @returns {URL|null}
  */
 export function parseGovUkUrl(urlString) {
+  if (!urlString) {
+    return null
+  }
   let parsed
   try {
     parsed = new URL(urlString)
   } catch {
+    // Check 1: URL syntax is invalid
     return null
   }
+  // Check 2: Only http and https schemes are accepted
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    return null
+  }
+  // Check 3: Reject URLs with embedded credentials
+  if (parsed.username || parsed.password) {
+    return null
+  }
+  // Hostname check: must be www.gov.uk
   if (parsed.hostname !== GOVUK_HOSTNAME) {
     return null
   }
+  // Check 5: Normalise path to lower-case
+  parsed.pathname = parsed.pathname.toLowerCase()
   return parsed
 }
 

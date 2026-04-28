@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { fetchUrlController } from './fetch-url.js'
+import { fetchUrlController, parseAllowedUrl } from './fetch-url.js'
 
 const HTTP_STATUS_OK = 200
 const HTTP_STATUS_BAD_REQUEST = 400
@@ -61,6 +61,7 @@ describe('fetchUrlController - valid gov.uk URLs', () => {
   beforeEach(() => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
+      url: GOVUK_URL,
       text: () => Promise.resolve(MOCK_HTML)
     })
   })
@@ -287,5 +288,64 @@ describe('fetchUrlController - setTimeout abort arrow function', () => {
     const result = await handlerPromise
     expect(result._code).toBe(HTTP_STATUS_INTERNAL_SERVER_ERROR)
     expect(result._body.message).toContain('timed out')
+  })
+})
+
+// ── parseAllowedUrl - URL validation checks ───────────────────────────────────
+
+describe('parseAllowedUrl - URL validation', () => {
+  it('returns null for an empty string', () => {
+    expect(parseAllowedUrl('')).toBeNull()
+  })
+
+  it('returns null for undefined input', () => {
+    expect(parseAllowedUrl(undefined)).toBeNull()
+  })
+
+  it('returns null for a non-URL string', () => {
+    expect(parseAllowedUrl('not-a-url')).toBeNull()
+  })
+
+  it('returns null for a javascript: scheme URL', () => {
+    expect(parseAllowedUrl('javascript:alert(1)')).toBeNull()
+  })
+
+  it('returns null for a data: scheme URL', () => {
+    expect(parseAllowedUrl('data:text/html,<h1>test</h1>')).toBeNull()
+  })
+
+  it('returns null for a ftp: scheme URL', () => {
+    expect(parseAllowedUrl('ftp://www.gov.uk/test')).toBeNull()
+  })
+
+  it('returns null when URL contains embedded credentials', () => {
+    expect(parseAllowedUrl('https://user:pass@www.gov.uk/test')).toBeNull()
+  })
+
+  it('returns null for a non-gov.uk hostname', () => {
+    expect(parseAllowedUrl('https://example.com/test')).toBeNull()
+  })
+
+  it('accepts https://www.gov.uk URL and returns a parsed URL object', () => {
+    const result = parseAllowedUrl('https://www.gov.uk/guidance/test')
+    expect(result).not.toBeNull()
+    expect(result.hostname).toBe('www.gov.uk')
+  })
+
+  it('accepts http://www.gov.uk URL', () => {
+    const result = parseAllowedUrl('http://www.gov.uk/guidance/test')
+    expect(result).not.toBeNull()
+    expect(result.hostname).toBe('www.gov.uk')
+  })
+
+  it('normalises path to lower-case', () => {
+    const result = parseAllowedUrl('https://www.gov.uk/Guidance/Test-Page')
+    expect(result.pathname).toBe('/guidance/test-page')
+  })
+
+  it('treats mixed-case and lower-case paths as identical after normalisation', () => {
+    const upper = parseAllowedUrl('https://www.gov.uk/Guidance/Foo')
+    const lower = parseAllowedUrl('https://www.gov.uk/guidance/foo')
+    expect(upper.pathname).toBe(lower.pathname)
   })
 })

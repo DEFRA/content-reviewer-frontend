@@ -42,7 +42,7 @@ function getRateLimitEntry(ip, windowMs) {
  * Configure the session cookie authentication strategy on the server.
  *
  * Cookie behaviour:
- *  - TTL: 10 hours (GDS standard – one working day).  keepAlive resets the
+ *  - TTL: 1 hour (GOV.UK One Login standard).  keepAlive resets the
  *    clock on every request so active users are never interrupted mid-session.
  *  - Persistent: the cookie carries a Max-Age so it survives a browser close.
  *    If a user closes the browser and returns within the TTL window they are
@@ -61,7 +61,7 @@ function configureCookieAuth(server) {
       password: sessionConfig.cookie.password,
       isSecure: isProductionEnv, // HTTPS-only in production / CDP
       isSameSite: 'Lax', // CSRF protection while allowing OAuth redirects
-      ttl: sessionConfig.cookie.ttl, // 10 hours – sets Max-Age so cookie persists after browser close
+      ttl: sessionConfig.cookie.ttl, // 1 hour – sets Max-Age; keepAlive resets on every request
       isHttpOnly: true, // Not accessible via JavaScript
       encoding: 'iron' // Encrypted + signed payload
     },
