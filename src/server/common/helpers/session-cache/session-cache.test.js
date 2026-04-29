@@ -63,8 +63,8 @@ describe('sessionCache', () => {
     expect(sessionCache.options.storeBlank).toBe(false)
   })
 
-  it('should set errorOnCacheNotReady to true', () => {
-    expect(sessionCache.options.errorOnCacheNotReady).toBe(true)
+  it('should set errorOnCacheNotReady to false', () => {
+    expect(sessionCache.options.errorOnCacheNotReady).toBe(false)
   })
 
   it('should configure cookieOptions correctly', () => {

@@ -1,5 +1,4 @@
 import { Agent } from 'undici'
-import { authenticatedFetch } from '../../common/helpers/authenticated-fetch.js'
 
 const HTTP_STATUS_OK = 200
 const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500
@@ -44,13 +43,9 @@ export const reviewStatusPollerController = {
       const backendUrl = config.get('backendUrl')
 
       // Fetch status from backend
-      const response = await authenticatedFetch(
-        request,
-        `${backendUrl}/api/results/${reviewId}`,
-        {
-          dispatcher: keepAliveAgent
-        }
-      )
+      const response = await fetch(`${backendUrl}/api/results/${reviewId}`, {
+        dispatcher: keepAliveAgent
+      })
 
       if (!response.ok) {
         throw new Error('Failed to fetch review status')
