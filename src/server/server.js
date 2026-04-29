@@ -129,8 +129,8 @@ function injectUserContext(server) {
   })
 }
 
-function buildServerConfig() {
-  return {
+function createHapiServer() {
+  return hapi.server({
     host: config.get('host'),
     port: config.get('port'),
     compression: { minBytes: 512 }, // Gzip/deflate responses larger than 512 bytes
@@ -152,10 +152,25 @@ function buildServerConfig() {
       }
     ],
     state: { strictHeader: false }
-  }
+  })
 }
 
-function setupRateLimiting(server) {
+async function registerPlugins(server) {
+  await server.register([
+    requestLogger,
+    requestTracing,
+    secureContext,
+    pulse,
+    sessionCache,
+    nunjucksConfig,
+    Scooter, // must be registered before blankie/contentSecurityPolicy
+    contentSecurityPolicy,
+    azureAuth,
+    router
+  ])
+}
+
+function registerRateLimiting(server) {
   const rateLimitEnabled = config.get('rateLimit.enabled')
   if (!rateLimitEnabled) {
     return
@@ -187,7 +202,7 @@ function setupRateLimiting(server) {
   })
 }
 
-function addSecurityHeaders(server) {
+function registerSecurityHeaders(server) {
   server.ext('onPreResponse', (request, h) => {
     const { response } = request
     const headers = {
@@ -207,29 +222,17 @@ function addSecurityHeaders(server) {
 
 export async function createServer() {
   setupProxy()
-  const server = hapi.server(buildServerConfig())
+  const server = createHapiServer()
   server.app.config = config
 
   await server.register(hapiCookie)
   configureCookieAuth(server)
 
-  await server.register([
-    requestLogger,
-    requestTracing,
-    secureContext,
-    pulse,
-    sessionCache,
-    nunjucksConfig,
-    Scooter, // must be registered before blankie/contentSecurityPolicy
-    contentSecurityPolicy,
-    azureAuth,
-    router
-  ])
-
-  setupRateLimiting(server)
+  await registerPlugins(server)
+  registerRateLimiting(server)
   setupAuthRedirect(server)
   server.ext('onPreResponse', catchAll)
-  addSecurityHeaders(server)
+  registerSecurityHeaders(server)
   injectUserContext(server)
 
   return server
