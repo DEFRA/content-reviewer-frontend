@@ -65,7 +65,7 @@ function configureCookieAuth(server) {
       isHttpOnly: true, // Not accessible via JavaScript
       encoding: 'iron' // Encrypted + signed payload
     },
-    redirectTo: false, // Don't redirect to login - auth is optional
+    redirectTo: false, // Redirects handled by setupAuthRedirect onPreResponse
     keepAlive: true, // Resets TTL on every authenticated request
     validate: async (_request, session) => {
       if (!session) {
@@ -79,9 +79,31 @@ function configureCookieAuth(server) {
     }
   })
 
-  // Apply session auth as the default strategy for all routes
-  // Mode set to 'optional' to allow access without login (for users not in Defra tenant)
-  server.auth.default({ strategy: 'session', mode: 'optional' })
+  // Apply session auth as the default strategy for all routes — sign-in is required
+  server.auth.default({ strategy: 'session', mode: 'required' })
+}
+
+/**
+ * Intercept 401 Unauthorized responses and redirect unauthenticated users to
+ * the login page, saving the originally requested URL so they can be returned
+ * there after a successful login. API requests (AJAX) receive a JSON 401
+ * instead so client-side code can handle it without a full page redirect.
+ */
+function setupAuthRedirect(server) {
+  server.ext('onPreResponse', (request, h) => {
+    const { response } = request
+    if (!response.isBoom || response.output.statusCode !== 401) {
+      return h.continue
+    }
+    if (request.path.startsWith('/api/')) {
+      return h.response({ error: 'Unauthorised' }).code(401).takeover()
+    }
+    request.yar.set(
+      'returnTo',
+      request.url.pathname + (request.url.search || '')
+    )
+    return h.redirect('/auth/login').takeover()
+  })
 }
 
 /**
@@ -178,6 +200,7 @@ export async function createServer() {
     })
   }
 
+  setupAuthRedirect(server)
   server.ext('onPreResponse', catchAll)
 
   // ── Additional security response headers (Principle 8) ────────────────────
