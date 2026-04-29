@@ -73,7 +73,12 @@ async function loginHandler(_request, h) {
       scopes: ['openid', 'profile', 'email'],
       redirectUri: config.get('azure.redirectUri'),
       responseMode: 'query', // avoids form_post / SameSite cookie issues
-      prompt: 'select_account' // prevent Edge SSO silent auth with wrong account
+      // 'select_account' shows the account picker so users can choose which
+      // account to sign in with.  Do NOT upgrade @azure/msal-node beyond
+      // 5.0.5 without testing Edge on a Windows machine: 5.1.x adds
+      // sso_reload=true which triggers Edge's WAM broker and causes a state
+      // mismatch 403 on the callback.
+      prompt: 'select_account'
     })
     logger.info('Redirecting to Azure AD login')
     return h.redirect(authUrl)
