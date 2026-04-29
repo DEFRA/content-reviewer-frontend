@@ -3,8 +3,6 @@
 import {
   PROGRESS_INITIAL,
   PROGRESS_PROCESSING,
-  RELOAD_DELAY,
-  REDIRECT_DELAY,
   HISTORY_UPDATE_DELAY,
   PREVIEW_WORDS_LIMIT,
   PREVIEW_CHARS_LIMIT,
@@ -169,6 +167,7 @@ export async function submitTextReview(textContent) {
 }
 
 export async function submitFileUpload(file) {
+  const elements = getElements()
   try {
     showProgress('Uploading to server...', PROGRESS_INITIAL)
     // ✅ Read file as ArrayBuffer
@@ -197,25 +196,12 @@ export async function submitFileUpload(file) {
       fileInputEl.value = ''
     }
     updateMutualExclusion()
-    if (typeof globalThis.updateReviewHistory === 'function') {
-      setTimeout(() => globalThis.updateReviewHistory(), REDIRECT_DELAY)
-    } else {
-      addReviewToHistory({
-        id: data.reviewId || data.id,
-        fileName: file.name,
-        timestamp: Date.now(),
-        status: 'pending'
-      })
+    updateCharacterCount()
+    if (elements.uploadButton) {
+      elements.uploadButton.disabled = false
     }
-    // Start auto-refresh to track review status
-    if (typeof globalThis.startAutoRefresh === 'function') {
-      globalThis.startAutoRefresh()
-    }
-    // Set flag so page reload will start auto-refresh
-    sessionStorage.setItem('reviewJustSubmitted', 'true')
-    setTimeout(() => {
-      globalThis.location.reload()
-    }, RELOAD_DELAY)
+    handleReviewHistory(data, encodeURIComponent(file.name))
+    startAutoRefresh()
     return data
   } catch (error) {
     console.error('[UPLOAD-HANDLER] Upload error:', error)

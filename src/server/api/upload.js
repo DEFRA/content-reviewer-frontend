@@ -213,7 +213,30 @@ export const uploadApiController = {
       const backendRequestTime = backendResult.backendRequestTime
 
       // Handle backend response
-      if (!response.ok) {
+      if (response.ok) {
+        logger.info(
+          `Backend upload initiated successfully and waiting for upload status for reviewId=${response.reviewId}`
+        )
+        // Poll backend for upload status until it's no longer 'initiated'
+        const uploadStatus = await waitForUpload(response.reviewId)
+        logger.info(
+          `Upload status for reviewId=${response.reviewId} is now ${uploadStatus.status}`
+        )
+        if (
+          uploadStatus.status == 'rejected' ||
+          uploadStatus.status == 'error'
+        ) {
+          logger.info(
+            `Upload rejected for reviewId=${response.reviewId} with reason: ${uploadStatus.message}`
+          )
+          return h
+            .response({
+              success: false,
+              message: uploadStatus.message
+            })
+            .code(HTTP_STATUS_INTERNAL_SERVER_ERROR)
+        }
+      } else {
         return await handleBackendFailure(response, fileName, h)
       }
 
@@ -228,4 +251,34 @@ export const uploadApiController = {
       return handleUploadError(error, startTime, h)
     }
   }
+}
+
+async function waitForUpload(reviewId, interval = 1000, maxAttempts = 60) {
+  let attempts = 0
+  const backendUrl = config.get('backendUrl')
+  while (attempts < maxAttempts) {
+    attempts += 1
+    try {
+      const res = await fetch(`${backendUrl}/api/upload-status/${reviewId}`)
+      if (res.status === 200) {
+        const json = await res.json()
+        if (
+          json.status &&
+          (json.status == 'rejected' ||
+            json.status == 'completed' ||
+            json.status == 'error')
+        ) {
+          return json
+        }
+      } else {
+        logger.info(
+          `Upload status check returned status ${res.status} for reviewId=${reviewId}`
+        )
+      }
+    } catch (err) {
+      throw new Error(`Failed to poll upload status: ${err.message}`)
+    }
+    await new Promise((r) => setTimeout(r, interval))
+  }
+  throw new Error(`Timeout waiting for upload status for reviewId=${reviewId}`)
 }
