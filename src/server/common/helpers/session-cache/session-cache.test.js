@@ -72,7 +72,7 @@ describe('sessionCache', () => {
     expect(cookieOptions.password).toBe(MOCK_COOKIE_PASSWORD)
     expect(cookieOptions.ttl).toBe(MOCK_COOKIE_TTL)
     expect(cookieOptions.isSecure).toBe(MOCK_COOKIE_SECURE)
-    expect(cookieOptions.isSameSite).toBe('Strict')
+    expect(cookieOptions.isSameSite).toBe('Lax')
     expect(cookieOptions.clearInvalid).toBe(true)
   })
 })
