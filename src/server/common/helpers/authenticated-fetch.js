@@ -25,7 +25,9 @@ function setTokens(request, tokens) {
  * @returns {Promise<string|null>}
  */
 async function silentRefresh(request, refreshToken) {
-  if (!refreshToken) return null
+  if (!refreshToken) {
+    return null
+  }
 
   try {
     const backendUrl = config.get('backendUrl')
@@ -41,7 +43,9 @@ async function silentRefresh(request, refreshToken) {
     }
 
     const data = await response.json()
-    if (!data.success || !data.accessToken) return null
+    if (!data.success || !data.accessToken) {
+      return null
+    }
 
     const existing = getTokens(request)
     setTokens(request, {
@@ -79,7 +83,9 @@ export async function authenticatedFetch(request, url, options = {}) {
 
   if (shouldRefresh && refreshToken) {
     const newToken = await silentRefresh(request, refreshToken)
-    if (newToken) accessToken = newToken
+    if (newToken) {
+      accessToken = newToken
+    }
   }
 
   return fetch(url, {
