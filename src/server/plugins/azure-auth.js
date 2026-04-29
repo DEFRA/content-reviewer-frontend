@@ -72,7 +72,8 @@ async function loginHandler(_request, h) {
     const authUrl = await msalClient.getAuthCodeUrl({
       scopes: ['openid', 'profile', 'email'],
       redirectUri: config.get('azure.redirectUri'),
-      responseMode: 'query' // avoids form_post / SameSite cookie issues
+      responseMode: 'query', // avoids form_post / SameSite cookie issues
+      prompt: 'select_account' // prevent Edge SSO silent auth with wrong account
     })
     logger.info('Redirecting to Azure AD login')
     return h.redirect(authUrl)
@@ -127,7 +128,29 @@ async function callbackHandler(request, h) {
     request.yar.clear('returnTo')
     return h.redirect(returnTo)
   } catch (error) {
-    logger.error('Azure AD callback error:', error)
+    // Log specific fields only — passing the raw MSAL error object risks Pino
+    // serialising a circular reference and re-throwing, which would let
+    // error.statusCode (e.g. 403 from Microsoft's token endpoint) leak through
+    // Hapi's Boom.boomify instead of producing a clean redirect.
+    logger.error(
+      {
+        path: request.path,
+        errorMessage: error?.message,
+        errorCode: error?.errorCode,
+        statusCode: error?.statusCode ?? error?.status
+      },
+      'Azure AD callback error'
+    )
+
+    try {
+      // Restore anonymous session if it existed - this prevents review history loss
+      if (restoreAnonymousSession(request, existingSession)) {
+        logger.info('Restoring anonymous session after failed auth attempt')
+      }
+    } catch {
+      // Session restore is best-effort; never let it block the redirect
+    }
+
     return h.redirect(AUTH_FAILED_REDIRECT)
   }
 }
