@@ -1,6 +1,7 @@
 import { config } from '../../config/config.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
 import { getUserIdentifier } from '../common/helpers/get-user-identifier.js'
+import { authenticatedFetch } from '../common/helpers/authenticated-fetch.js'
 import { Agent } from 'undici'
 
 const logger = createLogger()
@@ -82,15 +83,20 @@ function createErrorResponse(h, message, _limit, _skip) {
  * @param {string|null} userId - Authenticated user ID for per-user filtering
  * @returns {Promise<Object>}
  */
-async function fetchReviewsFromBackend(limit, skip, _page, userId = null) {
+async function fetchReviewsFromBackend(
+  request,
+  limit,
+  skip,
+  _page,
+  userId = null
+) {
   const params = new URLSearchParams({ limit, skip })
   if (userId) {
     params.set('userId', userId)
   }
   const endpoint = `${backendUrl}/api/reviews?${params.toString()}`
   const startTime = Date.now()
-  const response = await fetch(endpoint, {
-    // Pass the undici Agent as dispatcher so the built-in fetch reuses TCP connections
+  const response = await authenticatedFetch(request, endpoint, {
     dispatcher: keepAliveAgent
   })
   const backendRequestTime = ((Date.now() - startTime) / 1000).toFixed(2)
@@ -122,7 +128,7 @@ export async function getReviewsController(request, h) {
 
   try {
     const { response, backendRequestTime, endpoint } =
-      await fetchReviewsFromBackend(limit, skip, page, userId)
+      await fetchReviewsFromBackend(request, limit, skip, page, userId)
 
     if (!response.ok) {
       logger.error(
