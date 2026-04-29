@@ -143,7 +143,10 @@
     }
 
     // Auto-refresh every 10 seconds if there are pending or processing reviews
-    const hasProcessing = {{ (reviews | selectattr('status', 'in', ['pending', 'processing']) | list | length > 0) | dump }};
+    // Use {% if %} block rather than {{ expr | dump }} so the script tag contains
+    // only a plain JS boolean literal — avoids the CodeQL "invocation of non-function"
+    // false positive that fires when {{ }} template syntax is parsed as JS.
+    const hasProcessing = {% if reviews | selectattr('status', 'in', ['pending', 'processing']) | list | length > 0 %}true{% else %}false{% endif %};
     
     if (hasProcessing) {
       setTimeout(() => {

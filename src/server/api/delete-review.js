@@ -1,6 +1,7 @@
 import { Agent } from 'undici'
 import { config } from '../../config/config.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
+import { authenticatedFetch } from '../common/helpers/authenticated-fetch.js'
 
 const HTTP_STATUS_OK = 200
 const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500
@@ -32,7 +33,7 @@ export async function deleteReviewController(request, h) {
     logger.info(`Deleting review via backend: ${endpoint}`)
 
     // Forward delete request to backend
-    const response = await fetch(endpoint, {
+    const response = await authenticatedFetch(request, endpoint, {
       method: 'DELETE',
       headers: {
         Accept: 'application/json'

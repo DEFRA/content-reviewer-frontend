@@ -9,6 +9,10 @@ vi.mock('../../common/helpers/logging/logger.js', () => ({
   }))
 }))
 
+vi.mock('../../common/helpers/authenticated-fetch.js', () => ({
+  authenticatedFetch: vi.fn((_request, url) => globalThis.fetch(url))
+}))
+
 globalThis.fetch = vi.fn()
 globalThis.performance = {
   now: vi.fn()
