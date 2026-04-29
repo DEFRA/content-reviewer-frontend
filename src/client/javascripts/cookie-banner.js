@@ -1,11 +1,12 @@
 /**
  * Cookie Banner Management
- * Handles the cookie consent banner for the GOV.UK service
+ * Handles the essential-only cookie information banner for the GOV.UK service.
+ * This service uses no analytics or tracking cookies — the banner is informational only.
  */
 
 class CookieBanner {
   COOKIE_NAME = 'cookie_preferences'
-  COOKIE_DURATION = 90 // days (Defra standard for essential cookies)
+  COOKIE_DURATION = 90 // days
   BANNER_ID = 'cookie-banner'
 
   constructor() {
@@ -13,55 +14,26 @@ class CookieBanner {
   }
 
   init() {
-    // Check if user has already made a choice
+    // Show the banner if user has not yet dismissed it
     const cookiePreferences = this.getCookiePreferences()
     if (!cookiePreferences) {
-      // Show the initial cookie banner
       this.showBanner(this.BANNER_ID)
     }
 
-    // Set up event listeners
     this.setupEventListeners()
   }
 
   setupEventListeners() {
-    const acceptButton = document.getElementById('cookie-accept')
-    const rejectButton = document.getElementById('cookie-reject')
-    const hideAcceptedButton = document.getElementById('cookie-hide-accepted')
-    const hideRejectedButton = document.getElementById('cookie-hide-rejected')
+    const hideButton = document.getElementById('cookie-hide')
 
-    if (acceptButton) {
-      acceptButton.addEventListener('click', () => this.acceptCookies())
-    }
-
-    if (rejectButton) {
-      rejectButton.addEventListener('click', () => this.rejectCookies())
-    }
-
-    if (hideAcceptedButton) {
-      hideAcceptedButton.addEventListener('click', () =>
-        this.hideBanner('cookie-banner-accepted')
-      )
-    }
-
-    if (hideRejectedButton) {
-      hideRejectedButton.addEventListener('click', () =>
-        this.hideBanner('cookie-banner-rejected')
-      )
+    if (hideButton) {
+      hideButton.addEventListener('click', () => this.hideCookieBanner())
     }
   }
 
-  acceptCookies() {
-    this.setCookiePreferences({ analytics: true })
+  hideCookieBanner() {
+    this.setCookiePreferences({ seen: true })
     this.hideBanner(this.BANNER_ID)
-    this.showBanner('cookie-banner-accepted')
-    // Here you would initialize analytics if you had them
-  }
-
-  rejectCookies() {
-    this.setCookiePreferences({ analytics: false })
-    this.hideBanner(this.BANNER_ID)
-    this.showBanner('cookie-banner-rejected')
   }
 
   showBanner(bannerId) {

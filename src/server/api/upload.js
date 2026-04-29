@@ -3,6 +3,10 @@ import { config } from '../../config/config.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
 import { getUserIdentifier } from '../common/helpers/get-user-identifier.js'
 
+function getAccessToken(request) {
+  return request.yar?.get('authTokens')?.accessToken ?? null
+}
+
 const logger = createLogger()
 
 // Reuse a single undici Agent with keep-alive for all upload backend calls
@@ -13,14 +17,7 @@ const keepAliveAgent = new Agent({
 })
 
 const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500
-const HTTP_STATUS_BAD_REQUEST = 400
 const HTTP_STATUS_OK = 200
-const ALLOWED_MIME_TYPES = [
-  'application/pdf',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-]
-const ALLOWED_EXTENSIONS = ['pdf', 'doc', 'docx']
 
 /**
  * Convert Hapi file stream to Buffer
@@ -53,6 +50,7 @@ async function fileStreamToBuffer(file) {
  * Send file to backend service as application/octet-stream
  */
 async function sendFileToBackend(
+  request,
   fileBuffer,
   fileName,
   contentType,
@@ -69,14 +67,16 @@ async function sendFileToBackend(
       `File converted to buffer. Size: ${fileBuffer.length} bytes for: ${fileName}`
     )
 
+    const accessToken = getAccessToken(request)
     const response = await undiciFetch(`${backendUrl}/api/upload`, {
       method: 'POST',
       body: fileBuffer,
       headers: {
-        'content-type': 'application/octet-stream', // ✅ Set correct content-type
+        'content-type': 'application/octet-stream',
         'x-file-name': encodeURIComponent(fileName),
-        'x-file-content-type': mimeType, // ✅ Pass original MIME type
-        'x-user-id': userId || 'content-reviewer-frontend' // ✅ Pass user identifier for logging
+        'x-file-content-type': mimeType,
+        'x-user-id': userId || 'content-reviewer-frontend',
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
       },
       dispatcher: keepAliveAgent
     })
@@ -210,6 +210,7 @@ export const uploadApiController = {
 
       // Send file to backend using the pre-buffered content
       const backendResult = await sendFileToBackend(
+        request,
         fileBuffer,
         fileName,
         contentType,
@@ -221,11 +222,7 @@ export const uploadApiController = {
 
       // Handle backend response
       if (!response.ok) {
-        return await handleBackendFailure(
-          response,
-          fileName,
-          h
-        )
+        return await handleBackendFailure(response, fileName, h)
       }
 
       return await processSuccessfulUpload(
