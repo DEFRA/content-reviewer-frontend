@@ -2,7 +2,6 @@ import { load } from 'cheerio'
 import { createLogger } from '../common/helpers/logging/logger.js'
 import { config } from '../../config/config.js'
 import { getUserIdentifier } from '../common/helpers/get-user-identifier.js'
-import { authenticatedFetch } from '../common/helpers/authenticated-fetch.js'
 import { Agent } from 'undici'
 import { fetchGovUkHtml, parseAllowedUrl } from './fetch-url.js'
 
@@ -340,7 +339,6 @@ function extractPage(html, url, h) {
  * Step 3: Forward extracted content to the backend review API.
  */
 async function submitToBackend(
-  request,
   url,
   extracted,
   finalTitle,
@@ -349,24 +347,20 @@ async function submitToBackend(
   h
 ) {
   try {
-    const backendResponse = await authenticatedFetch(
-      request,
-      `${backendUrl}/api/review/text`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(userId ? { 'x-user-id': userId } : {})
-        },
-        body: JSON.stringify({
-          content: extracted.htmlDoc,
-          title: finalTitle,
-          sourceType: 'url',
-          sourceUrl: url
-        }),
-        dispatcher: keepAliveAgent
-      }
-    )
+    const backendResponse = await fetch(`${backendUrl}/api/review/text`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(userId ? { 'x-user-id': userId } : {})
+      },
+      body: JSON.stringify({
+        content: extracted.htmlDoc,
+        title: finalTitle,
+        sourceType: 'url',
+        sourceUrl: url
+      }),
+      dispatcher: keepAliveAgent
+    })
 
     if (!backendResponse.ok) {
       logger.error(
@@ -462,14 +456,6 @@ export const urlReviewController = {
     const userId = getUserIdentifier(request)
     const backendUrl = config.get('backendUrl')
 
-    return submitToBackend(
-      request,
-      url,
-      extracted,
-      finalTitle,
-      userId,
-      backendUrl,
-      h
-    )
+    return submitToBackend(url, extracted, finalTitle, userId, backendUrl, h)
   }
 }

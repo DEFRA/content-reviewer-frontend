@@ -16,7 +16,7 @@ export const sessionCache = {
       expiresIn: sessionConfig.cache.ttl
     },
     storeBlank: false,
-    errorOnCacheNotReady: true,
+    errorOnCacheNotReady: false, // Redis not provisioned for this service; degrade gracefully instead of throwing 500
     cookieOptions: {
       password: sessionConfig.cookie.password,
       ttl: sessionConfig.cookie.ttl,
