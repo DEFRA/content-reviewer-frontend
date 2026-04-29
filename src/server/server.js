@@ -17,6 +17,27 @@ import { secureContext } from '@defra/hapi-secure-context'
 import { contentSecurityPolicy } from './common/helpers/content-security-policy.js'
 import { azureAuth } from './plugins/azure-auth.js'
 
+// ── Per-IP rate limiting ──────────────────────────────────────────────────────
+// In-memory store: key = IP, value = { count, resetAt }.
+// NOTE: In a multi-instance deployment each pod enforces independently;
+// a Redis-backed store would give a true global limit, but this still
+// protects against single-client bursts hitting one pod.
+const HTTP_TOO_MANY_REQUESTS = 429
+const rateLimitStore = new Map()
+
+function getRateLimitEntry(ip, windowMs) {
+  const now = Date.now()
+  const entry = rateLimitStore.get(ip) ?? {
+    count: 0,
+    resetAt: now + windowMs
+  }
+  if (now > entry.resetAt) {
+    entry.count = 0
+    entry.resetAt = now + windowMs
+  }
+  return entry
+}
+
 /**
  * Configure the session cookie authentication strategy on the server.
  *
@@ -82,9 +103,8 @@ function injectUserContext(server) {
   })
 }
 
-export async function createServer() {
-  setupProxy()
-  const server = hapi.server({
+function createHapiServer() {
+  return hapi.server({
     host: config.get('host'),
     port: config.get('port'),
     compression: { minBytes: 512 }, // Gzip/deflate responses larger than 512 bytes
@@ -107,12 +127,9 @@ export async function createServer() {
     ],
     state: { strictHeader: false }
   })
+}
 
-  server.app.config = config
-
-  await server.register(hapiCookie)
-  configureCookieAuth(server)
-
+async function registerPlugins(server) {
   await server.register([
     requestLogger,
     requestTracing,
@@ -125,8 +142,81 @@ export async function createServer() {
     azureAuth,
     router
   ])
+}
+
+/**
+ * Register an onRequest rate-limiting extension (Principle 8: Plan for
+ * security flaws). Does nothing when rate limiting is disabled in config.
+ */
+function registerRateLimiting(server) {
+  const rateLimitEnabled = config.get('rateLimit.enabled')
+  if (!rateLimitEnabled) {
+    return
+  }
+
+  const rateLimitWindowMs = config.get('rateLimit.windowMs')
+  const rateLimitMaxRequests = config.get('rateLimit.maxRequests')
+
+  server.ext('onRequest', (request, h) => {
+    if (request.path === '/health') {
+      return h.continue
+    }
+    const ip = request.info.remoteAddress
+    const entry = getRateLimitEntry(ip, rateLimitWindowMs)
+    entry.count++
+    rateLimitStore.set(ip, entry)
+    if (entry.count > rateLimitMaxRequests) {
+      server.logger.warn(
+        { ip, count: entry.count, limit: rateLimitMaxRequests },
+        'Rate limit exceeded'
+      )
+      return h
+        .response(
+          '<h1>429 Too Many Requests</h1><p>Please try again later.</p>'
+        )
+        .type('text/html')
+        .code(HTTP_TOO_MANY_REQUESTS)
+        .takeover()
+    }
+    return h.continue
+  })
+}
+
+/**
+ * Add Referrer-Policy and Permissions-Policy to every response via an
+ * onPreResponse extension. Blankie already handles CSP.
+ */
+function registerSecurityHeaders(server) {
+  server.ext('onPreResponse', (request, h) => {
+    const { response } = request
+    const headers = {
+      'Referrer-Policy': 'no-referrer',
+      'Permissions-Policy': 'geolocation=(), camera=(), microphone=()'
+    }
+    if (response.isBoom) {
+      Object.assign(response.output.headers, headers)
+    } else {
+      for (const [name, value] of Object.entries(headers)) {
+        response.header(name, value)
+      }
+    }
+    return h.continue
+  })
+}
+
+export async function createServer() {
+  setupProxy()
+  const server = createHapiServer()
+  server.app.config = config
+
+  await server.register(hapiCookie)
+  configureCookieAuth(server)
+
+  await registerPlugins(server)
+  registerRateLimiting(server)
 
   server.ext('onPreResponse', catchAll)
+  registerSecurityHeaders(server)
   injectUserContext(server)
 
   return server

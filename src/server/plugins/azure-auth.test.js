@@ -140,7 +140,8 @@ describe('azureAuth - Login Handler - Success', () => {
     expect(mockMsalClient.getAuthCodeUrl).toHaveBeenCalledWith({
       scopes: ['openid', 'profile', 'email'],
       redirectUri: TEST_CONSTANTS.REDIRECT_URI,
-      responseMode: 'query'
+      responseMode: 'query',
+      prompt: 'select_account'
     })
     expect(h.redirect).toHaveBeenCalledWith(TEST_CONSTANTS.AUTH_URL)
     expect(mockLogger.info).toHaveBeenCalledWith(
@@ -492,6 +493,387 @@ describe('azureAuth - Callback Handler - username nullish coalescing', () => {
     await callbackHandler(request, h)
     expect(mockLogger.info).toHaveBeenCalledWith('User authenticated: unknown')
     expect(h.redirect).toHaveBeenCalledWith('/')
+  })
+})
+
+// ── issueBackendTokens (invoked inside callbackHandler after MSAL succeeds) ──
+
+function setupMockConfigWithBackendUrl() {
+  mockConfig.get.mockImplementation((key) => {
+    const map = {
+      'azure.redirectUri': TEST_CONSTANTS.REDIRECT_URI,
+      'azure.tenantId': TEST_CONSTANTS.TENANT_ID,
+      'azure.postLogoutRedirectUri': TEST_CONSTANTS.POST_LOGOUT_URI,
+      backendUrl: 'http://localhost:4000'
+    }
+    return map[key] ?? null
+  })
+}
+
+function createRequestWithYar(yarTokens = null) {
+  return {
+    query: { code: TEST_CONSTANTS.AUTH_CODE },
+    auth: { credentials: null },
+    cookieAuth: { set: vi.fn() },
+    yar: {
+      get: vi.fn(() => yarTokens),
+      set: vi.fn(),
+      clear: vi.fn()
+    }
+  }
+}
+
+function createMsalSuccess(username = TEST_CONSTANTS.USER_EMAIL) {
+  return {
+    account: {
+      homeAccountId: TEST_CONSTANTS.USER_ID,
+      username,
+      name: TEST_CONSTANTS.USER_NAME
+    }
+  }
+}
+
+describe('issueBackendTokens - backend login success', () => {
+  let callbackHandler
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    setupMockConfigWithBackendUrl()
+    globalThis.fetch = vi.fn()
+    const mockServer = {
+      route: vi.fn((routes) => {
+        const route = routes.find((r) => r.path === ROUTES.CALLBACK)
+        if (route) callbackHandler = route.handler
+      })
+    }
+    azureAuth.plugin.register(mockServer)
+  })
+
+  test('should store access token, refresh token and expiry in yar on success', async () => {
+    mockMsalClient.acquireTokenByCode.mockResolvedValueOnce(createMsalSuccess())
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: vi.fn().mockResolvedValueOnce({
+        success: true,
+        accessToken: 'at-value',
+        refreshToken: 'rt-value',
+        expiresIn: 900
+      })
+    })
+
+    const request = createRequestWithYar()
+    await callbackHandler(request, { redirect: vi.fn() })
+
+    expect(request.yar.set).toHaveBeenCalledWith(
+      'authTokens',
+      expect.objectContaining({
+        accessToken: 'at-value',
+        refreshToken: 'rt-value',
+        tokenExpiresAt: expect.any(Number)
+      })
+    )
+    expect(mockLogger.info).toHaveBeenCalledWith(
+      { userId: TEST_CONSTANTS.USER_ID },
+      'Backend JWT tokens stored in session'
+    )
+  })
+
+  test('should set tokenExpiresAt approximately now + expiresIn * 1000', async () => {
+    mockMsalClient.acquireTokenByCode.mockResolvedValueOnce(createMsalSuccess())
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: vi.fn().mockResolvedValueOnce({
+        success: true,
+        accessToken: 'at-value',
+        refreshToken: 'rt-value',
+        expiresIn: 900
+      })
+    })
+
+    const before = Date.now()
+    const request = createRequestWithYar()
+    await callbackHandler(request, { redirect: vi.fn() })
+    const after = Date.now()
+
+    const stored = request.yar.set.mock.calls[0][1]
+    expect(stored.tokenExpiresAt).toBeGreaterThanOrEqual(before + 900 * 1000)
+    expect(stored.tokenExpiresAt).toBeLessThanOrEqual(after + 900 * 1000)
+  })
+
+  test('should POST to /api/auth/login with userId, email and name', async () => {
+    mockMsalClient.acquireTokenByCode.mockResolvedValueOnce(createMsalSuccess())
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: vi.fn().mockResolvedValueOnce({
+        success: true,
+        accessToken: 'at-value',
+        refreshToken: 'rt-value',
+        expiresIn: 900
+      })
+    })
+
+    const request = createRequestWithYar()
+    await callbackHandler(request, { redirect: vi.fn() })
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'http://localhost:4000/api/auth/login',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: TEST_CONSTANTS.USER_ID,
+          email: TEST_CONSTANTS.USER_EMAIL,
+          name: TEST_CONSTANTS.USER_NAME
+        })
+      })
+    )
+  })
+})
+
+describe('issueBackendTokens - backend login non-ok response', () => {
+  let callbackHandler
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    setupMockConfigWithBackendUrl()
+    globalThis.fetch = vi.fn()
+    const mockServer = {
+      route: vi.fn((routes) => {
+        const route = routes.find((r) => r.path === ROUTES.CALLBACK)
+        if (route) callbackHandler = route.handler
+      })
+    }
+    azureAuth.plugin.register(mockServer)
+  })
+
+  test('should warn and not store tokens when backend returns non-ok response', async () => {
+    mockMsalClient.acquireTokenByCode.mockResolvedValueOnce(createMsalSuccess())
+    globalThis.fetch.mockResolvedValueOnce({ ok: false, status: 503 })
+
+    const request = createRequestWithYar()
+    await callbackHandler(request, { redirect: vi.fn() })
+
+    expect(request.yar.set).not.toHaveBeenCalled()
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      { status: 503 },
+      'Backend login request failed — no JWT tokens stored'
+    )
+  })
+
+  test('should still redirect to / after a failed backend login call', async () => {
+    mockMsalClient.acquireTokenByCode.mockResolvedValueOnce(createMsalSuccess())
+    globalThis.fetch.mockResolvedValueOnce({ ok: false, status: 500 })
+
+    const h = { redirect: vi.fn() }
+    await callbackHandler(createRequestWithYar(), h)
+
+    expect(h.redirect).toHaveBeenCalledWith('/')
+  })
+})
+
+describe('issueBackendTokens - backend login unexpected payload', () => {
+  let callbackHandler
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    setupMockConfigWithBackendUrl()
+    globalThis.fetch = vi.fn()
+    const mockServer = {
+      route: vi.fn((routes) => {
+        const route = routes.find((r) => r.path === ROUTES.CALLBACK)
+        if (route) callbackHandler = route.handler
+      })
+    }
+    azureAuth.plugin.register(mockServer)
+  })
+
+  test('should warn and not store tokens when success is false', async () => {
+    mockMsalClient.acquireTokenByCode.mockResolvedValueOnce(createMsalSuccess())
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: vi.fn().mockResolvedValueOnce({ success: false })
+    })
+
+    const request = createRequestWithYar()
+    await callbackHandler(request, { redirect: vi.fn() })
+
+    expect(request.yar.set).not.toHaveBeenCalled()
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      'Backend login returned unexpected payload — no JWT tokens stored'
+    )
+  })
+
+  test('should warn and not store tokens when accessToken is missing', async () => {
+    mockMsalClient.acquireTokenByCode.mockResolvedValueOnce(createMsalSuccess())
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: vi.fn().mockResolvedValueOnce({ success: true }) // no accessToken
+    })
+
+    const request = createRequestWithYar()
+    await callbackHandler(request, { redirect: vi.fn() })
+
+    expect(request.yar.set).not.toHaveBeenCalled()
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      'Backend login returned unexpected payload — no JWT tokens stored'
+    )
+  })
+})
+
+describe('issueBackendTokens - fetch throws', () => {
+  let callbackHandler
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    setupMockConfigWithBackendUrl()
+    globalThis.fetch = vi.fn()
+    const mockServer = {
+      route: vi.fn((routes) => {
+        const route = routes.find((r) => r.path === ROUTES.CALLBACK)
+        if (route) callbackHandler = route.handler
+      })
+    }
+    azureAuth.plugin.register(mockServer)
+  })
+
+  test('should warn and not throw when fetch rejects', async () => {
+    mockMsalClient.acquireTokenByCode.mockResolvedValueOnce(createMsalSuccess())
+    globalThis.fetch.mockRejectedValueOnce(new Error('Network error'))
+
+    const request = createRequestWithYar()
+    await expect(
+      callbackHandler(request, { redirect: vi.fn() })
+    ).resolves.not.toThrow()
+
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      { error: 'Network error' },
+      'Failed to obtain backend JWT tokens — proceeding without them'
+    )
+  })
+
+  test('should still redirect to / even when backend token fetch throws', async () => {
+    mockMsalClient.acquireTokenByCode.mockResolvedValueOnce(createMsalSuccess())
+    globalThis.fetch.mockRejectedValueOnce(new Error('Timeout'))
+
+    const h = { redirect: vi.fn() }
+    await callbackHandler(createRequestWithYar(), h)
+
+    expect(h.redirect).toHaveBeenCalledWith('/')
+  })
+})
+
+// ── logoutHandler - yar + refresh token revocation ───────────────────────────
+
+describe('logoutHandler - refresh token revocation', () => {
+  let logoutHandler
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    setupMockConfigWithBackendUrl()
+    globalThis.fetch = vi.fn().mockResolvedValue({ ok: true })
+    const mockServer = {
+      route: vi.fn((routes) => {
+        const route = routes.find((r) => r.path === ROUTES.LOGOUT)
+        if (route) logoutHandler = route.handler
+      })
+    }
+    azureAuth.plugin.register(mockServer)
+  })
+
+  test('should POST to /api/auth/logout with the refresh token when one is stored', async () => {
+    const request = {
+      query: {},
+      yar: {
+        get: vi.fn(() => ({ refreshToken: 'stored-rt' })),
+        clear: vi.fn()
+      },
+      cookieAuth: { clear: vi.fn() }
+    }
+
+    await logoutHandler(request, { redirect: vi.fn() })
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'http://localhost:4000/api/auth/logout',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken: 'stored-rt' })
+      })
+    )
+  })
+
+  test('should call yar.clear() after revoking the refresh token', async () => {
+    const yarClear = vi.fn()
+    const request = {
+      query: {},
+      yar: {
+        get: vi.fn(() => ({ refreshToken: 'stored-rt' })),
+        clear: yarClear
+      },
+      cookieAuth: { clear: vi.fn() }
+    }
+
+    await logoutHandler(request, { redirect: vi.fn() })
+
+    expect(yarClear).toHaveBeenCalled()
+  })
+
+  test('should call yar.clear() even when no refresh token is stored', async () => {
+    const yarClear = vi.fn()
+    const request = {
+      query: {},
+      yar: {
+        get: vi.fn(() => null),
+        clear: yarClear
+      },
+      cookieAuth: { clear: vi.fn() }
+    }
+
+    await logoutHandler(request, { redirect: vi.fn() })
+
+    expect(yarClear).toHaveBeenCalled()
+    expect(globalThis.fetch).not.toHaveBeenCalled()
+  })
+
+  test('should not throw and continue logout when revocation fetch throws', async () => {
+    globalThis.fetch.mockRejectedValueOnce(new Error('Network error'))
+    const yarClear = vi.fn()
+    const request = {
+      query: {},
+      yar: {
+        get: vi.fn(() => ({ refreshToken: 'stored-rt' })),
+        clear: yarClear
+      },
+      cookieAuth: { clear: vi.fn() }
+    }
+
+    const h = { redirect: vi.fn() }
+    await expect(logoutHandler(request, h)).resolves.not.toThrow()
+
+    // Logout should still complete: yar cleared, cookie cleared, redirect issued
+    expect(yarClear).toHaveBeenCalled()
+    expect(h.redirect).toHaveBeenCalled()
+  })
+
+  test('should still redirect to Azure AD logout after token revocation', async () => {
+    // setupMockConfigWithBackendUrl includes tenantId
+    const request = {
+      query: {},
+      yar: {
+        get: vi.fn(() => ({ refreshToken: 'stored-rt' })),
+        clear: vi.fn()
+      },
+      cookieAuth: { clear: vi.fn() }
+    }
+
+    const h = { redirect: vi.fn() }
+    await logoutHandler(request, h)
+
+    const expectedUri = `${TEST_CONSTANTS.POST_LOGOUT_URI}?confirmed=true`
+    const expectedLogoutUri =
+      `https://login.microsoftonline.com/${TEST_CONSTANTS.TENANT_ID}/oauth2/v2.0/logout` +
+      `?post_logout_redirect_uri=${encodeURIComponent(expectedUri)}`
+    expect(h.redirect).toHaveBeenCalledWith(expectedLogoutUri)
   })
 })
 

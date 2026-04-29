@@ -5,6 +5,54 @@ import { createLogger } from '../common/helpers/logging/logger.js'
 const logger = createLogger()
 
 const AUTH_FAILED_REDIRECT = '/auth/login-page?error=auth_failed'
+const AUTH_TOKENS_SESSION_KEY = 'authTokens'
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * Call the backend login endpoint and store the returned JWT tokens in the
+ * Yar server-side session.  Failures are non-fatal — the user remains logged in
+ * via Azure AD; API calls will simply have no Bearer token until the next login.
+ */
+async function issueBackendTokens(request, { userId, email, name }) {
+  try {
+    const backendUrl = config.get('backendUrl')
+    const response = await fetch(`${backendUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, email, name })
+    })
+
+    if (!response.ok) {
+      logger.warn(
+        { status: response.status },
+        'Backend login request failed — no JWT tokens stored'
+      )
+      return
+    }
+
+    const data = await response.json()
+    if (!data.success || !data.accessToken) {
+      logger.warn(
+        'Backend login returned unexpected payload — no JWT tokens stored'
+      )
+      return
+    }
+
+    request.yar.set(AUTH_TOKENS_SESSION_KEY, {
+      accessToken: data.accessToken,
+      refreshToken: data.refreshToken,
+      tokenExpiresAt: Date.now() + data.expiresIn * 1000
+    })
+
+    logger.info({ userId }, 'Backend JWT tokens stored in session')
+  } catch (error) {
+    logger.warn(
+      { error: error.message },
+      'Failed to obtain backend JWT tokens — proceeding without them'
+    )
+  }
+}
 
 // ── Route handlers ─────────────────────────────────────────────────────────────
 
@@ -24,7 +72,8 @@ async function loginHandler(_request, h) {
     const authUrl = await msalClient.getAuthCodeUrl({
       scopes: ['openid', 'profile', 'email'],
       redirectUri: config.get('azure.redirectUri'),
-      responseMode: 'query' // avoids form_post / SameSite cookie issues
+      responseMode: 'query', // avoids form_post / SameSite cookie issues
+      prompt: 'select_account' // prevent Edge SSO silent auth with wrong account
     })
     logger.info('Redirecting to Azure AD login')
     return h.redirect(authUrl)
@@ -82,14 +131,38 @@ async function callbackHandler(request, h) {
       },
       isAuthenticated: true
     })
+
+    // Obtain backend JWT tokens and store them in the server-side Yar session
+    await issueBackendTokens(request, {
+      userId: account.homeAccountId,
+      email: account.username,
+      name: account.name
+    })
+
     logger.info(`User authenticated: ${account.username ?? 'unknown'}`)
     return h.redirect('/')
   } catch (error) {
-    logger.error('Azure AD callback error:', error)
+    // Log specific fields only — passing the raw MSAL error object risks Pino
+    // serialising a circular reference and re-throwing, which would let
+    // error.statusCode (e.g. 403 from Microsoft's token endpoint) leak through
+    // Hapi's Boom.boomify instead of producing a clean redirect.
+    logger.error(
+      {
+        path: request.path,
+        errorMessage: error?.message,
+        errorCode: error?.errorCode,
+        statusCode: error?.statusCode ?? error?.status
+      },
+      'Azure AD callback error'
+    )
 
-    // Restore anonymous session if it existed - this prevents review history loss
-    if (restoreAnonymousSession(request, existingSession)) {
-      logger.info('Restoring anonymous session after failed auth attempt')
+    try {
+      // Restore anonymous session if it existed - this prevents review history loss
+      if (restoreAnonymousSession(request, existingSession)) {
+        logger.info('Restoring anonymous session after failed auth attempt')
+      }
+    } catch {
+      // Session restore is best-effort; never let it block the redirect
     }
 
     return h.redirect(AUTH_FAILED_REDIRECT)
@@ -107,11 +180,27 @@ async function callbackHandler(request, h) {
  *   CDP:   https://content-reviewer-frontend.dev.cdp-int.defra.cloud/auth/logout
  *   Local: http://localhost:3000/auth/logout
  */
-function logoutHandler(request, h) {
+async function logoutHandler(request, h) {
   // Microsoft just redirected back after completing sign-out
   if (request.query?.confirmed === 'true') {
     return h.view('auth/logged-out')
   }
+
+  // Revoke the backend refresh token so it can no longer be used
+  try {
+    const tokens = request.yar?.get(AUTH_TOKENS_SESSION_KEY)
+    if (tokens?.refreshToken) {
+      const backendUrl = config.get('backendUrl')
+      await fetch(`${backendUrl}/api/auth/logout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken: tokens.refreshToken })
+      })
+    }
+  } catch {
+    // Non-fatal — the refresh token will expire naturally
+  }
+  request.yar?.clear()
 
   // Clear the encrypted session cookie
   try {

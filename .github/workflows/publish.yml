@@ -30,11 +30,13 @@ jobs:
           cache: npm
 
       - name: Test code and Create Test Coverage Reports
-        continue-on-error: true # makes tests optional
         run: |
           npm ci
           npm run build:frontend
           npm test
+
+      - name: Security audit
+        run: npm run security-audit
 
       - name: Build and Publish
         uses: DEFRA/cdp-build-action/build@main
