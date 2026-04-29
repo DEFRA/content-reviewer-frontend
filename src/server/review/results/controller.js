@@ -1,5 +1,3 @@
-import { authenticatedFetch } from '../../common/helpers/authenticated-fetch.js'
-
 const HTTP_STATUS_BAD_REQUEST = 400
 const PROGRESS_PROCESSING = 50
 const SCORE_DISPLAY_SCALE = 20 // converts 0-100 envelope scores back to 0-5 for "X/5" display
@@ -78,10 +76,7 @@ async function fetchResultEnvelope(request, reviewId) {
   )
 
   const fetchStart = performance.now()
-  const response = await authenticatedFetch(
-    request,
-    `${backendUrl}/api/result/${reviewId}`
-  )
+  const response = await fetch(`${backendUrl}/api/result/${reviewId}`)
   const fetchDuration = Math.round(performance.now() - fetchStart)
 
   if (!response.ok) {
