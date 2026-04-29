@@ -127,7 +127,6 @@ export async function getReviewsController(request, h) {
   const startTime = Date.now()
   const requestLogger = request.logger
   const { limit, page, skip } = calculatePagination(request.query)
-  // For authenticated users, scope results to their own reviews.
   // Scope results to the authenticated user's reviews.
   const userId = getUserIdentifier(request)
 

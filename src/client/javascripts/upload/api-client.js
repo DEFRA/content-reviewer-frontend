@@ -102,7 +102,9 @@ export async function submitUrlReview(sourceUrl) {
     })
     showProgress('Processing review...', PROGRESS_PROCESSING)
     if (!response.ok) {
-      if (redirectIfUnauthorised(response)) return
+      if (redirectIfUnauthorised(response)) {
+        return undefined
+      }
       const contentType = response.headers?.get('content-type') ?? ''
       const message = await extractJsonErrorMessage(
         response,
@@ -146,7 +148,9 @@ export async function submitTextReview(textContent) {
       body: JSON.stringify({ textContent })
     })
     if (!response.ok) {
-      if (redirectIfUnauthorised(response)) return
+      if (redirectIfUnauthorised(response)) {
+        return undefined
+      }
       const errorData = await response.json()
       throw new Error(errorData.message || 'Text review submission failed')
     }
@@ -179,17 +183,42 @@ export async function submitTextReview(textContent) {
   }
 }
 
+function completeFileUpload(data, file) {
+  hideProgress()
+  const fileInputEl = getFileInput()
+  if (fileInputEl) {
+    fileInputEl.value = ''
+  }
+  updateMutualExclusion()
+  if (typeof globalThis.updateReviewHistory === 'function') {
+    setTimeout(() => globalThis.updateReviewHistory(), REDIRECT_DELAY)
+  } else {
+    addReviewToHistory({
+      id: data.reviewId || data.id,
+      fileName: file.name,
+      timestamp: Date.now(),
+      status: 'pending'
+    })
+  }
+  if (typeof globalThis.startAutoRefresh === 'function') {
+    globalThis.startAutoRefresh()
+  }
+  sessionStorage.setItem('reviewJustSubmitted', 'true')
+  setTimeout(() => {
+    globalThis.location.reload()
+  }, RELOAD_DELAY)
+}
+
 export async function submitFileUpload(file) {
   try {
     showProgress('Uploading to server...', PROGRESS_INITIAL)
-    // ✅ Read file as ArrayBuffer
     const arrayBuffer = await file.arrayBuffer()
 
     const response = await fetch('/api/upload', {
       method: 'POST',
       body: arrayBuffer,
       headers: {
-        'content-type': 'application/octet-stream', // ✅ Set as octet-stream
+        'content-type': 'application/octet-stream',
         'x-file-name': encodeURIComponent(file.name),
         'x-file-content-type': file.type || 'application/pdf'
       },
@@ -197,37 +226,15 @@ export async function submitFileUpload(file) {
     })
     showProgress('Processing upload...', PROGRESS_PROCESSING)
     if (!response.ok) {
-      if (redirectIfUnauthorised(response)) return
+      if (redirectIfUnauthorised(response)) {
+        return undefined
+      }
       const errorData = await response.json()
       throw new Error(errorData.message || 'Upload failed')
     }
     const data = await response.json()
     console.log('[UPLOAD-HANDLER] File uploaded successfully:', data)
-    hideProgress()
-    const fileInputEl = getFileInput()
-    if (fileInputEl) {
-      fileInputEl.value = ''
-    }
-    updateMutualExclusion()
-    if (typeof globalThis.updateReviewHistory === 'function') {
-      setTimeout(() => globalThis.updateReviewHistory(), REDIRECT_DELAY)
-    } else {
-      addReviewToHistory({
-        id: data.reviewId || data.id,
-        fileName: file.name,
-        timestamp: Date.now(),
-        status: 'pending'
-      })
-    }
-    // Start auto-refresh to track review status
-    if (typeof globalThis.startAutoRefresh === 'function') {
-      globalThis.startAutoRefresh()
-    }
-    // Set flag so page reload will start auto-refresh
-    sessionStorage.setItem('reviewJustSubmitted', 'true')
-    setTimeout(() => {
-      globalThis.location.reload()
-    }, RELOAD_DELAY)
+    completeFileUpload(data, file)
     return data
   } catch (error) {
     console.error('[UPLOAD-HANDLER] Upload error:', error)
