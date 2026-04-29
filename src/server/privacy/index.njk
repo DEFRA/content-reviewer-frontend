@@ -67,6 +67,10 @@
 
       <p class="govuk-body">Service activity, including sign-in events and usage data, is captured in OpenSearch dashboards. This information is used only for monitoring service performance, identifying errors and maintaining security.</p>
 
+      <p class="govuk-body">Application logs (including Nginx access logs and SSL sidecar logs) are retained for <strong>6 weeks</strong> in OpenSearch. Logs are also shipped to AWS S3 where they are stored indefinitely, but are not directly accessible to the service team and would require a request to the CDP platform team for retrieval.</p>
+
+      <p class="govuk-body">AWS CloudWatch logs for platform-scoped services are retained for <strong>90 days</strong> in the production environment.</p>
+
       <p class="govuk-body">We will not:</p>
 
       <ul class="govuk-list govuk-list--bullet">
@@ -85,7 +89,9 @@
 
       <h3 class="govuk-heading-m">Service activity logs</h3>
 
-      <p class="govuk-body">Service activity logs, including sign-in events and usage data stored in OpenSearch, are retained in accordance with our infrastructure retention policies. Your IP address is included in these logs for security and monitoring purposes.</p>
+      <p class="govuk-body">Application and access logs (including sign-in events and your IP address) are retained for <strong>6 weeks</strong> in OpenSearch. These logs are also shipped to AWS S3 where they are stored indefinitely, but are not accessible to the service team without a formal request to the CDP platform team.</p>
+
+      <p class="govuk-body">AWS CloudWatch logs are retained for <strong>90 days</strong> in the production environment and <strong>14 days</strong> in non-production environments.</p>
 
       <h3 class="govuk-heading-m">Cookies and sessions</h3>
 
