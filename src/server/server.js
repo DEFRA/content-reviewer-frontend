@@ -103,9 +103,8 @@ function injectUserContext(server) {
   })
 }
 
-export async function createServer() {
-  setupProxy()
-  const server = hapi.server({
+function createHapiServer() {
+  return hapi.server({
     host: config.get('host'),
     port: config.get('port'),
     compression: { minBytes: 512 }, // Gzip/deflate responses larger than 512 bytes
@@ -128,12 +127,9 @@ export async function createServer() {
     ],
     state: { strictHeader: false }
   })
+}
 
-  server.app.config = config
-
-  await server.register(hapiCookie)
-  configureCookieAuth(server)
-
+async function registerPlugins(server) {
   await server.register([
     requestLogger,
     requestTracing,
@@ -146,43 +142,51 @@ export async function createServer() {
     azureAuth,
     router
   ])
+}
 
-  // ── Rate limiting (Principle 8: Plan for security flaws) ───────────────────
+/**
+ * Register an onRequest rate-limiting extension (Principle 8: Plan for
+ * security flaws). Does nothing when rate limiting is disabled in config.
+ */
+function registerRateLimiting(server) {
   const rateLimitEnabled = config.get('rateLimit.enabled')
+  if (!rateLimitEnabled) {
+    return
+  }
+
   const rateLimitWindowMs = config.get('rateLimit.windowMs')
   const rateLimitMaxRequests = config.get('rateLimit.maxRequests')
 
-  if (rateLimitEnabled) {
-    server.ext('onRequest', (request, h) => {
-      if (request.path === '/health') {
-        return h.continue
-      }
-      const ip = request.info.remoteAddress
-      const entry = getRateLimitEntry(ip, rateLimitWindowMs)
-      entry.count++
-      rateLimitStore.set(ip, entry)
-      if (entry.count > rateLimitMaxRequests) {
-        server.logger.warn(
-          { ip, count: entry.count, limit: rateLimitMaxRequests },
-          'Rate limit exceeded'
-        )
-        return h
-          .response(
-            '<h1>429 Too Many Requests</h1><p>Please try again later.</p>'
-          )
-          .type('text/html')
-          .code(HTTP_TOO_MANY_REQUESTS)
-          .takeover()
-      }
+  server.ext('onRequest', (request, h) => {
+    if (request.path === '/health') {
       return h.continue
-    })
-  }
+    }
+    const ip = request.info.remoteAddress
+    const entry = getRateLimitEntry(ip, rateLimitWindowMs)
+    entry.count++
+    rateLimitStore.set(ip, entry)
+    if (entry.count > rateLimitMaxRequests) {
+      server.logger.warn(
+        { ip, count: entry.count, limit: rateLimitMaxRequests },
+        'Rate limit exceeded'
+      )
+      return h
+        .response(
+          '<h1>429 Too Many Requests</h1><p>Please try again later.</p>'
+        )
+        .type('text/html')
+        .code(HTTP_TOO_MANY_REQUESTS)
+        .takeover()
+    }
+    return h.continue
+  })
+}
 
-  server.ext('onPreResponse', catchAll)
-
-  // ── Additional security response headers (Principle 8) ────────────────────
-  // Blankie already sets CSP. Add Referrer-Policy and Permissions-Policy to
-  // every response, including Boom error responses.
+/**
+ * Add Referrer-Policy and Permissions-Policy to every response via an
+ * onPreResponse extension. Blankie already handles CSP.
+ */
+function registerSecurityHeaders(server) {
   server.ext('onPreResponse', (request, h) => {
     const { response } = request
     const headers = {
@@ -198,7 +202,21 @@ export async function createServer() {
     }
     return h.continue
   })
+}
 
+export async function createServer() {
+  setupProxy()
+  const server = createHapiServer()
+  server.app.config = config
+
+  await server.register(hapiCookie)
+  configureCookieAuth(server)
+
+  await registerPlugins(server)
+  registerRateLimiting(server)
+
+  server.ext('onPreResponse', catchAll)
+  registerSecurityHeaders(server)
   injectUserContext(server)
 
   return server
