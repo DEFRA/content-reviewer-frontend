@@ -25,6 +25,15 @@ import {
 import { addReviewToHistory } from './review-history.js'
 
 const JSON_PARSE_ERROR_PATTERNS = ['not valid JSON', 'Unexpected token']
+const HTTP_UNAUTHORISED = 401
+
+function redirectIfUnauthorised(response) {
+  if (response.status === HTTP_UNAUTHORISED) {
+    globalThis.location.assign('/auth/login')
+    return true
+  }
+  return false
+}
 
 async function extractJsonErrorMessage(response, contentType, defaultMessage) {
   try {
@@ -93,6 +102,7 @@ export async function submitUrlReview(sourceUrl) {
     })
     showProgress('Processing review...', PROGRESS_PROCESSING)
     if (!response.ok) {
+      if (redirectIfUnauthorised(response)) return
       const contentType = response.headers?.get('content-type') ?? ''
       const message = await extractJsonErrorMessage(
         response,
@@ -136,6 +146,7 @@ export async function submitTextReview(textContent) {
       body: JSON.stringify({ textContent })
     })
     if (!response.ok) {
+      if (redirectIfUnauthorised(response)) return
       const errorData = await response.json()
       throw new Error(errorData.message || 'Text review submission failed')
     }
@@ -186,6 +197,7 @@ export async function submitFileUpload(file) {
     })
     showProgress('Processing upload...', PROGRESS_PROCESSING)
     if (!response.ok) {
+      if (redirectIfUnauthorised(response)) return
       const errorData = await response.json()
       throw new Error(errorData.message || 'Upload failed')
     }

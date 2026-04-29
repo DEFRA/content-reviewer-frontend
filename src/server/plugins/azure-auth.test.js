@@ -233,7 +233,8 @@ describe('azureAuth - Callback Handler - Success', () => {
     const request = {
       query: { code: TEST_CONSTANTS.AUTH_CODE },
       auth: { credentials: null },
-      cookieAuth: { set: setCookieAuth }
+      cookieAuth: { set: setCookieAuth },
+      yar: { get: vi.fn().mockReturnValue(null), clear: vi.fn() }
     }
     const h = {
       redirect: vi.fn((url) => ({ redirectTo: url }))
@@ -290,7 +291,7 @@ describe('azureAuth - Callback Handler - Missing Code', () => {
   })
 })
 
-describe('azureAuth - Callback Handler - Session Restore', () => {
+describe('azureAuth - Callback Handler - Auth Failure', () => {
   let mockServer
   let callbackHandler
   beforeEach(() => {
@@ -306,48 +307,16 @@ describe('azureAuth - Callback Handler - Session Restore', () => {
     }
     azureAuth.plugin.register(mockServer)
   })
-  test('Should restore anonymous session on auth failure', async () => {
+  test('Should redirect to error page on auth failure', async () => {
     mockMsalClient.acquireTokenByCode.mockRejectedValueOnce(
       new Error('Token error')
     )
     const setCookieAuth = vi.fn()
     const request = {
       query: { code: TEST_CONSTANTS.AUTH_CODE },
-      auth: {
-        credentials: {
-          sid: TEST_CONSTANTS.SESSION_ID,
-          isAuthenticated: false
-        }
-      },
-      cookieAuth: { set: setCookieAuth }
-    }
-    const h = {
-      redirect: vi.fn((url) => ({ redirectTo: url }))
-    }
-    await callbackHandler(request, h)
-    expect(setCookieAuth).toHaveBeenCalledWith({
-      sid: TEST_CONSTANTS.SESSION_ID,
-      isAuthenticated: false
-    })
-    expect(mockLogger.info).toHaveBeenCalledWith(
-      'Restoring anonymous session after failed auth attempt'
-    )
-    expect(h.redirect).toHaveBeenCalledWith(ROUTES.LOGIN_ERROR)
-  })
-  test('Should not restore session if user was authenticated', async () => {
-    mockMsalClient.acquireTokenByCode.mockRejectedValueOnce(
-      new Error('Token error')
-    )
-    const setCookieAuth = vi.fn()
-    const request = {
-      query: { code: TEST_CONSTANTS.AUTH_CODE },
-      auth: {
-        credentials: {
-          sid: TEST_CONSTANTS.SESSION_ID,
-          isAuthenticated: true
-        }
-      },
-      cookieAuth: { set: setCookieAuth }
+      auth: { credentials: null },
+      cookieAuth: { set: setCookieAuth },
+      yar: { get: vi.fn().mockReturnValue(null), clear: vi.fn() }
     }
     const h = {
       redirect: vi.fn((url) => ({ redirectTo: url }))
@@ -484,7 +453,8 @@ describe('azureAuth - Callback Handler - username nullish coalescing', () => {
     const request = {
       query: { code: TEST_CONSTANTS.AUTH_CODE },
       auth: { credentials: null },
-      cookieAuth: { set: setCookieAuth }
+      cookieAuth: { set: setCookieAuth },
+      yar: { get: vi.fn().mockReturnValue(null), clear: vi.fn() }
     }
     const h = {
       redirect: vi.fn((url) => ({ redirectTo: url }))
@@ -512,23 +482,17 @@ describe('azureAuth - Callback Handler - MSAL not initialised', () => {
     azureAuth.plugin.register(mockServer)
   })
 
-  test('Should redirect to error page and restore anonymous session when MSAL is null', async () => {
+  test('Should redirect to error page when MSAL is null', async () => {
     // Temporarily set msalClient to null on the module
     vi.mocked(await import('../../config/azure-auth.js')).msalClient = null
 
     // Rebuild so the handler closes over null msalClient
     azureAuth.plugin.register(mockServer)
 
-    const setCookieAuth = vi.fn()
     const request = {
       query: { code: TEST_CONSTANTS.AUTH_CODE },
-      auth: {
-        credentials: {
-          sid: TEST_CONSTANTS.SESSION_ID,
-          isAuthenticated: false
-        }
-      },
-      cookieAuth: { set: setCookieAuth }
+      auth: { credentials: null },
+      cookieAuth: { set: vi.fn() }
     }
     const h = {
       redirect: vi.fn((url) => ({ redirectTo: url }))

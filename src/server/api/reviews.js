@@ -122,7 +122,7 @@ export async function getReviewsController(request, h) {
   const requestLogger = request.logger
   const { limit, page, skip } = calculatePagination(request.query)
   // For authenticated users, scope results to their own reviews.
-  // For anonymous users, userId is null and no filter is applied — all reviews are returned.
+  // Scope results to the authenticated user's reviews.
   const userId = getUserIdentifier(request)
 
   try {
