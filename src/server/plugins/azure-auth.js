@@ -127,7 +127,15 @@ async function callbackHandler(request, h) {
     request.yar.clear('returnTo')
     return h.redirect(returnTo)
   } catch (error) {
-    logger.error('Azure AD callback error:', error)
+    logger.error(
+      {
+        path: request.path,
+        errorMessage: error?.message,
+        errorCode: error?.errorCode,
+        statusCode: error?.statusCode ?? error?.status
+      },
+      'Azure AD callback error'
+    )
     return h.redirect(AUTH_FAILED_REDIRECT)
   }
 }
