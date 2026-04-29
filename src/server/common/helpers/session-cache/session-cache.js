@@ -21,7 +21,7 @@ export const sessionCache = {
       password: sessionConfig.cookie.password,
       ttl: sessionConfig.cookie.ttl,
       isSecure: config.get('session.cookie.secure'),
-      isSameSite: 'Strict', // Defra security standard
+      isSameSite: 'Lax', // Lax required for OAuth redirect flows (Strict blocks the callback)
       clearInvalid: true
     }
   }

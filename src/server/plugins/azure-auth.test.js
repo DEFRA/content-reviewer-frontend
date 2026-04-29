@@ -140,7 +140,8 @@ describe('azureAuth - Login Handler - Success', () => {
     expect(mockMsalClient.getAuthCodeUrl).toHaveBeenCalledWith({
       scopes: ['openid', 'profile', 'email'],
       redirectUri: TEST_CONSTANTS.REDIRECT_URI,
-      responseMode: 'query'
+      responseMode: 'query',
+      prompt: 'select_account'
     })
     expect(h.redirect).toHaveBeenCalledWith(TEST_CONSTANTS.AUTH_URL)
     expect(mockLogger.info).toHaveBeenCalledWith(

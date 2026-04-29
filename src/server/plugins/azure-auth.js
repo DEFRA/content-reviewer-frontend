@@ -72,7 +72,8 @@ async function loginHandler(_request, h) {
     const authUrl = await msalClient.getAuthCodeUrl({
       scopes: ['openid', 'profile', 'email'],
       redirectUri: config.get('azure.redirectUri'),
-      responseMode: 'query' // avoids form_post / SameSite cookie issues
+      responseMode: 'query', // avoids form_post / SameSite cookie issues
+      prompt: 'select_account' // prevent Edge SSO silent auth with wrong account
     })
     logger.info('Redirecting to Azure AD login')
     return h.redirect(authUrl)
