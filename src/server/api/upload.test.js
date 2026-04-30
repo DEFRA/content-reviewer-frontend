@@ -416,26 +416,24 @@ function registerHeaderHandlingTests() {
 
     it('sends Authorization header when an access token is present in the session', async () => {
       // Covers the truthy branch of `accessToken ? { Authorization: ... } : {}`
-      // Build a self-contained request that includes yar from creation so the
-      // token is never subject to fixture reset between beforeEach and the call.
-      const requestWithAuth = {
+      // getAccessToken reads request.yar?.get('authTokens')?.accessToken.
+      // Use a vi.fn() so the mock is registered with Vitest's spy registry and
+      // returns the expected value regardless of how the spy system is managed.
+      const TOKEN = 'test-bearer-token'
+      const yarGet = vi.fn((key) =>
+        key === 'authTokens' ? { accessToken: TOKEN } : null
+      )
+      const requestWithAuth = Object.assign({}, mockRequest, {
         payload: createMockStream(),
-        headers: {
-          'content-type': MIME_OCTET_STREAM,
-          'x-file-name': FILENAME_PDF,
-          'x-file-content-type': MIME_PDF,
-          'user-agent': 'Mozilla/5.0 Test'
-        },
-        info: { remoteAddress: '127.0.0.1' },
-        yar: { get: (_key) => ({ accessToken: 'test-bearer-token' }) }
-      }
+        yar: { get: yarGet }
+      })
       undiciFetch.mockResolvedValueOnce(okResponse('review-auth-01'))
       await uploadApiController.uploadFile(requestWithAuth, mockH)
       expect(undiciFetch).toHaveBeenCalledWith(
         'http://localhost:3001/api/upload',
         expect.objectContaining({
           headers: expect.objectContaining({
-            Authorization: 'Bearer test-bearer-token'
+            Authorization: `Bearer ${TOKEN}`
           })
         })
       )
