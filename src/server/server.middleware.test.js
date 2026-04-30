@@ -162,7 +162,7 @@ describe('createServer - auth redirect - API requests', () => {
 })
 
 describe('createServer - auth redirect - page requests', () => {
-  it('should redirect page requests to /auth/login', async () => {
+  it('should redirect page requests to /auth/login-page', async () => {
     const handler = await getAuthRedirectHandler()
     const redirectMock = { takeover: vi.fn().mockReturnThis() }
     const h = {
@@ -180,7 +180,7 @@ describe('createServer - auth redirect - page requests', () => {
       },
       h
     )
-    expect(h.redirect).toHaveBeenCalledWith('/auth/login')
+    expect(h.redirect).toHaveBeenCalledWith('/auth/login-page')
   })
 
   it('should save return URL in session for page requests', async () => {
