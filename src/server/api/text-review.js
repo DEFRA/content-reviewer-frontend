@@ -5,6 +5,10 @@ import { Agent } from 'undici'
 
 const logger = createLogger()
 
+// Hard limit on frontend → backend calls. Backend responds quickly (async via SQS)
+// so 30 s is more than enough. Must be well below the Hapi socket timeout (90 s).
+const BACKEND_TIMEOUT_MS = 30_000
+
 // Reuse a single undici Agent with keep-alive for all text review backend calls
 const keepAliveAgent = new Agent({
   keepAliveTimeout: 30_000,
@@ -78,25 +82,34 @@ async function submitToBackend(
 
   const backendRequestStart = Date.now()
 
-  const response = await fetch(`${backendUrl}/api/review/text`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(userId ? { 'x-user-id': userId } : {})
-    },
-    body: JSON.stringify({
-      content: textContent,
-      title: finalTitle,
-      sourceType: sourceType || 'text',
-      sourceUrl: sourceUrl || null
-    }),
-    dispatcher: keepAliveAgent
-  })
+  // AbortController enforces BACKEND_TIMEOUT_MS — if the backend does not
+  // respond in time the fetch rejects with an AbortError, caught in reviewText.
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), BACKEND_TIMEOUT_MS)
 
-  const backendRequestEnd = Date.now()
-  const backendRequestTime = (backendRequestEnd - backendRequestStart) / 1000
+  try {
+    const response = await fetch(`${backendUrl}/api/review/text`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(userId ? { 'x-user-id': userId } : {})
+      },
+      body: JSON.stringify({
+        content: textContent,
+        title: finalTitle,
+        sourceType: sourceType || 'text',
+        sourceUrl: sourceUrl || null
+      }),
+      dispatcher: keepAliveAgent,
+      signal: controller.signal
+    })
 
-  return { response, backendRequestTime }
+    const backendRequestTime = (Date.now() - backendRequestStart) / 1000
+    return { response, backendRequestTime }
+  } finally {
+    // Always clear the timer — whether fetch succeeded or threw
+    clearTimeout(timer)
+  }
 }
 
 /**
@@ -205,6 +218,19 @@ async function reviewText(request, h) {
       .code(HTTP_STATUS.OK)
   } catch (error) {
     const totalProcessingTime = (Date.now() - startTime) / 1000
+
+    if (error.name === 'AbortError') {
+      logger.error(
+        `Text review backend request timed out after ${BACKEND_TIMEOUT_MS / 1000}s — totalProcessingTime: ${totalProcessingTime}s`
+      )
+      return h
+        .response({
+          success: false,
+          message: 'The request timed out. Please try again.'
+        })
+        .code(HTTP_STATUS.INTERNAL_SERVER_ERROR)
+    }
+
     logger.error(
       `Text review API request failed with error - error: ${error.message}, totalProcessingTime: ${totalProcessingTime}s`
     )
