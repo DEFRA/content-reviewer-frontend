@@ -6,18 +6,15 @@ export const loginController = {
     }
     // Map error codes to user-friendly messages
     const errorMessages = {
-      auth_failed:
-        'Sign in failed. If you are not part of the Defra organization, you can continue using the tool without signing in. Your review history will be saved for this session.',
-      invalid_state:
-        'Invalid login state. Please try again or continue without signing in.',
+      auth_failed: 'Sign in failed. Please try again.',
+      invalid_state: 'Invalid login state. Please try again.',
       unauthorized_tenant:
-        'Your account is not authorized to access this service. You can continue using the tool without signing in. Your review history will be saved for this session.'
-      // Add more mappings as needed
+        'Your account is not authorized to access this service. Please contact your administrator.'
     }
     const errorCode = request.query.error
     const errorMessage = errorCode
       ? errorMessages[errorCode] ||
-        'An error occurred during sign in. You can continue using the tool without signing in. Your review history will be saved for this session.'
+        'An error occurred during sign in. Please try again.'
       : null
     return h.view('auth/login/index', {
       pageTitle: 'Sign in – Content Review Tool – GOV.UK',

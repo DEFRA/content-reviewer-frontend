@@ -56,7 +56,7 @@ const uploadController = {
 
       // Get metadata from form if any
       const metadata = {
-        userId: request.yar?.id || 'anonymous',
+        userId: request.yar?.id || 'unknown',
         timestamp: new Date().toISOString()
       }
 

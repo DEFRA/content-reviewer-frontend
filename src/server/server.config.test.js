@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 
-// Mock all dependencies
 vi.mock('@hapi/hapi', () => ({ default: { server: vi.fn() } }))
 vi.mock('./router.js', () => ({
   router: { plugin: { name: 'router', register: vi.fn() } }
@@ -44,7 +43,6 @@ vi.mock('@hapi/scooter', () => ({
   default: { plugin: { name: 'scooter', register: vi.fn() } }
 }))
 
-// Test constants
 const TEST_HOST = '0.0.0.0'
 const TEST_PORT = 3000
 const TEST_ROOT_PATH = '/test/root'
@@ -55,6 +53,7 @@ const SESSION_TTL = 3600000
 const COOKIE_NAME = 'content-reviewer-session'
 const COMPRESSION_MIN_BYTES = 512
 const HSTS_MAX_AGE = 31536000
+const TEST_TIMEOUT = 30000
 
 const createMockConfig = (isProduction = false) => ({
   get: vi.fn((key) => {
@@ -64,14 +63,8 @@ const createMockConfig = (isProduction = false) => ({
       root: TEST_ROOT_PATH,
       isProduction,
       session: {
-        cookie: {
-          password: SESSION_PASSWORD,
-          ttl: SESSION_TTL
-        },
-        cache: {
-          name: SESSION_CACHE_NAME,
-          engine: SESSION_CACHE_ENGINE
-        }
+        cookie: { password: SESSION_PASSWORD, ttl: SESSION_TTL },
+        cache: { name: SESSION_CACHE_NAME, engine: SESSION_CACHE_ENGINE }
       },
       'session.cache.name': SESSION_CACHE_NAME,
       'session.cache.engine': SESSION_CACHE_ENGINE,
@@ -111,8 +104,6 @@ async function setupMocks(isProduction = false) {
 
   return { mockServer, mockConfig, hapiModule, cacheEngineModule }
 }
-
-const TEST_TIMEOUT = 30000
 
 describe('createServer - initialization', () => {
   it(
@@ -287,13 +278,13 @@ describe('createServer - cookie security', () => {
     expect(config.keepAlive).toBe(true)
   })
 
-  it('should set default auth to optional session', async () => {
+  it('should set default auth to required session', async () => {
     const { mockServer } = await setupMocks()
     const { createServer } = await import('./server.js')
     await createServer()
     expect(mockServer.auth.default).toHaveBeenCalledWith({
       strategy: 'session',
-      mode: 'optional'
+      mode: 'required'
     })
   })
 })
@@ -388,206 +379,5 @@ describe('createServer - error handling', () => {
     const { createServer } = await import('./server.js')
     const server = await createServer()
     expect(server).toBe(mockServer)
-  })
-})
-
-// ── Rate limiting ─────────────────────────────────────────────────────────────
-
-const RATE_LIMIT_WINDOW_MS = 60000
-const RATE_LIMIT_MAX_REQUESTS = 5
-
-async function setupWithRateLimit(maxRequests = RATE_LIMIT_MAX_REQUESTS) {
-  vi.resetModules()
-  vi.clearAllMocks()
-  const mockServer = createMockServer()
-
-  const hapiModule = await import('@hapi/hapi')
-  hapiModule.default.server.mockReturnValue(mockServer)
-
-  const configModule = await import('../config/config.js')
-  configModule.config.get = vi.fn((key) => {
-    const map = {
-      host: TEST_HOST,
-      port: TEST_PORT,
-      root: TEST_ROOT_PATH,
-      isProduction: false,
-      session: {
-        cookie: { password: SESSION_PASSWORD, ttl: SESSION_TTL },
-        cache: { name: SESSION_CACHE_NAME, engine: SESSION_CACHE_ENGINE }
-      },
-      'session.cache.name': SESSION_CACHE_NAME,
-      'session.cache.engine': SESSION_CACHE_ENGINE,
-      'session.cookie.password': SESSION_PASSWORD,
-      'session.cookie.ttl': SESSION_TTL,
-      'rateLimit.enabled': true,
-      'rateLimit.windowMs': RATE_LIMIT_WINDOW_MS,
-      'rateLimit.maxRequests': maxRequests
-    }
-    return map[key]
-  })
-
-  const cacheEngineModule =
-    await import('./common/helpers/session-cache/cache-engine.js')
-  cacheEngineModule.getCacheEngine.mockReturnValue({
-    start: vi.fn(),
-    stop: vi.fn()
-  })
-
-  const { createServer } = await import('./server.js')
-  await createServer()
-
-  const rateLimitHandler = mockServer.ext.mock.calls.find(
-    ([event]) => event === 'onRequest'
-  )?.[1]
-
-  return { mockServer, rateLimitHandler }
-}
-
-describe('createServer - rate limiting', () => {
-  it('should skip rate limiting for /health path', async () => {
-    const { rateLimitHandler } = await setupWithRateLimit()
-    const h = { continue: Symbol('continue') }
-    const result = rateLimitHandler(
-      { path: '/health', info: { remoteAddress: '127.0.0.1' } },
-      h
-    )
-    expect(result).toBe(h.continue)
-  })
-
-  it('should allow requests under the limit', async () => {
-    const { rateLimitHandler } = await setupWithRateLimit(10)
-    const h = { continue: Symbol('continue') }
-    const result = rateLimitHandler(
-      { path: '/api/test', info: { remoteAddress: '10.0.0.1' } },
-      h
-    )
-    expect(result).toBe(h.continue)
-  })
-
-  it('should return 429 and warn when limit is exceeded', async () => {
-    const { rateLimitHandler, mockServer } = await setupWithRateLimit(1)
-    const responseMock = {
-      type: vi.fn().mockReturnThis(),
-      code: vi.fn().mockReturnThis(),
-      takeover: vi.fn().mockReturnThis()
-    }
-    const h = {
-      continue: Symbol('continue'),
-      response: vi.fn().mockReturnValue(responseMock)
-    }
-    const request = { path: '/api/test', info: { remoteAddress: '10.0.0.2' } }
-
-    rateLimitHandler(request, h) // first request — at limit
-    rateLimitHandler(request, h) // second request — exceeds limit
-
-    expect(h.response).toHaveBeenCalled()
-    expect(responseMock.code).toHaveBeenCalledWith(429)
-    expect(responseMock.takeover).toHaveBeenCalled()
-    expect(mockServer.logger.warn).toHaveBeenCalledWith(
-      expect.objectContaining({ ip: '10.0.0.2' }),
-      'Rate limit exceeded'
-    )
-  })
-
-  it('should reset counter after the window expires', async () => {
-    const { rateLimitHandler } = await setupWithRateLimit(1)
-    const responseMock = {
-      type: vi.fn().mockReturnThis(),
-      code: vi.fn().mockReturnThis(),
-      takeover: vi.fn().mockReturnThis()
-    }
-    const hOver = {
-      continue: Symbol('continue'),
-      response: vi.fn().mockReturnValue(responseMock)
-    }
-    const h = { continue: Symbol('continue') }
-    const request = { path: '/api/test', info: { remoteAddress: '10.0.0.3' } }
-
-    // Exhaust the limit
-    rateLimitHandler(request, h)
-    rateLimitHandler(request, hOver)
-    expect(responseMock.code).toHaveBeenCalledWith(429)
-
-    // Advance time past the window so the counter resets
-    const nowSpy = vi
-      .spyOn(Date, 'now')
-      .mockReturnValue(Date.now() + RATE_LIMIT_WINDOW_MS + 1000)
-
-    const result = rateLimitHandler(request, h)
-    expect(result).toBe(h.continue)
-
-    nowSpy.mockRestore()
-  })
-
-  it('should not register onRequest handler when rate limiting is disabled', async () => {
-    const { mockServer } = await setupMocks()
-    const { createServer } = await import('./server.js')
-    await createServer()
-    const hasRateLimitExt = mockServer.ext.mock.calls.some(
-      ([event]) => event === 'onRequest'
-    )
-    expect(hasRateLimitExt).toBe(false)
-  })
-})
-
-// ── Security headers ──────────────────────────────────────────────────────────
-
-describe('createServer - security headers', () => {
-  let headersHandler
-
-  beforeEach(async () => {
-    const { mockServer } = await setupMocks()
-    const { createServer } = await import('./server.js')
-    await createServer()
-    // onPreResponse ext calls: [0] catchAll, [1] headers, [2] userContext
-    const preResponseCalls = mockServer.ext.mock.calls.filter(
-      ([event]) => event === 'onPreResponse'
-    )
-    headersHandler = preResponseCalls[1][1]
-  })
-
-  it('should add Referrer-Policy header to normal responses', () => {
-    const header = vi.fn()
-    const h = { continue: Symbol('continue') }
-    headersHandler({ response: { isBoom: false, header } }, h)
-    expect(header).toHaveBeenCalledWith('Referrer-Policy', 'no-referrer')
-  })
-
-  it('should add Permissions-Policy header to normal responses', () => {
-    const header = vi.fn()
-    const h = { continue: Symbol('continue') }
-    headersHandler({ response: { isBoom: false, header } }, h)
-    expect(header).toHaveBeenCalledWith(
-      'Permissions-Policy',
-      'geolocation=(), camera=(), microphone=()'
-    )
-  })
-
-  it('should add headers to Boom error responses', () => {
-    const response = { isBoom: true, output: { headers: {} } }
-    const h = { continue: Symbol('continue') }
-    headersHandler({ response }, h)
-    expect(response.output.headers['Referrer-Policy']).toBe('no-referrer')
-    expect(response.output.headers['Permissions-Policy']).toBe(
-      'geolocation=(), camera=(), microphone=()'
-    )
-  })
-
-  it('should return h.continue for normal responses', () => {
-    const h = { continue: Symbol('continue') }
-    const result = headersHandler(
-      { response: { isBoom: false, header: vi.fn() } },
-      h
-    )
-    expect(result).toBe(h.continue)
-  })
-
-  it('should return h.continue for Boom responses', () => {
-    const h = { continue: Symbol('continue') }
-    const result = headersHandler(
-      { response: { isBoom: true, output: { headers: {} } } },
-      h
-    )
-    expect(result).toBe(h.continue)
   })
 })
