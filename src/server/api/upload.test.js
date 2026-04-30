@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { fetch as undiciFetch } from 'undici'
-import { uploadApiController } from './upload.js'
+import { uploadApiController, _private } from './upload.js'
 
 const HTTP_STATUS_OK = 200
 const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500
@@ -416,27 +416,25 @@ function registerHeaderHandlingTests() {
 
     it('sends Authorization header when an access token is present in the session', async () => {
       // Covers the truthy branch of `accessToken ? { Authorization: ... } : {}`
-      // getAccessToken reads request.yar?.get('authTokens')?.accessToken.
-      // Use a vi.fn() so the mock is registered with Vitest's spy registry and
-      // returns the expected value regardless of how the spy system is managed.
-      const TOKEN = 'test-bearer-token'
-      const yarGet = vi.fn((key) =>
-        key === 'authTokens' ? { accessToken: TOKEN } : null
-      )
-      const requestWithAuth = Object.assign({}, mockRequest, {
-        payload: createMockStream(),
-        yar: { get: yarGet }
-      })
-      undiciFetch.mockResolvedValueOnce(okResponse('review-auth-01'))
-      await uploadApiController.uploadFile(requestWithAuth, mockH)
-      expect(undiciFetch).toHaveBeenCalledWith(
-        'http://localhost:3001/api/upload',
-        expect.objectContaining({
-          headers: expect.objectContaining({
-            Authorization: `Bearer ${TOKEN}`
+      // Spy directly on _private.getAccessToken so the test is independent of
+      // Hapi's yar session mock, which proved unreliable across CI environments.
+      const spy = vi
+        .spyOn(_private, 'getAccessToken')
+        .mockReturnValueOnce('test-bearer-token')
+      try {
+        undiciFetch.mockResolvedValueOnce(okResponse('review-auth-01'))
+        await uploadApiController.uploadFile(mockRequest, mockH)
+        expect(undiciFetch).toHaveBeenCalledWith(
+          'http://localhost:3001/api/upload',
+          expect.objectContaining({
+            headers: expect.objectContaining({
+              Authorization: 'Bearer test-bearer-token'
+            })
           })
-        })
-      )
+        )
+      } finally {
+        spy.mockRestore()
+      }
     })
 
     it('falls back to default content-type when the content-type request header is absent', async () => {
