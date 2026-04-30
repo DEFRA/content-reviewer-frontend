@@ -1,7 +1,6 @@
 /**
- * Get the user identifier for authenticated users.
- * Returns the authenticated user's ID, or null for anonymous (not signed-in) users.
- * Anonymous users are not filtered — they see all reviews.
+ * Get the user identifier for the authenticated user.
+ * Returns the authenticated user's ID, or null if credentials are absent.
  *
  * @param {import('@hapi/hapi').Request} request - Hapi request object
  * @returns {string|null} Authenticated user ID, or null

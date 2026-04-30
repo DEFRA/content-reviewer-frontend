@@ -44,32 +44,17 @@ async function loginHandler(_request, h) {
  * GET /auth/callback
  * Azure AD redirects here with ?code=… after the user authenticates.
  * Exchanges the code for tokens, then stores the user in the session cookie.
- * If authentication fails, preserve the anonymous session so review history is not lost.
+ * On failure, redirects to the login page with an error.
  */
-function restoreAnonymousSession(request, existingSession) {
-  if (existingSession?.sid && !existingSession?.isAuthenticated) {
-    request.cookieAuth.set(existingSession)
-    return true
-  }
-  return false
-}
-
 async function callbackHandler(request, h) {
-  // Preserve the existing anonymous session in case authentication fails
-  const existingSession = request.auth?.credentials || null
-
   try {
     if (!msalClient) {
       logger.error('MSAL client not initialised – cannot process callback')
-      // Restore anonymous session if it existed
-      restoreAnonymousSession(request, existingSession)
       return h.redirect(AUTH_FAILED_REDIRECT)
     }
     const code = request.query?.code
     if (!code) {
       logger.error('No authorization code received on /auth/callback')
-      // Restore anonymous session if it existed
-      restoreAnonymousSession(request, existingSession)
       return h.redirect('/auth/login-page?error=invalid_state')
     }
     const response = await msalClient.acquireTokenByCode({
@@ -79,7 +64,6 @@ async function callbackHandler(request, h) {
     })
     const account = response.account
 
-    // Only set authenticated session if successful
     request.cookieAuth.set({
       user: {
         id: account.homeAccountId,
@@ -90,12 +74,10 @@ async function callbackHandler(request, h) {
     })
 
     logger.info(`User authenticated: ${account.username ?? 'unknown'}`)
-    return h.redirect('/')
+    const returnTo = request.yar.get('returnTo') || '/'
+    request.yar.clear('returnTo')
+    return h.redirect(returnTo)
   } catch (error) {
-    // Log specific fields only — passing the raw MSAL error object risks Pino
-    // serialising a circular reference and re-throwing, which would let
-    // error.statusCode (e.g. 403 from Microsoft's token endpoint) leak through
-    // Hapi's Boom.boomify instead of producing a clean redirect.
     logger.error(
       {
         path: request.path,
@@ -105,16 +87,6 @@ async function callbackHandler(request, h) {
       },
       'Azure AD callback error'
     )
-
-    try {
-      // Restore anonymous session if it existed - this prevents review history loss
-      if (restoreAnonymousSession(request, existingSession)) {
-        logger.info('Restoring anonymous session after failed auth attempt')
-      }
-    } catch {
-      // Session restore is best-effort; never let it block the redirect
-    }
-
     return h.redirect(AUTH_FAILED_REDIRECT)
   }
 }

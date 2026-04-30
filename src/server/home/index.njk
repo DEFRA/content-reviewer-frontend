@@ -508,6 +508,10 @@
         });
 
         if (!response.ok) {
+          if (response.status === 401) {
+            window.location.assign('/auth/login');
+            return;
+          }
           // Transient error - skip this cycle, keep the interval running
           console.warn(`[HOME] Auto-refresh got non-OK response: ${response.status} - will retry`);
           return;
@@ -1054,8 +1058,6 @@
       console.log(`[HOME] Page load - active reviews in DOM: ${hasActiveReviews}`);
 
       // Always do an immediate refresh on page load to get latest server-side status.
-      // This ensures anonymous users see their history even if the table was empty
-      // at initial render (e.g. session cookie arrived after server-side render).
       updateReviewHistory();
 
       // Always start auto-refresh unconditionally so any pending/processing reviews
