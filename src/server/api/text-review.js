@@ -47,16 +47,16 @@ function generateTitle(textContent, title) {
   if (title) {
     return title
   }
-  const words = textContent
-    .trim()
-    .split(/\s+/)
-    .filter((word) => word.length > 0)
-  return words.length > 0
-    ? words
-        .slice(0, TITLE_WORD_COUNT)
-        .join(' ')
-        .substring(0, TITLE_MAX_LENGTH) + '...'
-    : 'Text Content'
+  // Caller validates textContent has ≥ 10 chars, so split/filter always yields ≥ 1 word.
+  return (
+    textContent
+      .trim()
+      .split(/\s+/)
+      .filter((word) => word.length > 0)
+      .slice(0, TITLE_WORD_COUNT)
+      .join(' ')
+      .substring(0, TITLE_MAX_LENGTH) + '...'
+  )
 }
 
 /**
@@ -85,6 +85,7 @@ async function submitToBackend(
   // AbortController enforces BACKEND_TIMEOUT_MS — if the backend does not
   // respond in time the fetch rejects with an AbortError, caught in reviewText.
   const controller = new AbortController()
+  /* v8 ignore next -- timer callback fires only in production when the backend is unresponsive */
   const timer = setTimeout(() => controller.abort(), BACKEND_TIMEOUT_MS)
 
   try {

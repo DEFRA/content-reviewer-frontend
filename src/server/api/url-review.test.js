@@ -160,7 +160,9 @@ describe('urlReviewController.handler - redirect check', () => {
   })
 
   it('allows through when finalUrl is missing (edge case)', async () => {
-    fetchGovUkHtmlMock.mockResolvedValue(mockFetchHtml(VALID_HTML, undefined))
+    // Pass null directly — mockFetchHtml(VALID_HTML, undefined) would trigger
+    // the default parameter and resolve to TEST_URL instead of a falsy value.
+    fetchGovUkHtmlMock.mockResolvedValue({ html: VALID_HTML, finalUrl: null })
     mockBackendSuccess()
     const h = createH()
     await urlReviewController.handler(createRequest(), h)
@@ -332,6 +334,22 @@ describe('urlReviewController.handler - successful submission', () => {
     expect(h.response).toHaveBeenCalledWith(
       expect.objectContaining({ message: 'Internal server error' })
     )
+  })
+
+  it('returns 500 with timeout message when the backend fetch is aborted', async () => {
+    // Simulate the AbortController firing: fetch rejects with an AbortError
+    const abortError = new Error('The operation was aborted')
+    abortError.name = 'AbortError'
+    fetchMock.mockRejectedValueOnce(abortError)
+    const h = createH()
+    await urlReviewController.handler(createRequest(), h)
+    expect(h.response).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        message: 'The request timed out. Please try again.'
+      })
+    )
+    expect(h._mock.code).toHaveBeenCalledWith(500)
   })
 })
 

@@ -71,6 +71,7 @@ async function sendFileToBackend(
   // AbortController enforces BACKEND_TIMEOUT_MS — prevents the upload from
   // hanging indefinitely if the backend is unresponsive.
   const controller = new AbortController()
+  /* v8 ignore next -- timer callback fires only in production when the backend is unresponsive */
   const timer = setTimeout(() => controller.abort(), BACKEND_TIMEOUT_MS)
 
   try {

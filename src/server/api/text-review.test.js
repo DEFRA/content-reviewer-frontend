@@ -311,4 +311,24 @@ describe('textReviewApiController.reviewText - backend errors', () => {
       HTTP_STATUS_INTERNAL_SERVER_ERROR
     )
   })
+
+  it('returns 500 with timeout message when fetch is aborted', async () => {
+    // Simulate the AbortController firing: fetch rejects with an AbortError
+    const abortError = new Error('The operation was aborted')
+    abortError.name = 'AbortError'
+    fetchMock.mockRejectedValueOnce(abortError)
+
+    const req = createMockRequest()
+    await textReviewApiController.reviewText(req, mockH)
+
+    expect(mockH.response).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        message: 'The request timed out. Please try again.'
+      })
+    )
+    expect(mockH._responseMock.code).toHaveBeenCalledWith(
+      HTTP_STATUS_INTERNAL_SERVER_ERROR
+    )
+  })
 })

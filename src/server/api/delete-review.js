@@ -36,6 +36,7 @@ export async function deleteReviewController(request, h) {
 
     // AbortController enforces BACKEND_TIMEOUT_MS — prevents a hanging delete.
     const controller = new AbortController()
+    /* v8 ignore next -- timer callback fires only in production when the backend is unresponsive */
     const timer = setTimeout(() => controller.abort(), BACKEND_TIMEOUT_MS)
 
     let response

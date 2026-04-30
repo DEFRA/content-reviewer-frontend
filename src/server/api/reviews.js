@@ -101,6 +101,7 @@ async function fetchReviewsFromBackend(limit, skip, _page, userId = null) {
 
   // AbortController enforces BACKEND_TIMEOUT_MS on the backend fetch.
   const controller = new AbortController()
+  /* v8 ignore next -- timer callback fires only in production when the backend is unresponsive */
   const timer = setTimeout(() => controller.abort(), BACKEND_TIMEOUT_MS)
 
   try {

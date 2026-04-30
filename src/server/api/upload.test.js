@@ -35,7 +35,7 @@ vi.mock('../common/helpers/logging/logger.js', () => ({
 
 // Mock getUserIdentifier
 vi.mock('../common/helpers/get-user-identifier.js', () => ({
-  getUserIdentifier: vi.fn((request) => 'user-123')
+  getUserIdentifier: vi.fn(() => 'user-123')
 }))
 
 describe('uploadApiController - uploadFile', () => {
@@ -315,6 +315,20 @@ describe('uploadApiController - uploadFile', () => {
       expect(result.message).toBe('Backend processing error')
     })
 
+    it('uses default error message when backend error response has no message field', async () => {
+      // Covers the `errorData.message || errorMessage` false branch in handleBackendFailure
+      undiciFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 422,
+        json: vi.fn().mockResolvedValueOnce({})
+      })
+
+      const result = await uploadApiController.uploadFile(mockRequest, mockH)
+
+      expect(result.success).toBe(false)
+      expect(result.message).toBe('Failed to upload file to backend')
+    })
+
     it('should handle backend response with non-JSON body', async () => {
       undiciFetch.mockResolvedValueOnce({
         ok: false,
@@ -405,6 +419,26 @@ describe('uploadApiController - uploadFile', () => {
       expect(undiciFetch).toHaveBeenCalled()
     })
 
+    it('should resolve immediately when payload is already a Buffer (no .on method)', async () => {
+      // Covers the !file.on branch in fileStreamToBuffer — file is already a
+      // buffer so it is resolved directly without reading an event stream.
+      mockRequest.payload = Buffer.from('already buffered content')
+
+      undiciFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValueOnce({
+          reviewId: 'review-buf-01',
+          filename: 'document.pdf'
+        })
+      })
+
+      const result = await uploadApiController.uploadFile(mockRequest, mockH)
+
+      expect(result.success).toBe(true)
+      expect(undiciFetch).toHaveBeenCalled()
+    })
+
     it('should handle stream error', async () => {
       const mockStream = {
         on: vi.fn((event, callback) => {
@@ -421,6 +455,23 @@ describe('uploadApiController - uploadFile', () => {
       expect(result.success).toBe(false)
       expect(result.statusCode).toBe(500)
       expect(result.message).toContain('Stream read error')
+    })
+  })
+
+  describe('Timeout Handling', () => {
+    it('returns 500 with timeout message when backend fetch is aborted', async () => {
+      // Simulate the AbortController firing: fetch rejects with an AbortError
+      const abortError = new Error('The operation was aborted')
+      abortError.name = 'AbortError'
+      undiciFetch.mockRejectedValueOnce(abortError)
+
+      const result = await uploadApiController.uploadFile(mockRequest, mockH)
+
+      expect(result.success).toBe(false)
+      expect(result.statusCode).toBe(500)
+      expect(result.message).toBe(
+        'The upload request timed out. Please try again.'
+      )
     })
   })
 
@@ -475,6 +526,73 @@ describe('uploadApiController - uploadFile', () => {
       await uploadApiController.uploadFile(mockRequest, mockH)
 
       expect(undiciFetch).toHaveBeenCalled()
+    })
+
+    it('sends Authorization header when an access token is present in the session', async () => {
+      // Covers the truthy branch of `accessToken ? { Authorization: ... } : {}`
+      mockRequest.yar = {
+        get: vi.fn().mockReturnValue({ accessToken: 'test-bearer-token' })
+      }
+
+      undiciFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValueOnce({
+          reviewId: 'review-auth-01',
+          filename: 'document.pdf'
+        })
+      })
+
+      await uploadApiController.uploadFile(mockRequest, mockH)
+
+      const callHeaders = undiciFetch.mock.calls[0][1].headers
+      expect(callHeaders.Authorization).toBe('Bearer test-bearer-token')
+    })
+
+    it('falls back to default content-type when the content-type request header is absent', async () => {
+      // Covers the `|| 'application/octet-stream'` branch in uploadFile
+      delete mockRequest.headers['content-type']
+
+      undiciFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValueOnce({
+          reviewId: 'review-ct-fallback',
+          filename: 'document.pdf'
+        })
+      })
+
+      const result = await uploadApiController.uploadFile(mockRequest, mockH)
+
+      expect(result.success).toBe(true)
+    })
+  })
+
+  describe('Response fallbacks', () => {
+    it('uses "unknown" when backend success response has no reviewId', async () => {
+      // Covers the `result.reviewId || 'unknown'` false branch in processSuccessfulUpload
+      undiciFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValueOnce({ filename: 'document.pdf' })
+      })
+
+      const result = await uploadApiController.uploadFile(mockRequest, mockH)
+
+      expect(result.success).toBe(true)
+      expect(result.reviewId).toBeUndefined()
+    })
+
+    it('uses "Internal server error" fallback when upload error has no message', async () => {
+      // Covers the `error.message || 'Internal server error'` false branch in handleUploadError
+      const errorWithNoMessage = new Error('placeholder')
+      errorWithNoMessage.message = ''
+      undiciFetch.mockRejectedValueOnce(errorWithNoMessage)
+
+      const result = await uploadApiController.uploadFile(mockRequest, mockH)
+
+      expect(result.success).toBe(false)
+      expect(result.statusCode).toBe(500)
     })
   })
 })

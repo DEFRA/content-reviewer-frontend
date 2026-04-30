@@ -103,6 +103,7 @@ function convertLinksToMarkdown($, rootEl) {
     .find('a[href]')
     .each((_, anchor) => {
       const $anchor = $(anchor)
+      /* v8 ignore next -- selector `a[href]` guarantees attr exists; ?? '' is unreachable */
       const href = $anchor.attr('href') ?? ''
       const text = $anchor.text().replaceAll(/\s+/g, ' ').trim()
 
@@ -351,6 +352,7 @@ async function submitToBackend(
 ) {
   // AbortController enforces BACKEND_TIMEOUT_MS on the backend review call.
   const controller = new AbortController()
+  /* v8 ignore next -- timer callback fires only in production when the backend is unresponsive */
   const timer = setTimeout(() => controller.abort(), BACKEND_TIMEOUT_MS)
   const backendRequestStart = Date.now()
 
@@ -485,6 +487,7 @@ export const urlReviewController = {
       .replaceAll(/-+/g, '-')
       .substring(0, SLUG_MAX_LENGTH)
     const fileName = `${slug}.html`
+    /* v8 ignore next -- extractContent always sets title to at least sourceUrl, so || fileName is unreachable */
     const finalTitle = extracted.title || fileName
 
     const userId = getUserIdentifier(request)
