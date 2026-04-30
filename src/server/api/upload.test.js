@@ -192,8 +192,8 @@ function registerFileValidationTests() {
   })
 }
 
-function registerBackendIntegrationTests() {
-  describe('Backend Integration', () => {
+function registerBackendRequestTests() {
+  describe('Backend Integration - request forwarding', () => {
     it('should send file to backend with correct headers', async () => {
       undiciFetch.mockResolvedValueOnce(okResponse())
       await uploadApiController.uploadFile(mockRequest, mockH)
@@ -235,13 +235,17 @@ function registerBackendIntegrationTests() {
     it('should use fallback userId when not available', async () => {
       const { getUserIdentifier } =
         await import('../common/helpers/get-user-identifier.js')
-      vi.mocked(getUserIdentifier).mockReturnValue(null)
+      vi.mocked(getUserIdentifier).mockReturnValueOnce(null)
       undiciFetch.mockResolvedValueOnce(okResponse())
       await uploadApiController.uploadFile(mockRequest, mockH)
       const callArgs = undiciFetch.mock.calls[0][1]
       expect(callArgs.headers['x-user-id']).toBe('content-reviewer-frontend')
     })
+  })
+}
 
+function registerBackendResponseTests() {
+  describe('Backend Integration - response handling', () => {
     it('should handle successful backend response', async () => {
       undiciFetch.mockResolvedValueOnce(okResponse(REVIEW_ABC123))
       const result = await uploadApiController.uploadFile(mockRequest, mockH)
@@ -467,7 +471,8 @@ describe('uploadApiController - uploadFile', () => {
   afterEach(() => vi.clearAllMocks())
 
   registerFileValidationTests()
-  registerBackendIntegrationTests()
+  registerBackendRequestTests()
+  registerBackendResponseTests()
   registerResponseFormatTests()
   registerStreamHandlingTests()
   registerTimeoutHandlingTests()
