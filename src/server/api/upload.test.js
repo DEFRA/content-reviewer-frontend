@@ -9,6 +9,8 @@ const HTTP_STATUS_UNPROCESSABLE_ENTITY = 422
 const FILENAME_PDF = 'document.pdf'
 const DEFAULT_REVIEW_ID = 'review-123'
 const REVIEW_ABC123 = 'review-abc123'
+const MIME_OCTET_STREAM = 'application/octet-stream'
+const MIME_PDF = 'application/pdf'
 
 // Mock undici
 vi.mock('undici', () => ({
@@ -77,9 +79,9 @@ function setupTestFixtures() {
   mockRequest = {
     payload: createMockStream(),
     headers: {
-      'content-type': 'application/octet-stream',
+      'content-type': MIME_OCTET_STREAM,
       'x-file-name': FILENAME_PDF,
-      'x-file-content-type': 'application/pdf',
+      'x-file-content-type': MIME_PDF,
       'user-agent': 'Mozilla/5.0 Test'
     },
     info: {
@@ -202,9 +204,9 @@ function registerBackendRequestTests() {
         expect.objectContaining({
           method: 'POST',
           headers: expect.objectContaining({
-            'content-type': 'application/octet-stream',
+            'content-type': MIME_OCTET_STREAM,
             'x-file-name': FILENAME_PDF,
-            'x-file-content-type': 'application/pdf',
+            'x-file-content-type': MIME_PDF,
             'x-user-id': 'user-123'
           })
         })
@@ -414,12 +416,21 @@ function registerHeaderHandlingTests() {
 
     it('sends Authorization header when an access token is present in the session', async () => {
       // Covers the truthy branch of `accessToken ? { Authorization: ... } : {}`
-      // Plain function (not vi.fn) so clearMocks: true cannot wipe the return value.
-      mockRequest.yar = {
-        get: (_key) => ({ accessToken: 'test-bearer-token' })
+      // Build a self-contained request that includes yar from creation so the
+      // token is never subject to fixture reset between beforeEach and the call.
+      const requestWithAuth = {
+        payload: createMockStream(),
+        headers: {
+          'content-type': MIME_OCTET_STREAM,
+          'x-file-name': FILENAME_PDF,
+          'x-file-content-type': MIME_PDF,
+          'user-agent': 'Mozilla/5.0 Test'
+        },
+        info: { remoteAddress: '127.0.0.1' },
+        yar: { get: (_key) => ({ accessToken: 'test-bearer-token' }) }
       }
       undiciFetch.mockResolvedValueOnce(okResponse('review-auth-01'))
-      await uploadApiController.uploadFile(mockRequest, mockH)
+      await uploadApiController.uploadFile(requestWithAuth, mockH)
       expect(undiciFetch).toHaveBeenCalledWith(
         'http://localhost:3001/api/upload',
         expect.objectContaining({
@@ -431,7 +442,7 @@ function registerHeaderHandlingTests() {
     })
 
     it('falls back to default content-type when the content-type request header is absent', async () => {
-      // Covers the `|| 'application/octet-stream'` branch in uploadFile
+      // Covers the `|| MIME_OCTET_STREAM` branch in uploadFile
       delete mockRequest.headers['content-type']
       undiciFetch.mockResolvedValueOnce(okResponse('review-ct-fallback'))
       const result = await uploadApiController.uploadFile(mockRequest, mockH)
