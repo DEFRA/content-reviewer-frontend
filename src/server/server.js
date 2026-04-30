@@ -106,7 +106,7 @@ function setupAuthRedirect(server) {
       'returnTo',
       request.url.pathname + (request.url.search || '')
     )
-    return h.redirect('/auth/login').takeover()
+    return h.redirect('/auth/login-page').takeover()
   })
 }
 

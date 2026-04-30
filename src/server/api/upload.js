@@ -3,10 +3,6 @@ import { config } from '../../config/config.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
 import { getUserIdentifier } from '../common/helpers/get-user-identifier.js'
 
-function getAccessToken(request) {
-  return request.yar?.get('authTokens')?.accessToken ?? null
-}
-
 const logger = createLogger()
 
 // Reuse a single undici Agent with keep-alive for all upload backend calls
@@ -50,7 +46,6 @@ async function fileStreamToBuffer(file) {
  * Send file to backend service as application/octet-stream
  */
 async function sendFileToBackend(
-  request,
   fileBuffer,
   fileName,
   contentType,
@@ -67,7 +62,6 @@ async function sendFileToBackend(
       `File converted to buffer. Size: ${fileBuffer.length} bytes for: ${fileName}`
     )
 
-    const accessToken = getAccessToken(request)
     const response = await undiciFetch(`${backendUrl}/api/upload`, {
       method: 'POST',
       body: fileBuffer,
@@ -75,8 +69,7 @@ async function sendFileToBackend(
         'content-type': 'application/octet-stream',
         'x-file-name': encodeURIComponent(fileName),
         'x-file-content-type': mimeType,
-        'x-user-id': userId || 'content-reviewer-frontend',
-        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
+        'x-user-id': userId || 'content-reviewer-frontend'
       },
       dispatcher: keepAliveAgent
     })
@@ -210,7 +203,6 @@ export const uploadApiController = {
 
       // Send file to backend using the pre-buffered content
       const backendResult = await sendFileToBackend(
-        request,
         fileBuffer,
         fileName,
         contentType,
