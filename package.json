@@ -35,7 +35,7 @@
   "author": "Defra DDTS",
   "license": "OGL-UK-3.0",
   "dependencies": {
-    "@azure/msal-node": "5.1.4",
+    "@azure/msal-node": "5.0.5",
     "@defra/cdp-auditing": "0.6.0",
     "@defra/hapi-secure-context": "0.4.0",
     "@defra/hapi-tracing": "1.30.0",
@@ -110,6 +110,7 @@
     "minimatch": "^10.2.1",
     "serialize-javascript": ">=6.0.2",
     "webpack": "^5.96.1",
-    "uuid": "14.0.0"
+    "uuid": "14.0.0",
+    "@azure/msal-node": "5.0.5"
   }
 }

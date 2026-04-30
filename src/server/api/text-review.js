@@ -1,7 +1,6 @@
 import { config } from '../../config/config.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
 import { getUserIdentifier } from '../common/helpers/get-user-identifier.js'
-import { authenticatedFetch } from '../common/helpers/authenticated-fetch.js'
 import { Agent } from 'undici'
 
 const logger = createLogger()
@@ -78,24 +77,20 @@ async function submitToBackend(
 
   const backendRequestStart = Date.now()
 
-  const response = await authenticatedFetch(
-    request,
-    `${backendUrl}/api/review/text`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(userId ? { 'x-user-id': userId } : {})
-      },
-      body: JSON.stringify({
-        content: textContent,
-        title: finalTitle,
-        sourceType: sourceType || 'text',
-        sourceUrl: sourceUrl || null
-      }),
-      dispatcher: keepAliveAgent
-    }
-  )
+  const response = await fetch(`${backendUrl}/api/review/text`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(userId ? { 'x-user-id': userId } : {})
+    },
+    body: JSON.stringify({
+      content: textContent,
+      title: finalTitle,
+      sourceType: sourceType || 'text',
+      sourceUrl: sourceUrl || null
+    }),
+    dispatcher: keepAliveAgent
+  })
 
   const backendRequestEnd = Date.now()
   const backendRequestTime = (backendRequestEnd - backendRequestStart) / 1000
