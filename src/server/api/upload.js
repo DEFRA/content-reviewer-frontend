@@ -83,15 +83,21 @@ async function sendFileToBackend(
     )
 
     const accessToken = _private.getAccessToken(request)
+    const headers = {
+      'content-type': 'application/octet-stream',
+      'x-file-name': encodeURIComponent(fileName),
+      'x-file-content-type': mimeType,
+      'x-user-id': userId || 'content-reviewer-frontend'
+    }
+
+    if (accessToken) {
+      headers.authorization = `Bearer ${accessToken}`
+    }
+
     const response = await undiciFetch(`${backendUrl}/api/upload`, {
       method: 'POST',
       body: fileBuffer,
-      headers: {
-        'content-type': 'application/octet-stream',
-        'x-file-name': encodeURIComponent(fileName),
-        'x-file-content-type': mimeType,
-        'x-user-id': userId || 'content-reviewer-frontend'
-      },
+      headers,
       dispatcher: keepAliveAgent,
       signal: controller.signal
     })
