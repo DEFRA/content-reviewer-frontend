@@ -29,11 +29,9 @@ vi.mock('../common/helpers/logging/logger.js', () => ({
   }))
 }))
 
-// Use vi.hoisted so the Agent class reference is available when the factory is hoisted
-const { MockAgent } = vi.hoisted(() => {
-  function MockAgent() {}
-  return { MockAgent }
-})
+// Use vi.hoisted so the Agent class reference is available when the factory is hoisted.
+// Empty class — undici Agent is only used as `new Agent(opts)`; tests never call methods on it.
+const { MockAgent } = vi.hoisted(() => ({ MockAgent: class {} }))
 
 vi.mock('undici', () => ({
   Agent: MockAgent
@@ -200,6 +198,26 @@ describe('deleteReviewController - error responses', () => {
         success: false,
         error: 'Internal server error',
         message: 'Network failure'
+      })
+    )
+    expect(mockH._responseMock.code).toHaveBeenCalledWith(
+      HTTP_STATUS_INTERNAL_SERVER_ERROR
+    )
+  })
+
+  it('returns 500 with timeout message when the backend fetch is aborted', async () => {
+    // Simulate the AbortController firing: fetch rejects with an AbortError
+    const abortError = new Error('The operation was aborted')
+    abortError.name = 'AbortError'
+    fetchMock.mockRejectedValueOnce(abortError)
+
+    await deleteReviewController(mockRequest, mockH)
+
+    expect(mockH.response).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        error: 'Request timed out',
+        message: 'The delete request timed out. Please try again.'
       })
     )
     expect(mockH._responseMock.code).toHaveBeenCalledWith(

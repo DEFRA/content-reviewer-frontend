@@ -7,6 +7,9 @@ import { fetchGovUkHtml, parseAllowedUrl } from './fetch-url.js'
 
 const logger = createLogger()
 
+// Hard limit on frontend → backend calls. Must be well below the Hapi socket timeout (90 s).
+const BACKEND_TIMEOUT_MS = 30_000
+
 const keepAliveAgent = new Agent({
   keepAliveTimeout: 30_000,
   keepAliveMaxTimeout: 300_000,
@@ -100,6 +103,7 @@ function convertLinksToMarkdown($, rootEl) {
     .find('a[href]')
     .each((_, anchor) => {
       const $anchor = $(anchor)
+      /* v8 ignore next -- selector `a[href]` guarantees attr exists; ?? '' is unreachable */
       const href = $anchor.attr('href') ?? ''
       const text = $anchor.text().replaceAll(/\s+/g, ' ').trim()
 
@@ -122,6 +126,44 @@ function convertLinksToMarkdown($, rootEl) {
 
       $anchor.replaceWith(replacement)
     })
+}
+
+/**
+ * Walk CONTENT_SELECTORS, skip overlapping or empty elements, convert links to
+ * Markdown in place, and return a list of `<section>` HTML strings.
+ * Ancestor/descendant overlap detection prevents duplicate content when both a
+ * parent container and one of its children match different selectors.
+ * @param {import('cheerio').CheerioAPI} $
+ * @returns {string[]}
+ */
+function collectSections($) {
+  const sections = []
+  const matchedEls = [] // raw DOM nodes for ancestor/descendant overlap detection
+
+  for (const selector of CONTENT_SELECTORS) {
+    $(selector).each((_, el) => {
+      // Skip if this element is already covered by (or covers) a matched node
+      const overlaps = matchedEls.some(
+        (matched) => $.contains(matched, el) || $.contains(el, matched)
+      )
+      if (overlaps) {
+        return
+      }
+
+      // Convert <a> tags to Markdown before capturing innerHTML
+      convertLinksToMarkdown($, el)
+
+      const text = $(el).text().replaceAll(/\s+/g, ' ').trim()
+      if (!text) {
+        return
+      }
+
+      matchedEls.push(el)
+      sections.push(`<section>\n${$(el).html().trim()}\n</section>`)
+    })
+  }
+
+  return sections
 }
 
 /**
@@ -150,31 +192,7 @@ function extractContent(html, sourceUrl) {
   // Remove structural noise
   $(NOISE_SELECTORS).remove()
 
-  const sections = []
-  const matchedEls = [] // raw DOM nodes for ancestor/descendant overlap detection
-
-  for (const selector of CONTENT_SELECTORS) {
-    $(selector).each((_, el) => {
-      // Skip if this element is already covered by (or covers) a matched node
-      const overlaps = matchedEls.some(
-        (matched) => $.contains(matched, el) || $.contains(el, matched)
-      )
-      if (overlaps) {
-        return
-      }
-
-      // Convert <a> tags to Markdown before capturing innerHTML
-      convertLinksToMarkdown($, el)
-
-      const text = $(el).text().replaceAll(/\s+/g, ' ').trim()
-      if (!text) {
-        return
-      }
-
-      matchedEls.push(el)
-      sections.push(`<section>\n${$(el).html().trim()}\n</section>`)
-    })
-  }
+  const sections = collectSections($)
 
   if (sections.length === 0) {
     throw new Error(
@@ -336,6 +354,67 @@ function extractPage(html, url, h) {
 }
 
 /**
+ * Return the Hapi response for a successful backend submission.
+ * Logs the outcome and forwards the reviewId to the caller.
+ * @param {object} result - parsed JSON body from the backend
+ * @param {string} url - original GOV.UK URL (for logging)
+ * @param {string} backendRequestTime - elapsed seconds as a formatted string
+ * @param {object} h - Hapi response toolkit
+ */
+function handleBackendSuccess(result, url, backendRequestTime, h) {
+  logger.info(
+    { url, reviewId: result.reviewId, backendRequestTime },
+    `url-review: review submitted successfully in ${backendRequestTime}s`
+  )
+  return h
+    .response({
+      success: true,
+      message: 'URL content submitted for review',
+      reviewId: result.reviewId
+    })
+    .code(HTTP_STATUS.OK)
+}
+
+/**
+ * Return the Hapi response when the backend fetch throws.
+ * AbortError is treated as a request timeout; all other errors become 500 responses.
+ * @param {Error} error
+ * @param {string} url - original GOV.UK URL (for logging)
+ * @param {number} backendRequestStart - Date.now() captured before the fetch
+ * @param {object} h - Hapi response toolkit
+ */
+function handleBackendFetchError(error, url, backendRequestStart, h) {
+  const backendRequestTime = (
+    (Date.now() - backendRequestStart) /
+    1000
+  ).toFixed(2)
+
+  if (error.name === 'AbortError') {
+    logger.error(
+      { url, backendRequestTime },
+      `url-review: backend request timed out after ${BACKEND_TIMEOUT_MS / 1000}s`
+    )
+    return h
+      .response({
+        success: false,
+        message: 'The request timed out. Please try again.'
+      })
+      .code(HTTP_STATUS.INTERNAL_SERVER_ERROR)
+  }
+
+  logger.error(
+    { err: error, url, backendRequestTime },
+    'url-review: backend submission error'
+  )
+  return h
+    .response({
+      success: false,
+      message: error.message || 'Internal server error'
+    })
+    .code(HTTP_STATUS.INTERNAL_SERVER_ERROR)
+}
+
+/**
  * Step 3: Forward extracted content to the backend review API.
  */
 async function submitToBackend(
@@ -346,6 +425,12 @@ async function submitToBackend(
   backendUrl,
   h
 ) {
+  // AbortController enforces BACKEND_TIMEOUT_MS on the backend review call.
+  const controller = new AbortController()
+  /* v8 ignore next -- timer callback fires only in production when the backend is unresponsive */
+  const timer = setTimeout(() => controller.abort(), BACKEND_TIMEOUT_MS)
+  const backendRequestStart = Date.now()
+
   try {
     const backendResponse = await fetch(`${backendUrl}/api/review/text`, {
       method: 'POST',
@@ -359,12 +444,18 @@ async function submitToBackend(
         sourceType: 'url',
         sourceUrl: url
       }),
-      dispatcher: keepAliveAgent
+      dispatcher: keepAliveAgent,
+      signal: controller.signal
     })
+
+    const backendRequestTime = (
+      (Date.now() - backendRequestStart) /
+      1000
+    ).toFixed(2)
 
     if (!backendResponse.ok) {
       logger.error(
-        { url, status: backendResponse.status },
+        { url, status: backendResponse.status, backendRequestTime },
         'url-review: backend review request failed'
       )
       return h
@@ -376,28 +467,11 @@ async function submitToBackend(
     }
 
     const result = await backendResponse.json()
-    logger.info(
-      { url, reviewId: result.reviewId },
-      'url-review: review submitted successfully'
-    )
-    return h
-      .response({
-        success: true,
-        message: 'URL content submitted for review',
-        reviewId: result.reviewId
-      })
-      .code(HTTP_STATUS.OK)
+    return handleBackendSuccess(result, url, backendRequestTime, h)
   } catch (backendError) {
-    logger.error(
-      { err: backendError, url },
-      'url-review: backend submission error'
-    )
-    return h
-      .response({
-        success: false,
-        message: backendError.message || 'Internal server error'
-      })
-      .code(HTTP_STATUS.INTERNAL_SERVER_ERROR)
+    return handleBackendFetchError(backendError, url, backendRequestStart, h)
+  } finally {
+    clearTimeout(timer)
   }
 }
 
@@ -451,6 +525,7 @@ export const urlReviewController = {
       .replaceAll(/-+/g, '-')
       .substring(0, SLUG_MAX_LENGTH)
     const fileName = `${slug}.html`
+    /* v8 ignore next -- extractContent always sets title to at least sourceUrl, so || fileName is unreachable */
     const finalTitle = extracted.title || fileName
 
     const userId = getUserIdentifier(request)
