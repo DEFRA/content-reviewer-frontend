@@ -117,7 +117,9 @@ describe('uploadApiController.uploadFile', () => {
     expect(undiciFetch).toHaveBeenCalled()
     const callOpts = undiciFetch.mock.calls[0][1]
     expect(callOpts.method).toBe('POST')
-    expect(callOpts.headers['x-file-name']).toBe(encodeURIComponent('document.pdf'))
+    expect(callOpts.headers['x-file-name']).toBe(
+      encodeURIComponent('document.pdf')
+    )
     // body should be a Buffer or Uint8Array-like
     expect(callOpts.body).toBeDefined()
     expect(typeof callOpts.body.length).toBe('number')
@@ -137,7 +139,10 @@ describe('uploadApiController.uploadFile', () => {
       payload: createStreamEmitter({ throwError: 'stream-failed' })
     }
     // undiciFetch shouldn't be called in this case; ensure it's not set up
-    const result = await uploadApiController.uploadFile(errorStreamRequest, mockH)
+    const result = await uploadApiController.uploadFile(
+      errorStreamRequest,
+      mockH
+    )
     expect(result.success).toBe(false)
     expect(result.message).toMatch(/File stream error/i)
   })
