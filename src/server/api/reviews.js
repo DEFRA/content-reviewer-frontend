@@ -5,6 +5,10 @@ import { Agent } from 'undici'
 
 const logger = createLogger()
 const backendUrl = config.get('backendUrl')
+
+// Hard limit on frontend → backend calls. Must be well below the Hapi socket timeout (90 s).
+const BACKEND_TIMEOUT_MS = 30_000
+
 const PAGE_SIZE = 25
 const MAX_PAGE = 1000 // caps skip at MAX_PAGE * PAGE_SIZE = 25,000 items
 const MAX_LIMIT = 100 // hard ceiling on requested page size
@@ -94,11 +98,22 @@ async function fetchReviewsFromBackend(limit, skip, _page, userId = null) {
   }
   const endpoint = `${backendUrl}/api/reviews?${params.toString()}`
   const startTime = Date.now()
-  const response = await fetch(endpoint, {
-    dispatcher: keepAliveAgent
-  })
-  const backendRequestTime = ((Date.now() - startTime) / 1000).toFixed(2)
-  return { response, backendRequestTime, endpoint }
+
+  // AbortController enforces BACKEND_TIMEOUT_MS on the backend fetch.
+  const controller = new AbortController()
+  /* v8 ignore next -- timer callback fires only in production when the backend is unresponsive */
+  const timer = setTimeout(() => controller.abort(), BACKEND_TIMEOUT_MS)
+
+  try {
+    const response = await fetch(endpoint, {
+      dispatcher: keepAliveAgent,
+      signal: controller.signal
+    })
+    const backendRequestTime = ((Date.now() - startTime) / 1000).toFixed(2)
+    return { response, backendRequestTime, endpoint }
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 /**
@@ -162,6 +177,18 @@ export async function getReviewsController(request, h) {
       .code(OK)
   } catch (error) {
     const totalProcessingTime = (Date.now() - startTime) / 1000
+
+    if (error.name === 'AbortError') {
+      logger.error(
+        `Reviews backend request timed out after ${BACKEND_TIMEOUT_MS / 1000}s — totalProcessingTime: ${totalProcessingTime}s`
+      )
+      return createErrorResponse(
+        h,
+        'The request timed out. Please try again.',
+        limit,
+        skip
+      )
+    }
 
     logger.error('Review history API request failed with error', {
       error: error.message,

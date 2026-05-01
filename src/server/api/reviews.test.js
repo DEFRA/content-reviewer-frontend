@@ -340,4 +340,20 @@ describe('getReviewsController - Error Handling', () => {
       error: networkError.message
     })
   })
+
+  it('returns a timeout error response when fetch is aborted', async () => {
+    // Simulate the AbortController firing: fetch rejects with an AbortError
+    const abortError = new Error('The operation was aborted')
+    abortError.name = 'AbortError'
+    globalThis.fetch.mockRejectedValueOnce(abortError)
+
+    await getReviewsController(mockRequest, mockH)
+
+    expect(mockH.response).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        error: 'The request timed out. Please try again.'
+      })
+    )
+  })
 })

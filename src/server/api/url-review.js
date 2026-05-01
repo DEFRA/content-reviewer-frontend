@@ -7,6 +7,9 @@ import { fetchGovUkHtml, parseAllowedUrl } from './fetch-url.js'
 
 const logger = createLogger()
 
+// Hard limit on frontend → backend calls. Must be well below the Hapi socket timeout (90 s).
+const BACKEND_TIMEOUT_MS = 30_000
+
 const keepAliveAgent = new Agent({
   keepAliveTimeout: 30_000,
   keepAliveMaxTimeout: 300_000,
@@ -100,6 +103,7 @@ function convertLinksToMarkdown($, rootEl) {
     .find('a[href]')
     .each((_, anchor) => {
       const $anchor = $(anchor)
+      /* v8 ignore next -- selector `a[href]` guarantees attr exists; ?? '' is unreachable */
       const href = $anchor.attr('href') ?? ''
       const text = $anchor.text().replaceAll(/\s+/g, ' ').trim()
 
@@ -346,6 +350,12 @@ async function submitToBackend(
   backendUrl,
   h
 ) {
+  // AbortController enforces BACKEND_TIMEOUT_MS on the backend review call.
+  const controller = new AbortController()
+  /* v8 ignore next -- timer callback fires only in production when the backend is unresponsive */
+  const timer = setTimeout(() => controller.abort(), BACKEND_TIMEOUT_MS)
+  const backendRequestStart = Date.now()
+
   try {
     const backendResponse = await fetch(`${backendUrl}/api/review/text`, {
       method: 'POST',
@@ -359,12 +369,18 @@ async function submitToBackend(
         sourceType: 'url',
         sourceUrl: url
       }),
-      dispatcher: keepAliveAgent
+      dispatcher: keepAliveAgent,
+      signal: controller.signal
     })
+
+    const backendRequestTime = (
+      (Date.now() - backendRequestStart) /
+      1000
+    ).toFixed(2)
 
     if (!backendResponse.ok) {
       logger.error(
-        { url, status: backendResponse.status },
+        { url, status: backendResponse.status, backendRequestTime },
         'url-review: backend review request failed'
       )
       return h
@@ -377,8 +393,8 @@ async function submitToBackend(
 
     const result = await backendResponse.json()
     logger.info(
-      { url, reviewId: result.reviewId },
-      'url-review: review submitted successfully'
+      { url, reviewId: result.reviewId, backendRequestTime },
+      `url-review: review submitted successfully in ${backendRequestTime}s`
     )
     return h
       .response({
@@ -388,8 +404,26 @@ async function submitToBackend(
       })
       .code(HTTP_STATUS.OK)
   } catch (backendError) {
+    const backendRequestTime = (
+      (Date.now() - backendRequestStart) /
+      1000
+    ).toFixed(2)
+
+    if (backendError.name === 'AbortError') {
+      logger.error(
+        { url, backendRequestTime },
+        `url-review: backend request timed out after ${BACKEND_TIMEOUT_MS / 1000}s`
+      )
+      return h
+        .response({
+          success: false,
+          message: 'The request timed out. Please try again.'
+        })
+        .code(HTTP_STATUS.INTERNAL_SERVER_ERROR)
+    }
+
     logger.error(
-      { err: backendError, url },
+      { err: backendError, url, backendRequestTime },
       'url-review: backend submission error'
     )
     return h
@@ -398,6 +432,8 @@ async function submitToBackend(
         message: backendError.message || 'Internal server error'
       })
       .code(HTTP_STATUS.INTERNAL_SERVER_ERROR)
+  } finally {
+    clearTimeout(timer)
   }
 }
 
@@ -451,6 +487,7 @@ export const urlReviewController = {
       .replaceAll(/-+/g, '-')
       .substring(0, SLUG_MAX_LENGTH)
     const fileName = `${slug}.html`
+    /* v8 ignore next -- extractContent always sets title to at least sourceUrl, so || fileName is unreachable */
     const finalTitle = extracted.title || fileName
 
     const userId = getUserIdentifier(request)

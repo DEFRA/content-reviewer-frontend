@@ -5,6 +5,9 @@ import { createLogger } from '../common/helpers/logging/logger.js'
 const HTTP_STATUS_OK = 200
 const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500
 
+// Hard limit on frontend → backend calls. Must be well below the Hapi socket timeout (90 s).
+const BACKEND_TIMEOUT_MS = 30_000
+
 const logger = createLogger()
 const backendUrl = config.get('backendUrl')
 
@@ -31,14 +34,25 @@ export async function deleteReviewController(request, h) {
     const endpoint = `${backendUrl}/api/reviews/${reviewId}`
     logger.info(`Deleting review via backend: ${endpoint}`)
 
-    // Forward delete request to backend
-    const response = await fetch(endpoint, {
-      method: 'DELETE',
-      headers: {
-        Accept: 'application/json'
-      },
-      dispatcher: keepAliveAgent
-    })
+    // AbortController enforces BACKEND_TIMEOUT_MS — prevents a hanging delete.
+    const controller = new AbortController()
+    /* v8 ignore next -- timer callback fires only in production when the backend is unresponsive */
+    const timer = setTimeout(() => controller.abort(), BACKEND_TIMEOUT_MS)
+
+    let response
+    try {
+      // Forward delete request to backend
+      response = await fetch(endpoint, {
+        method: 'DELETE',
+        headers: {
+          Accept: 'application/json'
+        },
+        dispatcher: keepAliveAgent,
+        signal: controller.signal
+      })
+    } finally {
+      clearTimeout(timer)
+    }
 
     const backendRequestEnd = Date.now()
     const backendRequestTime = (backendRequestEnd - backendRequestStart) / 1000
@@ -86,6 +100,19 @@ export async function deleteReviewController(request, h) {
       .code(HTTP_STATUS_OK)
   } catch (error) {
     const totalProcessingTime = (Date.now() - startTime) / 1000
+
+    if (error.name === 'AbortError') {
+      logger.error(
+        `Delete review backend request timed out after ${BACKEND_TIMEOUT_MS / 1000}s — reviewId: ${reviewId}, totalProcessingTime: ${totalProcessingTime}s`
+      )
+      return h
+        .response({
+          success: false,
+          error: 'Request timed out',
+          message: 'The delete request timed out. Please try again.'
+        })
+        .code(HTTP_STATUS_INTERNAL_SERVER_ERROR)
+    }
 
     logger.error('Delete review API request failed with error', {
       error: error.message,

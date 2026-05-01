@@ -16,6 +16,16 @@ const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500
 const HTTP_STATUS_OK = 200
 
 /**
+ * Grouped into an object so tests can spy on individual methods without
+ * depending on Hapi's yar session being present in unit-test fixtures.
+ */
+export const _private = {
+  getAccessToken(request) {
+    return request.yar?.get('authTokens')?.accessToken ?? null
+  }
+}
+
+/**
  * Convert Hapi file stream to Buffer
  */
 async function fileStreamToBuffer(file) {
@@ -50,7 +60,8 @@ async function sendFileToBackend(
   fileName,
   contentType,
   mimeType,
-  userId
+  userId,
+  accessToken
 ) {
   const backendUrl = config.get('backendUrl')
   logger.info(
@@ -69,7 +80,8 @@ async function sendFileToBackend(
         'content-type': 'application/octet-stream',
         'x-file-name': encodeURIComponent(fileName),
         'x-file-content-type': mimeType,
-        'x-user-id': userId || 'content-reviewer-frontend'
+        'x-user-id': userId || 'content-reviewer-frontend',
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
       },
       dispatcher: keepAliveAgent
     })
@@ -140,6 +152,10 @@ async function processSuccessfulUpload(
  */
 function handleUploadError(error, startTime, h) {
   const totalProcessingTime = (Date.now() - startTime) / 1000
+  const message =
+    error.name === 'AbortError'
+      ? 'The upload request timed out. Please try again.'
+      : error.message || 'Internal server error'
 
   logger.error('Upload API request failed with error', {
     error: error.message,
@@ -150,7 +166,7 @@ function handleUploadError(error, startTime, h) {
   return h
     .response({
       success: false,
-      message: error.message || 'Internal server error'
+      message
     })
     .code(HTTP_STATUS_INTERNAL_SERVER_ERROR)
 }
@@ -201,13 +217,16 @@ export const uploadApiController = {
       const userId = getUserIdentifier(request)
       logger.info(`User identifier for upload: ${userId}`)
 
+      const accessToken = _private.getAccessToken(request)
+
       // Send file to backend using the pre-buffered content
       const backendResult = await sendFileToBackend(
         fileBuffer,
         fileName,
         contentType,
         mimeType,
-        userId
+        userId,
+        accessToken
       )
       const response = backendResult.response
       const backendRequestTime = backendResult.backendRequestTime
