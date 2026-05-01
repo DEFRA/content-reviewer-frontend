@@ -254,31 +254,28 @@ export const uploadApiController = {
 }
 
 async function waitForUpload(reviewId, interval = 1000, maxAttempts = 60) {
-  let attempts = 0
   const backendUrl = config.get('backendUrl')
-  while (attempts < maxAttempts) {
-    attempts += 1
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
       const res = await fetch(`${backendUrl}/api/upload-status/${reviewId}`)
-      if (res.status === 200) {
-        const json = await res.json()
-        if (
-          json.status &&
-          (json.status === 'rejected' ||
-            json.status === 'completed' ||
-            json.status === 'error')
-        ) {
-          return json
-        }
-      } else {
+      if (res.status !== HTTP_STATUS_OK) {
         logger.info(
           `Upload status check returned status ${res.status} for reviewId=${reviewId}`
         )
+        await delay(interval)
+        continue
       }
+
+      const json = await res.json()
+      if (json.status && isTerminalStatus(json.status)) {
+        return json
+      }
+
+      await delay(interval)
     } catch (err) {
       throw new Error(`Failed to poll upload status: ${err.message}`)
     }
-    await new Promise((resolve) => setTimeout(resolve, interval))
   }
+
   throw new Error(`Timeout waiting for upload status for reviewId=${reviewId}`)
 }
