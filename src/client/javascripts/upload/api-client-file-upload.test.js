@@ -6,8 +6,7 @@ import * as domElements from './dom-elements.js'
 import * as inputControls from './input-controls.js'
 import {
   PROGRESS_INITIAL,
-  PROGRESS_PROCESSING,
-  RELOAD_DELAY
+  PROGRESS_PROCESSING
 } from './constants.js'
 
 const TEST_FILE_TYPE = 'text/plain'
