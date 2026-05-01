@@ -21,6 +21,9 @@ const MOCK_URL_REVIEW_ID = 'url-review-789'
 const HTTP_STATUS_SERVER_ERROR = 500
 const TEST_DESCRIPTION_NETWORK_ERRORS = 'should handle network errors'
 const AUTH_LOGIN_PATH = '/auth/login'
+const PROGRESS_INITIAL = 30
+const PROGRESS_PROCESSING = 70
+const HTTP_STATUS_BAD_REQUEST = 400
 
 let mockFetch
 let mockElements
@@ -252,7 +255,6 @@ describe('submitFileUpload - success', () => {
     const uploadPromise = apiClient.submitFileUpload(file)
     await vi.advanceTimersByTimeAsync(0)
     await uploadPromise
-    await vi.advanceTimersByTimeAsync(RELOAD_DELAY)
   })
 
   it('should show progress during file upload', async () => {
@@ -280,13 +282,13 @@ describe('submitFileUpload - errors', () => {
     const file = new File(['test'], TEST_FILENAME, { type: TEST_FILE_TYPE })
     mockFetch.mockResolvedValueOnce({
       ok: false,
-      json: async () => ({ message: ERROR_MSG_UPLOAD })
+      json: async () => ({ message: 'error' })
     })
     const uploadPromise = apiClient.submitFileUpload(file).catch((err) => err)
     await vi.advanceTimersByTimeAsync(0)
     const result = await uploadPromise
     expect(result).toBeInstanceOf(Error)
-    expect(result.message).toBe(ERROR_MSG_UPLOAD)
+    expect(result.message).toBe('error')
     expect(uiFeedback.showDocumentError).toHaveBeenCalled()
   })
 
@@ -306,13 +308,13 @@ describe('submitFileUpload - errors', () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
       status: HTTP_STATUS_BAD_REQUEST,
-      json: async () => ({ message: ERROR_MSG_BAD_REQUEST })
+      json: async () => ({ message: 'bad request' })
     })
     const uploadPromise = apiClient.submitFileUpload(file).catch((err) => err)
     await vi.advanceTimersByTimeAsync(0)
     const result = await uploadPromise
     expect(result).toBeInstanceOf(Error)
-    expect(result.message).toBe(ERROR_MSG_BAD_REQUEST)
+    expect(result.message).toBe('bad request')
   })
 })
 

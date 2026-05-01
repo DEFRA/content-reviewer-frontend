@@ -181,32 +181,6 @@ export async function submitTextReview(textContent) {
   }
 }
 
-function completeFileUpload(data, file) {
-  hideProgress()
-  const fileInputEl = getFileInput()
-  if (fileInputEl) {
-    fileInputEl.value = ''
-  }
-  updateMutualExclusion()
-  if (typeof globalThis.updateReviewHistory === 'function') {
-    setTimeout(() => globalThis.updateReviewHistory(), REDIRECT_DELAY)
-  } else {
-    addReviewToHistory({
-      id: data.reviewId || data.id,
-      fileName: file.name,
-      timestamp: Date.now(),
-      status: 'pending'
-    })
-  }
-  if (typeof globalThis.startAutoRefresh === 'function') {
-    globalThis.startAutoRefresh()
-  }
-  sessionStorage.setItem('reviewJustSubmitted', 'true')
-  setTimeout(() => {
-    globalThis.location.reload()
-  }, RELOAD_DELAY)
-}
-
 export async function submitFileUpload(file) {
   const elements = getElements()
   try {
