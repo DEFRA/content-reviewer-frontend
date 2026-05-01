@@ -4,11 +4,7 @@ import * as uiFeedback from './ui-feedback.js'
 import * as reviewHistory from './review-history.js'
 import * as domElements from './dom-elements.js'
 import * as inputControls from './input-controls.js'
-import {
-  PROGRESS_INITIAL,
-  PROGRESS_PROCESSING,
-  RELOAD_DELAY
-} from './constants.js'
+import { PROGRESS_INITIAL, PROGRESS_PROCESSING } from './constants.js'
 
 const TEST_FILE_TYPE = 'text/plain'
 const TEST_FILENAME = 'test.txt'
@@ -80,18 +76,6 @@ describe('submitFileUpload - success', () => {
       })
     )
     expect(result).toEqual(mockResponse)
-  })
-
-  it('should reload page after successful upload', async () => {
-    const file = new File(['data'], TEST_FILENAME, { type: TEST_FILE_TYPE })
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ reviewId: MOCK_REVIEW_ID })
-    })
-    const uploadPromise = apiClient.submitFileUpload(file)
-    await vi.advanceTimersByTimeAsync(0)
-    await uploadPromise
-    await vi.advanceTimersByTimeAsync(RELOAD_DELAY)
   })
 
   it('should show progress during file upload', async () => {
