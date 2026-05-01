@@ -1,10 +1,7 @@
 // API client for upload and review operations
-/* global sessionStorage */
 import {
   PROGRESS_INITIAL,
   PROGRESS_PROCESSING,
-  RELOAD_DELAY,
-  REDIRECT_DELAY,
   HISTORY_UPDATE_DELAY,
   PREVIEW_WORDS_LIMIT,
   PREVIEW_CHARS_LIMIT,
@@ -183,33 +180,8 @@ export async function submitTextReview(textContent) {
   }
 }
 
-function completeFileUpload(data, file) {
-  hideProgress()
-  const fileInputEl = getFileInput()
-  if (fileInputEl) {
-    fileInputEl.value = ''
-  }
-  updateMutualExclusion()
-  if (typeof globalThis.updateReviewHistory === 'function') {
-    setTimeout(() => globalThis.updateReviewHistory(), REDIRECT_DELAY)
-  } else {
-    addReviewToHistory({
-      id: data.reviewId || data.id,
-      fileName: file.name,
-      timestamp: Date.now(),
-      status: 'pending'
-    })
-  }
-  if (typeof globalThis.startAutoRefresh === 'function') {
-    globalThis.startAutoRefresh()
-  }
-  sessionStorage.setItem('reviewJustSubmitted', 'true')
-  setTimeout(() => {
-    globalThis.location.reload()
-  }, RELOAD_DELAY)
-}
-
 export async function submitFileUpload(file) {
+  const elements = getElements()
   try {
     showProgress('Uploading to server...', PROGRESS_INITIAL)
     const arrayBuffer = await file.arrayBuffer()
@@ -234,7 +206,18 @@ export async function submitFileUpload(file) {
     }
     const data = await response.json()
     console.log('[UPLOAD-HANDLER] File uploaded successfully:', data)
-    completeFileUpload(data, file)
+    hideProgress()
+    const fileInputEl = getFileInput()
+    if (fileInputEl) {
+      fileInputEl.value = ''
+    }
+    updateMutualExclusion()
+    updateCharacterCount()
+    if (elements.uploadButton) {
+      elements.uploadButton.disabled = false
+    }
+    handleReviewHistory(data, encodeURIComponent(file.name))
+    startAutoRefresh()
     return data
   } catch (error) {
     console.error('[UPLOAD-HANDLER] Upload error:', error)

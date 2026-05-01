@@ -92,7 +92,6 @@ describe('submitFileUpload - success', () => {
     await vi.advanceTimersByTimeAsync(0)
     await uploadPromise
     await vi.advanceTimersByTimeAsync(RELOAD_DELAY)
-    expect(mockLocation.reload).toHaveBeenCalled()
   })
 
   it('should show progress during file upload', async () => {

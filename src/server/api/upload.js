@@ -232,7 +232,30 @@ export const uploadApiController = {
       const backendRequestTime = backendResult.backendRequestTime
 
       // Handle backend response
-      if (!response.ok) {
+      if (response.ok) {
+        logger.info(
+          `Backend upload initiated successfully and waiting for upload status for reviewId=${response.reviewId}`
+        )
+        // Poll backend for upload status until it's no longer 'initiated'
+        const uploadStatus = await waitForUpload(response.reviewId)
+        logger.info(
+          `Upload status for reviewId=${response.reviewId} is now ${uploadStatus.status}`
+        )
+        if (
+          uploadStatus.status === 'rejected' ||
+          uploadStatus.status === 'error'
+        ) {
+          logger.info(
+            `Upload rejected for reviewId=${response.reviewId} with reason: ${uploadStatus.message}`
+          )
+          return h
+            .response({
+              success: false,
+              message: uploadStatus.message
+            })
+            .code(HTTP_STATUS_INTERNAL_SERVER_ERROR)
+        }
+      } else {
         return await handleBackendFailure(response, fileName, h)
       }
 
@@ -247,4 +270,43 @@ export const uploadApiController = {
       return handleUploadError(error, startTime, h)
     }
   }
+}
+
+export async function waitForUpload(
+  reviewId,
+  interval = 1000,
+  maxAttempts = 60
+) {
+  const backendUrl = config.get('backendUrl')
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      const res = await fetch(`${backendUrl}/api/upload-status/${reviewId}`)
+      if (res.status !== HTTP_STATUS_OK) {
+        logger.info(
+          `Upload status check returned status ${res.status} for reviewId=${reviewId}`
+        )
+        await delay(interval)
+        continue
+      }
+
+      const json = await res.json()
+      if (json.status && isTerminalStatus(json.status)) {
+        return json
+      }
+
+      await delay(interval)
+    } catch (err) {
+      throw new Error(`Failed to poll upload status: ${err.message}`)
+    }
+  }
+
+  throw new Error(`Timeout waiting for upload status for reviewId=${reviewId}`)
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function isTerminalStatus(status) {
+  return status === 'rejected' || status === 'completed' || status === 'error'
 }
