@@ -279,3 +279,11 @@ async function waitForUpload(reviewId, interval = 1000, maxAttempts = 60) {
 
   throw new Error(`Timeout waiting for upload status for reviewId=${reviewId}`)
 }
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function isTerminalStatus(status) {
+  return status === 'rejected' || status === 'completed' || status === 'error'
+}
