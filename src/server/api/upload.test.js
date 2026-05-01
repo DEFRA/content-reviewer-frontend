@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { fetch as undiciFetch } from 'undici'
 import { uploadApiController, _private } from './upload.js'
-import * as uploadModule from './upload.js'
 
 const HTTP_STATUS_OK = 200
 const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500
