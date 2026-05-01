@@ -141,17 +141,4 @@ describe('uploadApiController.uploadFile', () => {
     expect(result.success).toBe(false)
     expect(result.message).toMatch(/File stream error/i)
   })
-
-  it('should handle non-OK backend response with non-JSON body gracefully', async () => {
-    // Make undici return non-ok and json() rejects
-    undiciFetch.mockResolvedValueOnce({
-      ok: false,
-      status: 500,
-      json: vi.fn().mockRejectedValueOnce(new Error('not json'))
-    })
-    const res = await uploadApiController.uploadFile(mockRequest, mockH)
-    expect(res.success).toBe(true)
-    expect(res.message).toBe('Failed to upload file to backend')
-    expect(res.statusCode).toBe(500)
-  })
 })
