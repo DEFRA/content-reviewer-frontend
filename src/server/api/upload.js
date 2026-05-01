@@ -278,7 +278,7 @@ async function waitForUpload(reviewId, interval = 1000, maxAttempts = 60) {
     } catch (err) {
       throw new Error(`Failed to poll upload status: ${err.message}`)
     }
-    await new Promise((r) => setTimeout(r, interval))
+    await new Promise((resolve) => setTimeout(resolve, interval))
   }
   throw new Error(`Timeout waiting for upload status for reviewId=${reviewId}`)
 }

@@ -1,5 +1,4 @@
 // API client for upload and review operations
-/* global sessionStorage */
 import {
   PROGRESS_INITIAL,
   PROGRESS_PROCESSING,
