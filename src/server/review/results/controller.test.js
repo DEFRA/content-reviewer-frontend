@@ -311,7 +311,7 @@ describe('resultsController - error handling scenarios', () => {
       }),
       'Failed to fetch review results'
     )
-    expect(result.template).toBe('review/results/error')
+    expect(result.template).toBe(ERROR_TEMPLATE)
   })
 
   it('should handle fetch errors with stack trace', async () => {
@@ -481,14 +481,14 @@ describe('resultsController - failed review status', () => {
     const result = await resultsController.handler(mockRequest, mockH)
 
     expect(mockH.view).toHaveBeenCalledWith(
-      'review/results/error',
+      ERROR_TEMPLATE,
       expect.objectContaining({
         pageTitle: 'Error',
         error: expect.stringContaining('failed to process'),
         errorDetail: null
       })
     )
-    expect(result.template).toBe('review/results/error')
+    expect(result.template).toBe(ERROR_TEMPLATE)
   })
 
   it('should include guardrail detail when errorMessage indicates a guardrail block', async () => {
@@ -511,10 +511,10 @@ describe('resultsController - failed review status', () => {
     await resultsController.handler(mockRequest, mockH)
 
     expect(mockH.view).toHaveBeenCalledWith(
-      'review/results/error',
+      ERROR_TEMPLATE,
       expect.objectContaining({
         error: expect.stringContaining('failed to process'),
-        errorDetail: 'Content blocked by AI guardrails.'
+        errorDetail: 'Content blocked due to sensitive PII content.'
       })
     )
   })

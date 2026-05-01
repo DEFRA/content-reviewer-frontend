@@ -61,8 +61,8 @@ function generateTitle(textContent, title) {
 
 /**
  * Submit to backend
- * For authenticated users, passes their ID as x-user-id so the backend can
- * store it for per-user filtering. Anonymous users send no x-user-id header.
+ * Passes the authenticated user's ID as x-user-id so the backend can
+ * store it for per-user filtering.
  */
 async function submitToBackend(
   textContent,
@@ -76,8 +76,7 @@ async function submitToBackend(
     `Requesting text review from backend: ${backendUrl}/api/review/text`
   )
 
-  // Only send x-user-id for authenticated users. Anonymous users have no
-  // userId so the backend stores null and the review is visible to everyone.
+  // Pass the authenticated user's ID so the backend scopes the review to that user.
   const userId = getUserIdentifier(request)
 
   const backendRequestStart = Date.now()

@@ -59,7 +59,6 @@ async function fileStreamToBuffer(file) {
  * Send file to backend service as application/octet-stream
  */
 async function sendFileToBackend(
-  request,
   fileBuffer,
   fileName,
   contentType,
@@ -91,8 +90,7 @@ async function sendFileToBackend(
         'content-type': 'application/octet-stream',
         'x-file-name': encodeURIComponent(fileName),
         'x-file-content-type': mimeType,
-        'x-user-id': userId || 'content-reviewer-frontend',
-        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
+        'x-user-id': userId || 'content-reviewer-frontend'
       },
       dispatcher: keepAliveAgent,
       signal: controller.signal
@@ -239,7 +237,6 @@ export const uploadApiController = {
 
       // Send file to backend using the pre-buffered content
       const backendResult = await sendFileToBackend(
-        request,
         fileBuffer,
         fileName,
         contentType,

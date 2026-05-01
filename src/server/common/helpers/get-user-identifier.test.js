@@ -13,7 +13,7 @@ describe('getUserIdentifier', () => {
     expect(getUserIdentifier(request)).toBe('user-abc')
   })
 
-  it('returns null when auth credentials have no user id (anonymous user)', () => {
+  it('returns null when auth credentials have no user id', () => {
     const request = makeRequest({ auth: { credentials: {} } })
     expect(getUserIdentifier(request)).toBeNull()
   })

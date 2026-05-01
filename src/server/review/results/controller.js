@@ -28,7 +28,9 @@ export const resultsController = {
         return renderErrorView(
           h,
           'The review failed to process. Please try again.',
-          isGuardrailBlock ? 'Content blocked by AI guardrails.' : null
+          isGuardrailBlock
+            ? 'Content blocked due to sensitive PII content.'
+            : null
         )
       }
 
