@@ -4,10 +4,7 @@ import * as uiFeedback from './ui-feedback.js'
 import * as reviewHistory from './review-history.js'
 import * as domElements from './dom-elements.js'
 import * as inputControls from './input-controls.js'
-import {
-  PROGRESS_INITIAL,
-  PROGRESS_PROCESSING
-} from './constants.js'
+import { PROGRESS_INITIAL, PROGRESS_PROCESSING } from './constants.js'
 
 const TEST_FILE_TYPE = 'text/plain'
 const TEST_FILENAME = 'test.txt'
