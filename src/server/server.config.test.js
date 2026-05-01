@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 
-// Mock all dependencies
 vi.mock('@hapi/hapi', () => ({ default: { server: vi.fn() } }))
 vi.mock('./router.js', () => ({
   router: { plugin: { name: 'router', register: vi.fn() } }
@@ -44,17 +43,17 @@ vi.mock('@hapi/scooter', () => ({
   default: { plugin: { name: 'scooter', register: vi.fn() } }
 }))
 
-// Test constants
 const TEST_HOST = '0.0.0.0'
 const TEST_PORT = 3000
 const TEST_ROOT_PATH = '/test/root'
 const SESSION_CACHE_NAME = 'session-cache'
 const SESSION_CACHE_ENGINE = 'memory'
 const SESSION_PASSWORD = 'test-password-minimum-32-characters'
-const SESSION_TTL = 36000000
+const SESSION_TTL = 3600000
 const COOKIE_NAME = 'content-reviewer-session'
 const COMPRESSION_MIN_BYTES = 512
 const HSTS_MAX_AGE = 31536000
+const TEST_TIMEOUT = 30000
 
 const createMockConfig = (isProduction = false) => ({
   get: vi.fn((key) => {
@@ -64,14 +63,8 @@ const createMockConfig = (isProduction = false) => ({
       root: TEST_ROOT_PATH,
       isProduction,
       session: {
-        cookie: {
-          password: SESSION_PASSWORD,
-          ttl: SESSION_TTL
-        },
-        cache: {
-          name: SESSION_CACHE_NAME,
-          engine: SESSION_CACHE_ENGINE
-        }
+        cookie: { password: SESSION_PASSWORD, ttl: SESSION_TTL },
+        cache: { name: SESSION_CACHE_NAME, engine: SESSION_CACHE_ENGINE }
       },
       'session.cache.name': SESSION_CACHE_NAME,
       'session.cache.engine': SESSION_CACHE_ENGINE,
@@ -86,6 +79,7 @@ const createMockServer = () => ({
   register: vi.fn().mockResolvedValue(undefined),
   auth: { strategy: vi.fn(), default: vi.fn() },
   ext: vi.fn(),
+  logger: { warn: vi.fn(), info: vi.fn(), error: vi.fn() },
   app: {}
 })
 
@@ -110,8 +104,6 @@ async function setupMocks(isProduction = false) {
 
   return { mockServer, mockConfig, hapiModule, cacheEngineModule }
 }
-
-const TEST_TIMEOUT = 30000
 
 describe('createServer - initialization', () => {
   it(
@@ -286,13 +278,13 @@ describe('createServer - cookie security', () => {
     expect(config.keepAlive).toBe(true)
   })
 
-  it('should set default auth to optional session', async () => {
+  it('should set default auth to required session', async () => {
     const { mockServer } = await setupMocks()
     const { createServer } = await import('./server.js')
     await createServer()
     expect(mockServer.auth.default).toHaveBeenCalledWith({
       strategy: 'session',
-      mode: 'optional'
+      mode: 'required'
     })
   })
 })

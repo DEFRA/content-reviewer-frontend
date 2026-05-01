@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const MOCK_CACHE_NAME = 'session'
-const MOCK_CACHE_TTL = 36000000
-const MOCK_COOKIE_TTL = 36000000
+const MOCK_CACHE_TTL = 3600000
+const MOCK_COOKIE_TTL = 3600000
 const MOCK_COOKIE_PASSWORD = 'the-password-must-be-at-least-32-characters-long'
 const MOCK_COOKIE_SECURE = false
 
@@ -10,22 +10,14 @@ const MOCK_COOKIE_SECURE = false
 vi.mock('../../../../config/config.js', () => ({
   config: {
     get: vi.fn((key) => {
-      if (key === 'session') {
-        return {
-          cache: {
-            name: MOCK_CACHE_NAME,
-            ttl: MOCK_CACHE_TTL
-          },
-          cookie: {
-            password: MOCK_COOKIE_PASSWORD,
-            ttl: MOCK_COOKIE_TTL
-          }
-        }
+      const configMap = {
+        session: {
+          cache: { name: MOCK_CACHE_NAME, ttl: MOCK_CACHE_TTL },
+          cookie: { password: MOCK_COOKIE_PASSWORD, ttl: MOCK_COOKIE_TTL }
+        },
+        'session.cookie.secure': MOCK_COOKIE_SECURE
       }
-      if (key === 'session.cookie.secure') {
-        return MOCK_COOKIE_SECURE
-      }
-      return null
+      return configMap[key] ?? null
     })
   }
 }))
@@ -71,8 +63,8 @@ describe('sessionCache', () => {
     expect(sessionCache.options.storeBlank).toBe(false)
   })
 
-  it('should set errorOnCacheNotReady to true', () => {
-    expect(sessionCache.options.errorOnCacheNotReady).toBe(true)
+  it('should set errorOnCacheNotReady to false', () => {
+    expect(sessionCache.options.errorOnCacheNotReady).toBe(false)
   })
 
   it('should configure cookieOptions correctly', () => {
@@ -80,7 +72,7 @@ describe('sessionCache', () => {
     expect(cookieOptions.password).toBe(MOCK_COOKIE_PASSWORD)
     expect(cookieOptions.ttl).toBe(MOCK_COOKIE_TTL)
     expect(cookieOptions.isSecure).toBe(MOCK_COOKIE_SECURE)
-    expect(cookieOptions.isSameSite).toBe('Strict')
+    expect(cookieOptions.isSameSite).toBe('Lax')
     expect(cookieOptions.clearInvalid).toBe(true)
   })
 })

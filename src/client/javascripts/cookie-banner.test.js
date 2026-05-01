@@ -8,12 +8,9 @@ import CookieBanner from './cookie-banner.js'
 const EXPIRED_COOKIE =
   'cookie_preferences=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/'
 const COOKIE_BANNER_ID = 'cookie-banner'
-const COOKIE_PREFERENCES_ANALYTICS_TRUE =
-  'cookie_preferences={"analytics":true}; path=/'
+const COOKIE_PREFERENCES_SEEN = 'cookie_preferences={"seen":true}; path=/'
 const TEST_BANNER_ID = 'test-banner'
 const TEST_BANNER_HTML = '<div id="test-banner" style="display: none;"></div>'
-const COOKIE_BANNER_ACCEPTED_ID = 'cookie-banner-accepted'
-const COOKIE_BANNER_REJECTED_ID = 'cookie-banner-rejected'
 
 describe('CookieBanner - Initialization', () => {
   beforeEach(() => {
@@ -50,7 +47,7 @@ describe('CookieBanner - Initialization', () => {
   })
 
   it('should hide banner when cookie preferences exist', () => {
-    document.cookie = COOKIE_PREFERENCES_ANALYTICS_TRUE
+    document.cookie = COOKIE_PREFERENCES_SEEN
     document.body.innerHTML = `<div id="${COOKIE_BANNER_ID}" style="display: none;"></div>`
     const bannerInstance = new CookieBanner()
     const bannerElement = document.getElementById(COOKIE_BANNER_ID)
@@ -62,13 +59,8 @@ describe('CookieBanner - Initialization', () => {
 describe('CookieBanner - Button Event Listeners', () => {
   beforeEach(() => {
     document.body.innerHTML = `
-          <button id="cookie-accept">Accept</button>
-          <button id="cookie-reject">Reject</button>
-          <button id="cookie-hide-accepted">Hide Accepted</button>
-          <button id="cookie-hide-rejected">Hide Rejected</button>
-          <div id="${COOKIE_BANNER_ID}" style="display: none;"></div>
-          <div id="${COOKIE_BANNER_ACCEPTED_ID}" style="display: none;"></div>
-          <div id="${COOKIE_BANNER_REJECTED_ID}" style="display: none;"></div>
+          <button id="cookie-hide">Hide cookie message</button>
+          <div id="${COOKIE_BANNER_ID}" style="display: block;"></div>
         `
     document.cookie = EXPIRED_COOKIE
   })
@@ -77,46 +69,36 @@ describe('CookieBanner - Button Event Listeners', () => {
     document.body.innerHTML = ''
   })
 
-  it('should setup accept button event listener', () => {
+  it('should setup hide button event listener', () => {
     const banner = new CookieBanner()
-    const acceptButton = document.getElementById('cookie-accept')
-    const acceptSpy = vi.spyOn(banner, 'acceptCookies')
-    acceptButton.click()
-    expect(acceptSpy).toHaveBeenCalled()
-  })
-
-  it('should setup reject button event listener', () => {
-    const banner = new CookieBanner()
-    const rejectButton = document.getElementById('cookie-reject')
-    const rejectSpy = vi.spyOn(banner, 'rejectCookies')
-    rejectButton.click()
-    expect(rejectSpy).toHaveBeenCalled()
-  })
-
-  it('should setup hide accepted button event listener', () => {
-    const banner = new CookieBanner()
-    const hideButton = document.getElementById('cookie-hide-accepted')
+    const hideButton = document.getElementById('cookie-hide')
+    const hideSpy = vi.spyOn(banner, 'hideCookieBanner')
     hideButton.click()
-    const acceptedBanner = document.getElementById(COOKIE_BANNER_ACCEPTED_ID)
-    expect(acceptedBanner.style.display).toBe('none')
+    expect(hideSpy).toHaveBeenCalled()
+  })
+
+  it('should hide main banner when hide button is clicked', () => {
+    const banner = new CookieBanner()
+    const hideButton = document.getElementById('cookie-hide')
+    hideButton.click()
+    const mainBanner = document.getElementById(COOKIE_BANNER_ID)
+    expect(mainBanner.style.display).toBe('none')
     expect(banner).toBeInstanceOf(CookieBanner)
   })
 
-  it('should setup hide rejected button event listener', () => {
+  it('should set seen to true when hide button is clicked', () => {
     const banner = new CookieBanner()
-    const hideButton = document.getElementById('cookie-hide-rejected')
+    const hideButton = document.getElementById('cookie-hide')
     hideButton.click()
-    const rejectedBanner = document.getElementById(COOKIE_BANNER_REJECTED_ID)
-    expect(rejectedBanner.style.display).toBe('none')
-    expect(banner).toBeInstanceOf(CookieBanner)
+    const preferences = banner.getCookiePreferences()
+    expect(preferences.seen).toBe(true)
   })
 })
 
-describe('CookieBanner - Accept Cookies', () => {
+describe('CookieBanner - Hide Cookie Banner', () => {
   beforeEach(() => {
     document.body.innerHTML = `
           <div id="${COOKIE_BANNER_ID}" style="display: block;"></div>
-          <div id="${COOKIE_BANNER_ACCEPTED_ID}" style="display: none;"></div>
         `
     document.cookie = EXPIRED_COOKIE
   })
@@ -125,60 +107,18 @@ describe('CookieBanner - Accept Cookies', () => {
     document.body.innerHTML = ''
   })
 
-  it('should set analytics to true when accepting cookies', () => {
+  it('should set seen to true when hiding the banner', () => {
     const banner = new CookieBanner()
-    banner.acceptCookies()
+    banner.hideCookieBanner()
     const preferences = banner.getCookiePreferences()
-    expect(preferences.analytics).toBe(true)
+    expect(preferences.seen).toBe(true)
   })
 
-  it('should hide main banner when accepting cookies', () => {
+  it('should hide main banner when hideCookieBanner is called', () => {
     const banner = new CookieBanner()
-    banner.acceptCookies()
+    banner.hideCookieBanner()
     const mainBanner = document.getElementById(COOKIE_BANNER_ID)
     expect(mainBanner.style.display).toBe('none')
-  })
-
-  it('should show accepted banner after accepting cookies', () => {
-    const banner = new CookieBanner()
-    banner.acceptCookies()
-    const acceptedBanner = document.getElementById(COOKIE_BANNER_ACCEPTED_ID)
-    expect(acceptedBanner.style.display).toBe('block')
-  })
-})
-
-describe('CookieBanner - Reject Cookies', () => {
-  beforeEach(() => {
-    document.body.innerHTML = `
-          <div id="${COOKIE_BANNER_ID}" style="display: block;"></div>
-          <div id="${COOKIE_BANNER_REJECTED_ID}" style="display: none;"></div>
-        `
-    document.cookie = EXPIRED_COOKIE
-  })
-
-  afterEach(() => {
-    document.body.innerHTML = ''
-  })
-
-  it('should set analytics to false when rejecting cookies', () => {
-    const banner = new CookieBanner()
-    banner.rejectCookies()
-    const preferences = banner.getCookiePreferences()
-    expect(preferences.analytics).toBe(false)
-  })
-
-  it('should hide main banner when rejecting cookies', () => {
-    const banner = new CookieBanner()
-    banner.rejectCookies()
-    const mainBanner = document.getElementById(COOKIE_BANNER_ID)
-    expect(mainBanner.style.display).toBe('none')
-  })
-
-  it('should show rejected banner after rejecting cookies', () => {
-    const banner = new CookieBanner()
-    banner.rejectCookies()
-    const rejectedBanner = document.getElementById(COOKIE_BANNER_REJECTED_ID)
-    expect(rejectedBanner.style.display).toBe('block')
   })
 })
 
@@ -192,7 +132,7 @@ describe('CookieBanner - Show and Hide Banner', () => {
   })
 
   it('should show banner', () => {
-    document.cookie = COOKIE_PREFERENCES_ANALYTICS_TRUE
+    document.cookie = COOKIE_PREFERENCES_SEEN
     const testBannerInstance = new CookieBanner()
     testBannerInstance.showBanner(TEST_BANNER_ID)
     const testBanner = document.getElementById(TEST_BANNER_ID)
@@ -200,7 +140,7 @@ describe('CookieBanner - Show and Hide Banner', () => {
   })
 
   it('should hide banner', () => {
-    document.cookie = COOKIE_PREFERENCES_ANALYTICS_TRUE
+    document.cookie = COOKIE_PREFERENCES_SEEN
     const testBannerInstance2 = new CookieBanner()
     const testBanner2 = document.getElementById(TEST_BANNER_ID)
     testBanner2.style.display = 'block'
@@ -209,13 +149,13 @@ describe('CookieBanner - Show and Hide Banner', () => {
   })
 
   it('should not throw when showing non-existent banner', () => {
-    document.cookie = COOKIE_PREFERENCES_ANALYTICS_TRUE
+    document.cookie = COOKIE_PREFERENCES_SEEN
     const testBannerInstance3 = new CookieBanner()
     expect(() => testBannerInstance3.showBanner('non-existent')).not.toThrow()
   })
 
   it('should not throw when hiding non-existent banner', () => {
-    document.cookie = COOKIE_PREFERENCES_ANALYTICS_TRUE
+    document.cookie = COOKIE_PREFERENCES_SEEN
     const testBannerInstance4 = new CookieBanner()
     expect(() => testBannerInstance4.hideBanner('non-existent')).not.toThrow()
   })
@@ -234,9 +174,9 @@ describe('CookieBanner - Cookie Preferences (set)', () => {
 
   it('should set cookie preferences with correct expiry', () => {
     const banner = new CookieBanner()
-    banner.setCookiePreferences({ analytics: true })
+    banner.setCookiePreferences({ seen: true })
     const preferences = banner.getCookiePreferences()
-    expect(preferences.analytics).toBe(true)
+    expect(preferences.seen).toBe(true)
   })
 
   it('should set cookie with Secure flag on HTTPS', () => {
@@ -244,7 +184,7 @@ describe('CookieBanner - Cookie Preferences (set)', () => {
     vi.stubGlobal('location', { protocol: 'https:' })
 
     const banner = new CookieBanner()
-    banner.setCookiePreferences({ analytics: true })
+    banner.setCookiePreferences({ seen: true })
     expect(document.cookie).toContain('cookie_preferences')
 
     vi.stubGlobal('location', { protocol: originalProtocol })
@@ -255,7 +195,7 @@ describe('CookieBanner - Cookie Preferences (set)', () => {
     vi.stubGlobal('location', { protocol: 'http:' })
 
     const banner = new CookieBanner()
-    banner.setCookiePreferences({ analytics: false })
+    banner.setCookiePreferences({ seen: true })
     expect(document.cookie).toContain('cookie_preferences')
 
     vi.stubGlobal('location', { protocol: originalProtocol })
@@ -275,16 +215,16 @@ describe('CookieBanner - Cookie Preferences (get)', () => {
 
   it('should get cookie preferences correctly', () => {
     const banner = new CookieBanner()
-    banner.setCookiePreferences({ analytics: true })
+    banner.setCookiePreferences({ seen: true })
     const preferences = banner.getCookiePreferences()
-    expect(preferences).toEqual({ analytics: true })
+    expect(preferences).toEqual({ seen: true })
   })
 
   it('should handle cookies with leading spaces', () => {
     const banner = new CookieBanner()
-    document.cookie = ' ' + COOKIE_PREFERENCES_ANALYTICS_TRUE
+    document.cookie = ' ' + COOKIE_PREFERENCES_SEEN
     const preferences = banner.getCookiePreferences()
-    expect(preferences.analytics).toBe(true)
+    expect(preferences.seen).toBe(true)
   })
 
   it('should return null when cookie does not exist', () => {

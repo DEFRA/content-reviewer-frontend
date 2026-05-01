@@ -24,7 +24,13 @@ async function loginHandler(_request, h) {
     const authUrl = await msalClient.getAuthCodeUrl({
       scopes: ['openid', 'profile', 'email'],
       redirectUri: config.get('azure.redirectUri'),
-      responseMode: 'query' // avoids form_post / SameSite cookie issues
+      responseMode: 'query', // avoids form_post / SameSite cookie issues
+      // 'select_account' shows the account picker so users can choose which
+      // account to sign in with.  Do NOT upgrade @azure/msal-node beyond
+      // 5.0.5 without testing Edge on a Windows machine: 5.1.x adds
+      // sso_reload=true which triggers Edge's WAM broker and causes a state
+      // mismatch 403 on the callback.
+      prompt: 'select_account'
     })
     logger.info('Redirecting to Azure AD login')
     return h.redirect(authUrl)
@@ -38,32 +44,17 @@ async function loginHandler(_request, h) {
  * GET /auth/callback
  * Azure AD redirects here with ?code=… after the user authenticates.
  * Exchanges the code for tokens, then stores the user in the session cookie.
- * If authentication fails, preserve the anonymous session so review history is not lost.
+ * On failure, redirects to the login page with an error.
  */
-function restoreAnonymousSession(request, existingSession) {
-  if (existingSession?.sid && !existingSession?.isAuthenticated) {
-    request.cookieAuth.set(existingSession)
-    return true
-  }
-  return false
-}
-
 async function callbackHandler(request, h) {
-  // Preserve the existing anonymous session in case authentication fails
-  const existingSession = request.auth?.credentials || null
-
   try {
     if (!msalClient) {
       logger.error('MSAL client not initialised – cannot process callback')
-      // Restore anonymous session if it existed
-      restoreAnonymousSession(request, existingSession)
       return h.redirect(AUTH_FAILED_REDIRECT)
     }
     const code = request.query?.code
     if (!code) {
       logger.error('No authorization code received on /auth/callback')
-      // Restore anonymous session if it existed
-      restoreAnonymousSession(request, existingSession)
       return h.redirect('/auth/login-page?error=invalid_state')
     }
     const response = await msalClient.acquireTokenByCode({
@@ -73,7 +64,6 @@ async function callbackHandler(request, h) {
     })
     const account = response.account
 
-    // Only set authenticated session if successful
     request.cookieAuth.set({
       user: {
         id: account.homeAccountId,
@@ -82,16 +72,21 @@ async function callbackHandler(request, h) {
       },
       isAuthenticated: true
     })
+
     logger.info(`User authenticated: ${account.username ?? 'unknown'}`)
-    return h.redirect('/')
+    const returnTo = request.yar.get('returnTo') || '/'
+    request.yar.clear('returnTo')
+    return h.redirect(returnTo)
   } catch (error) {
-    logger.error('Azure AD callback error:', error)
-
-    // Restore anonymous session if it existed - this prevents review history loss
-    if (restoreAnonymousSession(request, existingSession)) {
-      logger.info('Restoring anonymous session after failed auth attempt')
-    }
-
+    logger.error(
+      {
+        path: request.path,
+        errorMessage: error?.message,
+        errorCode: error?.errorCode,
+        statusCode: error?.statusCode ?? error?.status
+      },
+      'Azure AD callback error'
+    )
     return h.redirect(AUTH_FAILED_REDIRECT)
   }
 }

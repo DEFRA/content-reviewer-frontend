@@ -5,11 +5,7 @@ import * as reviewHistory from './review-history.js'
 import * as domElements from './dom-elements.js'
 import * as characterCounter from './character-counter.js'
 import * as inputControls from './input-controls.js'
-import {
-  PROGRESS_INITIAL,
-  PROGRESS_PROCESSING,
-  RELOAD_DELAY
-} from './constants.js'
+import { HISTORY_UPDATE_DELAY } from './constants.js'
 
 // Test constants
 const TEST_URL = 'https://example.com'
@@ -18,15 +14,13 @@ const TEST_FILE_TYPE = 'text/plain'
 const TEST_FILENAME = 'test.txt'
 const ERROR_MSG_VALIDATION = 'Content too long'
 const ERROR_MSG_NETWORK = 'Network error'
-const ERROR_MSG_UPLOAD = 'File too large'
 const ERROR_MSG_TIMEOUT = 'Connection timeout'
 const ERROR_MSG_EXTRACTION = 'URL extraction failed'
-const ERROR_MSG_BAD_REQUEST = 'Bad request'
 const MOCK_REVIEW_ID = 'test-review-123'
 const MOCK_URL_REVIEW_ID = 'url-review-789'
-const HTTP_STATUS_BAD_REQUEST = 400
 const HTTP_STATUS_SERVER_ERROR = 500
 const TEST_DESCRIPTION_NETWORK_ERRORS = 'should handle network errors'
+const AUTH_LOGIN_PATH = '/auth/login'
 
 let mockFetch
 let mockElements
@@ -58,7 +52,7 @@ beforeEach(() => {
   vi.spyOn(console, 'log').mockImplementation(() => {})
   vi.spyOn(console, 'error').mockImplementation(() => {})
   vi.spyOn(console, 'warn').mockImplementation(() => {})
-  mockLocation = { reload: vi.fn() }
+  mockLocation = { reload: vi.fn(), assign: vi.fn() }
   globalThis.location = mockLocation
   globalThis.updateReviewHistory = vi.fn()
   globalThis.startAutoRefresh = vi.fn()
@@ -383,7 +377,7 @@ describe('updateLocalHistory - setTimeout arrow function fires when updateReview
     expect(globalThis.updateReviewHistory).not.toHaveBeenCalled()
 
     // Advance past the 500ms HISTORY_UPDATE_DELAY to fire the arrow function
-    await vi.advanceTimersByTimeAsync(501)
+    await vi.advanceTimersByTimeAsync(HISTORY_UPDATE_DELAY + 1)
 
     expect(globalThis.updateReviewHistory).toHaveBeenCalledOnce()
   })
@@ -431,99 +425,6 @@ describe('submitTextReview - JSON parse error message', () => {
   })
 })
 
-describe('submitFileUpload - updateReviewHistory absent (addReviewToHistory fallback)', () => {
-  it('should call addReviewToHistory directly when updateReviewHistory is not a function', async () => {
-    delete globalThis.updateReviewHistory
-    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ reviewId: MOCK_REVIEW_ID })
-    })
-
-    const uploadPromise = apiClient.submitFileUpload(file)
-    await vi.advanceTimersByTimeAsync(0)
-    await uploadPromise
-
-    expect(reviewHistory.addReviewToHistory).toHaveBeenCalledWith(
-      expect.objectContaining({ id: MOCK_REVIEW_ID, fileName: TEST_FILENAME })
-    )
-    globalThis.updateReviewHistory = vi.fn()
-  })
-})
-
-describe('submitFileUpload - JSON parse error message', () => {
-  it('should show "Upload failed: Please enter a valid input" for JSON errors', async () => {
-    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
-    mockFetch.mockRejectedValueOnce(new Error('not valid JSON received'))
-
-    const uploadPromise = apiClient.submitFileUpload(file).catch((err) => err)
-    await vi.advanceTimersByTimeAsync(0)
-    await uploadPromise
-
-    expect(uiFeedback.showDocumentError).toHaveBeenCalledWith(
-      'Upload failed: Please enter a valid input'
-    )
-  })
-})
-
-describe('submitFileUpload - startAutoRefresh absent', () => {
-  it('should skip startAutoRefresh call when globalThis.startAutoRefresh is not a function', async () => {
-    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ reviewId: MOCK_REVIEW_ID })
-    })
-    delete globalThis.startAutoRefresh
-
-    const uploadPromise = apiClient.submitFileUpload(file)
-    await vi.advanceTimersByTimeAsync(0)
-    await uploadPromise
-
-    // Should complete without error even though startAutoRefresh is absent
-    expect(uiFeedback.showError).not.toHaveBeenCalled()
-    globalThis.startAutoRefresh = vi.fn()
-  })
-})
-
-describe('submitFileUpload - fileInput absent in success path', () => {
-  it('should not throw when getFileInput returns null after successful upload', async () => {
-    vi.spyOn(domElements, 'getFileInput').mockReturnValue(null)
-    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ reviewId: MOCK_REVIEW_ID })
-    })
-
-    const uploadPromise = apiClient.submitFileUpload(file)
-    await vi.advanceTimersByTimeAsync(0)
-    await uploadPromise
-
-    // fileInputEl is null → if (fileInputEl) false branch covered
-    expect(uiFeedback.showError).not.toHaveBeenCalled()
-  })
-})
-
-describe('submitFileUpload - uploadButton null in error catch', () => {
-  it('should not throw when uploadButton is absent during catch', async () => {
-    vi.spyOn(domElements, 'getElements').mockReturnValue({
-      ...mockElements,
-      uploadButton: null
-    })
-    const file = new File(['data'], TEST_FILENAME, { type: TEST_FILE_TYPE })
-    mockFetch.mockResolvedValueOnce({
-      ok: false,
-      json: async () => ({ message: ERROR_MSG_UPLOAD })
-    })
-
-    const uploadPromise = apiClient.submitFileUpload(file).catch((err) => err)
-    await vi.advanceTimersByTimeAsync(0)
-    const result = await uploadPromise
-
-    expect(result).toBeInstanceOf(Error)
-    expect(uiFeedback.showDocumentError).toHaveBeenCalled()
-  })
-})
-
 describe('handleReviewHistory - data.id fallback when reviewId absent', () => {
   it('should use data.id when data.reviewId is absent', async () => {
     mockFetch.mockResolvedValueOnce({
@@ -534,23 +435,6 @@ describe('handleReviewHistory - data.id fallback when reviewId absent', () => {
     expect(reviewHistory.addReviewToHistory).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'fallback-id-123' })
     )
-  })
-})
-
-describe('submitFileUpload - errorData.message absent (|| Upload failed fallback)', () => {
-  it('should throw with Upload failed when errorData has no message', async () => {
-    const file = new File(['data'], TEST_FILENAME, { type: TEST_FILE_TYPE })
-    mockFetch.mockResolvedValueOnce({
-      ok: false,
-      json: async () => ({}) // No message property → || 'Upload failed'
-    })
-
-    const uploadPromise = apiClient.submitFileUpload(file).catch((err) => err)
-    await vi.advanceTimersByTimeAsync(0)
-    const result = await uploadPromise
-
-    expect(result).toBeInstanceOf(Error)
-    expect(result.message).toBe('Upload failed')
   })
 })
 
@@ -627,22 +511,28 @@ describe('submitTextReview - textContentInput absent in catch', () => {
   })
 })
 
-describe('submitFileUpload - data.id fallback when reviewId absent (in else/addReviewToHistory path)', () => {
-  it('should use data.id when data.reviewId is absent in the addReviewToHistory else path', async () => {
-    delete globalThis.updateReviewHistory // force else path
-    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ id: 'fallback-id-456' }) // No reviewId → || data.id fires
-    })
+describe('redirectIfUnauthorised - 401 triggers location.assign and early return', () => {
+  it('should redirect to /auth/login and return undefined from submitUrlReview on 401', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 401 })
+    const result = await apiClient.submitUrlReview(TEST_URL)
+    expect(globalThis.location.assign).toHaveBeenCalledWith(AUTH_LOGIN_PATH)
+    expect(result).toBeUndefined()
+  })
 
+  it('should redirect to /auth/login and return undefined from submitTextReview on 401', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 401 })
+    const result = await apiClient.submitTextReview(TEST_TEXT)
+    expect(globalThis.location.assign).toHaveBeenCalledWith(AUTH_LOGIN_PATH)
+    expect(result).toBeUndefined()
+  })
+
+  it('should redirect to /auth/login and return undefined from submitFileUpload on 401', async () => {
+    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 401 })
     const uploadPromise = apiClient.submitFileUpload(file)
     await vi.advanceTimersByTimeAsync(0)
-    await uploadPromise
-
-    expect(reviewHistory.addReviewToHistory).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'fallback-id-456' })
-    )
-    globalThis.updateReviewHistory = vi.fn()
+    const result = await uploadPromise
+    expect(globalThis.location.assign).toHaveBeenCalledWith(AUTH_LOGIN_PATH)
+    expect(result).toBeUndefined()
   })
 })

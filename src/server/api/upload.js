@@ -66,10 +66,10 @@ async function sendFileToBackend(
       method: 'POST',
       body: fileBuffer,
       headers: {
-        'content-type': 'application/octet-stream', // ✅ Set correct content-type
+        'content-type': 'application/octet-stream',
         'x-file-name': encodeURIComponent(fileName),
-        'x-file-content-type': mimeType, // ✅ Pass original MIME type
-        'x-user-id': userId || 'content-reviewer-frontend' // ✅ Pass user identifier for logging
+        'x-file-content-type': mimeType,
+        'x-user-id': userId || 'content-reviewer-frontend'
       },
       dispatcher: keepAliveAgent
     })
