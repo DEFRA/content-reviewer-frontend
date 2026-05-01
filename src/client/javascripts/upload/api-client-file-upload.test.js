@@ -82,18 +82,6 @@ describe('submitFileUpload - success', () => {
     expect(result).toEqual(mockResponse)
   })
 
-  it('should reload page after successful upload', async () => {
-    const file = new File(['data'], TEST_FILENAME, { type: TEST_FILE_TYPE })
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ reviewId: MOCK_REVIEW_ID })
-    })
-    const uploadPromise = apiClient.submitFileUpload(file)
-    await vi.advanceTimersByTimeAsync(0)
-    await uploadPromise
-    await vi.advanceTimersByTimeAsync(RELOAD_DELAY)
-  })
-
   it('should show progress during file upload', async () => {
     const file = new File(['test'], TEST_FILENAME, { type: TEST_FILE_TYPE })
     mockFetch.mockResolvedValueOnce({

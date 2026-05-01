@@ -227,7 +227,6 @@ export async function submitFileUpload(file) {
       ? 'Please enter a valid input'
       : error.message
     showDocumentError(`Upload failed: ${userMessage}`)
-    const elements = getElements()
     if (elements.uploadButton) {
       elements.uploadButton.disabled = false
     }
