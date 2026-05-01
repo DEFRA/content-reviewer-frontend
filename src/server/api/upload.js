@@ -272,7 +272,11 @@ export const uploadApiController = {
   }
 }
 
-async function waitForUpload(reviewId, interval = 1000, maxAttempts = 60) {
+export async function waitForUpload(
+  reviewId,
+  interval = 1000,
+  maxAttempts = 60
+) {
   const backendUrl = config.get('backendUrl')
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
