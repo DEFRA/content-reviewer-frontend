@@ -21,7 +21,7 @@ const HTTP_STATUS_OK = 200
  */
 export const _private = {
   getAccessToken(request) {
-    return request.yar?.get('authTokens')?.accessToken ?? null
+    return request.yar?.get('auth')?.accessToken ?? null
   }
 }
 

@@ -28,6 +28,7 @@ export async function deleteReviewController(request, h) {
   const startTime = Date.now()
   const requestLogger = request.logger
   const reviewId = request.params.reviewId
+  const accessToken = request.yar?.get('auth')?.accessToken ?? null
 
   try {
     const backendRequestStart = Date.now()
@@ -45,7 +46,8 @@ export async function deleteReviewController(request, h) {
       response = await fetch(endpoint, {
         method: 'DELETE',
         headers: {
-          Accept: 'application/json'
+          Accept: 'application/json',
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
         },
         dispatcher: keepAliveAgent,
         signal: controller.signal

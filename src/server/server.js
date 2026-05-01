@@ -129,6 +129,55 @@ function injectUserContext(server) {
   })
 }
 
+const FIVE_MINUTES_MS = 5 * 60 * 1000
+
+/**
+ * Silently refresh the backend JWT access token when it is within 5 minutes
+ * of expiry.  Runs as an onPreHandler extension so that the refreshed token
+ * is available before any route handler reads it from the session.
+ *
+ * Errors are swallowed — the existing (nearly-expired) token remains in the
+ * session and the route handler will still attempt the backend call.
+ */
+function setupSilentTokenRefresh(server) {
+  server.ext('onPreHandler', async (request, h) => {
+    if (!request.auth?.isAuthenticated) {
+      return h.continue
+    }
+    const authTokens = request.yar?.get('auth')
+    if (!authTokens?.refreshToken || !authTokens?.expiresAt) {
+      return h.continue
+    }
+    if (Date.now() < authTokens.expiresAt - FIVE_MINUTES_MS) {
+      return h.continue
+    }
+    try {
+      const backendUrl = server.app.config.get('backendUrl')
+      const response = await fetch(`${backendUrl}/api/v1/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken: authTokens.refreshToken })
+      })
+      if (response.ok) {
+        const { accessToken, refreshToken, expiresIn } = await response.json()
+        request.yar.set('auth', {
+          accessToken,
+          refreshToken,
+          expiresIn,
+          expiresAt: Date.now() + expiresIn * 1000
+        })
+        server.logger.info(
+          { path: request.path },
+          'Backend JWT access token silently refreshed'
+        )
+      }
+    } catch {
+      // Refresh failure is non-fatal — proceed with existing token
+    }
+    return h.continue
+  })
+}
+
 function createHapiServer() {
   return hapi.server({
     host: config.get('host'),
@@ -230,6 +279,7 @@ export async function createServer() {
 
   await registerPlugins(server)
   registerRateLimiting(server)
+  setupSilentTokenRefresh(server)
   setupAuthRedirect(server)
   server.ext('onPreResponse', catchAll)
   registerSecurityHeaders(server)
