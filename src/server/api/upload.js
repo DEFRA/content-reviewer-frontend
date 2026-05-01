@@ -3,20 +3,7 @@ import { config } from '../../config/config.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
 import { getUserIdentifier } from '../common/helpers/get-user-identifier.js'
 
-// Grouped into an object so tests can spy on individual methods without
-// depending on Hapi's yar session being present in unit-test fixtures.
-export const _private = {
-  getAccessToken(request) {
-    return request.yar?.get('authTokens')?.accessToken ?? null
-  }
-}
-
 const logger = createLogger()
-
-// Hard limit on frontend → backend upload calls. The backend ingests the buffer
-// and enqueues for async processing — it responds quickly with a reviewId.
-// Must be well below the Hapi socket timeout (90 s).
-const BACKEND_TIMEOUT_MS = 30_000
 
 // Reuse a single undici Agent with keep-alive for all upload backend calls
 const keepAliveAgent = new Agent({
@@ -27,6 +14,16 @@ const keepAliveAgent = new Agent({
 
 const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500
 const HTTP_STATUS_OK = 200
+
+/**
+ * Grouped into an object so tests can spy on individual methods without
+ * depending on Hapi's yar session being present in unit-test fixtures.
+ */
+export const _private = {
+  getAccessToken(request) {
+    return request.yar?.get('authTokens')?.accessToken ?? null
+  }
+}
 
 /**
  * Convert Hapi file stream to Buffer
@@ -63,52 +60,39 @@ async function sendFileToBackend(
   fileName,
   contentType,
   mimeType,
-  userId
+  userId,
+  accessToken
 ) {
   const backendUrl = config.get('backendUrl')
   logger.info(
     `Preparing to forward file to backend service with filename: ${fileName} and content type: ${contentType}`
   )
   const backendRequestStart = Date.now()
-
-  // AbortController enforces BACKEND_TIMEOUT_MS — prevents the upload from
-  // hanging indefinitely if the backend is unresponsive.
-  const controller = new AbortController()
-  /* v8 ignore next -- timer callback fires only in production when the backend is unresponsive */
-  const timer = setTimeout(() => controller.abort(), BACKEND_TIMEOUT_MS)
-
   try {
     logger.info(
       `File converted to buffer. Size: ${fileBuffer.length} bytes for: ${fileName}`
     )
 
-    const accessToken = _private.getAccessToken(request)
-    const headers = {
-      'content-type': 'application/octet-stream',
-      'x-file-name': encodeURIComponent(fileName),
-      'x-file-content-type': mimeType,
-      'x-user-id': userId || 'content-reviewer-frontend'
-    }
-
-    if (accessToken) {
-      headers.authorization = `Bearer ${accessToken}`
-    }
-
     const response = await undiciFetch(`${backendUrl}/api/upload`, {
       method: 'POST',
       body: fileBuffer,
-      headers,
-      dispatcher: keepAliveAgent,
-      signal: controller.signal
+      headers: {
+        'content-type': 'application/octet-stream',
+        'x-file-name': encodeURIComponent(fileName),
+        'x-file-content-type': mimeType,
+        'x-user-id': userId || 'content-reviewer-frontend',
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
+      },
+      dispatcher: keepAliveAgent
     })
 
-    const backendRequestTime = (Date.now() - backendRequestStart) / 1000
+    const backendRequestEnd = Date.now()
+    const backendRequestTime = (backendRequestEnd - backendRequestStart) / 1000
+
     return { response, backendRequestTime }
   } catch (error) {
     logger.error('Error sending file to backend service')
     throw error
-  } finally {
-    clearTimeout(timer)
   }
 }
 
@@ -168,18 +152,10 @@ async function processSuccessfulUpload(
  */
 function handleUploadError(error, startTime, h) {
   const totalProcessingTime = (Date.now() - startTime) / 1000
-
-  if (error.name === 'AbortError') {
-    logger.error(
-      `Upload backend request timed out after ${BACKEND_TIMEOUT_MS / 1000}s — totalProcessingTime: ${totalProcessingTime}s`
-    )
-    return h
-      .response({
-        success: false,
-        message: 'The upload request timed out. Please try again.'
-      })
-      .code(HTTP_STATUS_INTERNAL_SERVER_ERROR)
-  }
+  const message =
+    error.name === 'AbortError'
+      ? 'The upload request timed out. Please try again.'
+      : error.message || 'Internal server error'
 
   logger.error('Upload API request failed with error', {
     error: error.message,
@@ -190,7 +166,7 @@ function handleUploadError(error, startTime, h) {
   return h
     .response({
       success: false,
-      message: error.message || 'Internal server error'
+      message
     })
     .code(HTTP_STATUS_INTERNAL_SERVER_ERROR)
 }
@@ -241,13 +217,16 @@ export const uploadApiController = {
       const userId = getUserIdentifier(request)
       logger.info(`User identifier for upload: ${userId}`)
 
+      const accessToken = _private.getAccessToken(request)
+
       // Send file to backend using the pre-buffered content
       const backendResult = await sendFileToBackend(
         fileBuffer,
         fileName,
         contentType,
         mimeType,
-        userId
+        userId,
+        accessToken
       )
       const response = backendResult.response
       const backendRequestTime = backendResult.backendRequestTime
