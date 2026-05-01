@@ -223,8 +223,8 @@ export const uploadApiController = {
           `Upload status for reviewId=${response.reviewId} is now ${uploadStatus.status}`
         )
         if (
-          uploadStatus.status == 'rejected' ||
-          uploadStatus.status == 'error'
+          uploadStatus.status === 'rejected' ||
+          uploadStatus.status === 'error'
         ) {
           logger.info(
             `Upload rejected for reviewId=${response.reviewId} with reason: ${uploadStatus.message}`
@@ -264,9 +264,9 @@ async function waitForUpload(reviewId, interval = 1000, maxAttempts = 60) {
         const json = await res.json()
         if (
           json.status &&
-          (json.status == 'rejected' ||
-            json.status == 'completed' ||
-            json.status == 'error')
+          (json.status === 'rejected' ||
+            json.status === 'completed' ||
+            json.status === 'error')
         ) {
           return json
         }
