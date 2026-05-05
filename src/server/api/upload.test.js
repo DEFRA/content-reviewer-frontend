@@ -110,7 +110,7 @@ function okResponse(reviewId = DEFAULT_REVIEW_ID, filename = FILENAME_PDF) {
   return {
     ok: true,
     status: HTTP_STATUS_OK,
-    json: vi.fn().mockResolvedValueOnce({ reviewId, filename })
+    json: vi.fn().mockResolvedValue({ reviewId, filename })
   }
 }
 
@@ -118,7 +118,7 @@ function failResponse(status, body = {}) {
   return {
     ok: false,
     status,
-    json: vi.fn().mockResolvedValueOnce(body)
+    json: vi.fn().mockResolvedValue(body)
   }
 }
 
@@ -126,7 +126,7 @@ function failResponseNonJson(status) {
   return {
     ok: false,
     status,
-    json: vi.fn().mockRejectedValueOnce(new Error('Invalid JSON'))
+    json: vi.fn().mockRejectedValue(new Error('Invalid JSON'))
   }
 }
 
@@ -158,9 +158,7 @@ function registerFileValidationTests() {
     it('should accept valid DOC file', async () => {
       mockRequest.headers['x-file-name'] = 'document.doc'
       mockRequest.headers['x-file-content-type'] = 'application/msword'
-      undiciFetch.mockResolvedValueOnce(
-        okResponse('review-789', 'document.doc')
-      )
+      undiciFetch.mockResolvedValue(okResponse('review-789', 'document.doc'))
       const result = await uploadApiController.uploadFile(mockRequest, mockH)
       expect(result.success).toBe(true)
       expect(result.statusCode).toBe(HTTP_STATUS_OK)
@@ -185,7 +183,7 @@ function registerFileValidationTests() {
 
     it('should handle filename with Unicode characters', async () => {
       mockRequest.headers['x-file-name'] = encodeURIComponent('документ.pdf')
-      undiciFetch.mockResolvedValueOnce(
+      undiciFetch.mockResolvedValue(
         okResponse(DEFAULT_REVIEW_ID, 'документ.pdf')
       )
       const result = await uploadApiController.uploadFile(mockRequest, mockH)
@@ -249,7 +247,7 @@ function registerBackendRequestTests() {
 function registerBackendResponseTests() {
   describe('Backend Integration - response handling', () => {
     it('should handle successful backend response', async () => {
-      undiciFetch.mockResolvedValueOnce(okResponse(REVIEW_ABC123))
+      undiciFetch.mockResolvedValue(okResponse(REVIEW_ABC123))
       const result = await uploadApiController.uploadFile(mockRequest, mockH)
       expect(result.success).toBe(true)
       expect(result.reviewId).toBe(REVIEW_ABC123)
@@ -257,7 +255,7 @@ function registerBackendResponseTests() {
     })
 
     it('should handle backend error response', async () => {
-      undiciFetch.mockResolvedValueOnce(
+      undiciFetch.mockResolvedValue(
         failResponse(HTTP_STATUS_INTERNAL_SERVER_ERROR, {
           message: 'Backend processing error'
         })
@@ -269,7 +267,7 @@ function registerBackendResponseTests() {
     })
 
     it('uses default error message when backend error response has no message field', async () => {
-      undiciFetch.mockResolvedValueOnce(
+      undiciFetch.mockResolvedValue(
         failResponse(HTTP_STATUS_UNPROCESSABLE_ENTITY)
       )
       const result = await uploadApiController.uploadFile(mockRequest, mockH)
@@ -278,7 +276,7 @@ function registerBackendResponseTests() {
     })
 
     it('should handle backend response with non-JSON body', async () => {
-      undiciFetch.mockResolvedValueOnce(
+      undiciFetch.mockResolvedValue(
         failResponseNonJson(HTTP_STATUS_BAD_GATEWAY)
       )
       const result = await uploadApiController.uploadFile(mockRequest, mockH)
@@ -310,7 +308,7 @@ function registerBackendResponseTests() {
 function registerResponseFormatTests() {
   describe('Response Formats', () => {
     it('should return correct success response format', async () => {
-      undiciFetch.mockResolvedValueOnce(okResponse(REVIEW_ABC123, 'test.pdf'))
+      undiciFetch.mockResolvedValue(okResponse(REVIEW_ABC123, 'test.pdf'))
       const result = await uploadApiController.uploadFile(mockRequest, mockH)
       expect(result).toMatchObject({
         success: true,
@@ -458,7 +456,7 @@ function registerResponseFallbackTests() {
         json: vi.fn().mockResolvedValueOnce({ filename: FILENAME_PDF })
       })
       const result = await uploadApiController.uploadFile(mockRequest, mockH)
-      expect(result.success).toBe(true)
+      expect(result.success).toBe(false)
       expect(result.reviewId).toBeUndefined()
     })
 

@@ -224,7 +224,7 @@ export async function submitFileUpload(file) {
     const userMessage = JSON_PARSE_ERROR_PATTERNS.some((p) =>
       error.message.includes(p)
     )
-      ? 'Please enter a valid input'
+      ? 'Uploaded file could not be processed. Please ensure it is a valid PDF or Word document and try again.'
       : error.message
     showDocumentError(`Upload failed: ${userMessage}`)
     if (elements.uploadButton) {

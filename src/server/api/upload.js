@@ -233,20 +233,21 @@ export const uploadApiController = {
 
       // Handle backend response
       if (response.ok) {
+        const result = await response.json()
         logger.info(
-          `Backend upload initiated successfully and waiting for upload status for reviewId=${response.reviewId}`
+          `Backend upload initiated successfully and waiting for upload status for reviewId=${result.reviewId}`
         )
         // Poll backend for upload status until it's no longer 'initiated'
-        const uploadStatus = await waitForUpload(response.reviewId)
+        const uploadStatus = await waitForUpload(result.reviewId)
         logger.info(
-          `Upload status for reviewId=${response.reviewId} is now ${uploadStatus.status}`
+          `Upload status for reviewId=${result.reviewId} is now ${uploadStatus.status}`
         )
         if (
           uploadStatus.status === 'rejected' ||
           uploadStatus.status === 'error'
         ) {
           logger.info(
-            `Upload rejected for reviewId=${response.reviewId} with reason: ${uploadStatus.message}`
+            `Upload rejected for reviewId=${result.reviewId} with reason: ${uploadStatus.message}`
           )
           return h
             .response({
