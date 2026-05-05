@@ -160,7 +160,7 @@ describe('submitFileUpload - updateReviewHistory absent (addReviewToHistory fall
 })
 
 describe('submitFileUpload - JSON parse error message', () => {
-  it('should show "Upload failed: Please enter a valid input" for JSON errors', async () => {
+  it('should show "Upload failed: Uploaded file could not be processed. Please ensure it is a valid PDF or Word document and try again." for JSON errors', async () => {
     const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
     mockFetch.mockRejectedValueOnce(new Error('not valid JSON received'))
 
@@ -169,7 +169,7 @@ describe('submitFileUpload - JSON parse error message', () => {
     await uploadPromise
 
     expect(uiFeedback.showDocumentError).toHaveBeenCalledWith(
-      'Upload failed: Please enter a valid input'
+      'Upload failed: Uploaded file could not be processed. Please ensure it is a valid PDF or Word document and try again.'
     )
   })
 })
