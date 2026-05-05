@@ -99,16 +99,15 @@ async function sendFileToBackend(
 /**
  * Handle backend upload failure
  */
-async function handleBackendFailure(response, fileName, h) {
+async function handleBackendFailure(result, fileName, h) {
   let errorMessage = 'Failed to upload file to backend'
   try {
-    const errorData = await response.json()
-    errorMessage = errorData.message || errorMessage
+    errorMessage = result.message || errorMessage
   } catch {
     // Response body was not JSON — keep default message
   }
   logger.error(
-    `Backend upload failed for file: ${fileName} with status: ${response.status} and message: ${errorMessage}`
+    `Backend upload failed for file: ${fileName} and message: ${errorMessage}`
   )
   return h
     .response({
@@ -122,13 +121,12 @@ async function handleBackendFailure(response, fileName, h) {
  * Process successful backend response
  */
 async function processSuccessfulUpload(
-  response,
+  result,
   fileName,
   backendRequestTime,
   startTime,
   h
 ) {
-  const result = await response.json()
   const totalProcessingTime = (Date.now() - startTime) / 1000
 
   logger.info(
@@ -230,10 +228,9 @@ export const uploadApiController = {
       )
       const response = backendResult.response
       const backendRequestTime = backendResult.backendRequestTime
-
+      const result = await response.json()
       // Handle backend response
       if (response.ok) {
-        const result = await response.json()
         logger.info(
           `Backend upload initiated successfully and waiting for upload status for reviewId=${result.reviewId}`
         )
@@ -257,11 +254,11 @@ export const uploadApiController = {
             .code(HTTP_STATUS_INTERNAL_SERVER_ERROR)
         }
       } else {
-        return await handleBackendFailure(response, fileName, h)
+        return await handleBackendFailure(result, fileName, h)
       }
 
       return await processSuccessfulUpload(
-        response,
+        result,
         fileName,
         backendRequestTime,
         startTime,
