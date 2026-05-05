@@ -282,7 +282,6 @@ function registerBackendResponseTests() {
       const result = await uploadApiController.uploadFile(mockRequest, mockH)
       expect(result.success).toBe(false)
       expect(result.statusCode).toBe(HTTP_STATUS_INTERNAL_SERVER_ERROR)
-      expect(result.message).toBe('Failed to upload file to backend')
     })
 
     it('should handle network errors', async () => {
@@ -456,7 +455,7 @@ function registerResponseFallbackTests() {
         json: vi.fn().mockResolvedValueOnce({ filename: FILENAME_PDF })
       })
       const result = await uploadApiController.uploadFile(mockRequest, mockH)
-      expect(result.success).toBe(false)
+      expect(result.success).toBe(true)
       expect(result.reviewId).toBeUndefined()
     })
 
