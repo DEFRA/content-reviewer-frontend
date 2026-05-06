@@ -24,6 +24,9 @@ import { azureAuth } from './plugins/azure-auth.js'
 // protects against single-client bursts hitting one pod.
 const HTTP_UNAUTHORISED = 401
 const HTTP_TOO_MANY_REQUESTS = 429
+const MS_PER_SECOND = 1000
+const COMPRESSION_MIN_BYTES = 512
+const HSTS_MAX_AGE_SECONDS = 31536000
 const rateLimitStore = new Map()
 
 function getRateLimitEntry(ip, windowMs) {
@@ -164,7 +167,7 @@ function setupSilentTokenRefresh(server) {
           accessToken,
           refreshToken,
           expiresIn,
-          expiresAt: Date.now() + expiresIn * 1000
+          expiresAt: Date.now() + expiresIn * MS_PER_SECOND
         })
         server.logger.info(
           { path: request.path },
@@ -182,12 +185,16 @@ function createHapiServer() {
   return hapi.server({
     host: config.get('host'),
     port: config.get('port'),
-    compression: { minBytes: 512 }, // Gzip/deflate responses larger than 512 bytes
+    compression: { minBytes: COMPRESSION_MIN_BYTES }, // Gzip/deflate responses larger than 512 bytes
     routes: {
       validate: { options: { abortEarly: false } },
       files: { relativeTo: path.resolve(config.get('root'), '.public') },
       security: {
-        hsts: { maxAge: 31536000, includeSubDomains: true, preload: false },
+        hsts: {
+          maxAge: HSTS_MAX_AGE_SECONDS,
+          includeSubDomains: true,
+          preload: false
+        },
         xss: 'enabled',
         noSniff: true,
         xframe: true
