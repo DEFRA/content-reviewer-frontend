@@ -1,10 +1,7 @@
 // API client for upload and review operations
-/* global sessionStorage */
 import {
   PROGRESS_INITIAL,
   PROGRESS_PROCESSING,
-  RELOAD_DELAY,
-  REDIRECT_DELAY,
   HISTORY_UPDATE_DELAY,
   PREVIEW_WORDS_LIMIT,
   PREVIEW_CHARS_LIMIT,
@@ -183,33 +180,8 @@ export async function submitTextReview(textContent) {
   }
 }
 
-function completeFileUpload(data, file) {
-  hideProgress()
-  const fileInputEl = getFileInput()
-  if (fileInputEl) {
-    fileInputEl.value = ''
-  }
-  updateMutualExclusion()
-  if (typeof globalThis.updateReviewHistory === 'function') {
-    setTimeout(() => globalThis.updateReviewHistory(), REDIRECT_DELAY)
-  } else {
-    addReviewToHistory({
-      id: data.reviewId || data.id,
-      fileName: file.name,
-      timestamp: Date.now(),
-      status: 'pending'
-    })
-  }
-  if (typeof globalThis.startAutoRefresh === 'function') {
-    globalThis.startAutoRefresh()
-  }
-  sessionStorage.setItem('reviewJustSubmitted', 'true')
-  setTimeout(() => {
-    globalThis.location.reload()
-  }, RELOAD_DELAY)
-}
-
 export async function submitFileUpload(file) {
+  const elements = getElements()
   try {
     showProgress('Uploading to server...', PROGRESS_INITIAL)
     const arrayBuffer = await file.arrayBuffer()
@@ -234,17 +206,27 @@ export async function submitFileUpload(file) {
     }
     const data = await response.json()
     console.log('[UPLOAD-HANDLER] File uploaded successfully:', data)
-    completeFileUpload(data, file)
+    hideProgress()
+    const fileInputEl = getFileInput()
+    if (fileInputEl) {
+      fileInputEl.value = ''
+    }
+    updateMutualExclusion()
+    updateCharacterCount()
+    if (elements.uploadButton) {
+      elements.uploadButton.disabled = false
+    }
+    handleReviewHistory(data, encodeURIComponent(file.name))
+    startAutoRefresh()
     return data
   } catch (error) {
     console.error('[UPLOAD-HANDLER] Upload error:', error)
     const userMessage = JSON_PARSE_ERROR_PATTERNS.some((p) =>
       error.message.includes(p)
     )
-      ? 'Please enter a valid input'
+      ? 'Uploaded file could not be processed. Please ensure it is a valid PDF or Word document and try again.'
       : error.message
     showDocumentError(`Upload failed: ${userMessage}`)
-    const elements = getElements()
     if (elements.uploadButton) {
       elements.uploadButton.disabled = false
     }

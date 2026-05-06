@@ -21,6 +21,9 @@ const MOCK_URL_REVIEW_ID = 'url-review-789'
 const HTTP_STATUS_SERVER_ERROR = 500
 const TEST_DESCRIPTION_NETWORK_ERRORS = 'should handle network errors'
 const AUTH_LOGIN_PATH = '/auth/login'
+const PROGRESS_INITIAL = 30
+const PROGRESS_PROCESSING = 70
+const HTTP_STATUS_BAD_REQUEST = 400
 
 let mockFetch
 let mockElements
@@ -220,6 +223,87 @@ describe('submitUrlReview - errors', () => {
     await expect(apiClient.submitUrlReview(TEST_URL)).rejects.toThrow(
       'URL review upload failed'
     )
+  })
+})
+
+describe('submitFileUpload - success', () => {
+  it('should successfully upload a file', async () => {
+    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
+    const mockResponse = { reviewId: MOCK_REVIEW_ID, status: 'pending' }
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockResponse
+    })
+    const uploadPromise = apiClient.submitFileUpload(file)
+    await vi.advanceTimersByTimeAsync(0)
+    const result = await uploadPromise
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/api/upload',
+      expect.objectContaining({
+        method: 'POST'
+      })
+    )
+    expect(result).toEqual(mockResponse)
+  })
+
+  it('should show progress during file upload', async () => {
+    const file = new File(['test'], TEST_FILENAME, { type: TEST_FILE_TYPE })
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ reviewId: MOCK_REVIEW_ID })
+    })
+    const uploadPromise = apiClient.submitFileUpload(file)
+    await vi.advanceTimersByTimeAsync(0)
+    await uploadPromise
+    expect(uiFeedback.showProgress).toHaveBeenCalledWith(
+      'Uploading to server...',
+      PROGRESS_INITIAL
+    )
+    expect(uiFeedback.showProgress).toHaveBeenCalledWith(
+      'Processing upload...',
+      PROGRESS_PROCESSING
+    )
+  })
+})
+
+describe('submitFileUpload - errors', () => {
+  it('should handle file upload failures', async () => {
+    const file = new File(['test'], TEST_FILENAME, { type: TEST_FILE_TYPE })
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({ message: 'error' })
+    })
+    const uploadPromise = apiClient.submitFileUpload(file).catch((err) => err)
+    await vi.advanceTimersByTimeAsync(0)
+    const result = await uploadPromise
+    expect(result).toBeInstanceOf(Error)
+    expect(result.message).toBe('error')
+    expect(uiFeedback.showDocumentError).toHaveBeenCalled()
+  })
+
+  it(TEST_DESCRIPTION_NETWORK_ERRORS, async () => {
+    const file = new File(['data'], TEST_FILENAME, { type: TEST_FILE_TYPE })
+    mockFetch.mockRejectedValueOnce(new Error(ERROR_MSG_NETWORK))
+    const uploadPromise = apiClient.submitFileUpload(file).catch((err) => err)
+    await vi.advanceTimersByTimeAsync(0)
+    const result = await uploadPromise
+    expect(result).toBeInstanceOf(Error)
+    expect(result.message).toBe(ERROR_MSG_NETWORK)
+  })
+
+  it('should handle errors without file input element', async () => {
+    vi.spyOn(domElements, 'getFileInput').mockReturnValue(null)
+    const file = new File(['data'], TEST_FILENAME, { type: TEST_FILE_TYPE })
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: HTTP_STATUS_BAD_REQUEST,
+      json: async () => ({ message: 'bad request' })
+    })
+    const uploadPromise = apiClient.submitFileUpload(file).catch((err) => err)
+    await vi.advanceTimersByTimeAsync(0)
+    const result = await uploadPromise
+    expect(result).toBeInstanceOf(Error)
+    expect(result.message).toBe('bad request')
   })
 })
 

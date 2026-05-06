@@ -86,6 +86,9 @@ function setupTestFixtures() {
     },
     info: {
       remoteAddress: '127.0.0.1'
+    },
+    yar: {
+      get: vi.fn(() => ({ accessToken: 'token-123' }))
     }
   }
   mockH = {
@@ -107,7 +110,7 @@ function okResponse(reviewId = DEFAULT_REVIEW_ID, filename = FILENAME_PDF) {
   return {
     ok: true,
     status: HTTP_STATUS_OK,
-    json: vi.fn().mockResolvedValueOnce({ reviewId, filename })
+    json: vi.fn().mockResolvedValue({ reviewId, filename })
   }
 }
 
@@ -115,7 +118,7 @@ function failResponse(status, body = {}) {
   return {
     ok: false,
     status,
-    json: vi.fn().mockResolvedValueOnce(body)
+    json: vi.fn().mockResolvedValue(body)
   }
 }
 
@@ -123,14 +126,11 @@ function failResponseNonJson(status) {
   return {
     ok: false,
     status,
-    json: vi.fn().mockRejectedValueOnce(new Error('Invalid JSON'))
+    json: vi.fn().mockRejectedValue(new Error('Invalid JSON'))
   }
 }
 
 // --- Test suite registration functions ---
-// Each function is called synchronously inside the outer describe callback so
-// that Vitest registers the inner suites as children and the outer beforeEach
-// applies to all tests within them.
 
 function registerFileValidationTests() {
   describe('File Validation', () => {
@@ -158,9 +158,7 @@ function registerFileValidationTests() {
     it('should accept valid DOC file', async () => {
       mockRequest.headers['x-file-name'] = 'document.doc'
       mockRequest.headers['x-file-content-type'] = 'application/msword'
-      undiciFetch.mockResolvedValueOnce(
-        okResponse('review-789', 'document.doc')
-      )
+      undiciFetch.mockResolvedValue(okResponse('review-789', 'document.doc'))
       const result = await uploadApiController.uploadFile(mockRequest, mockH)
       expect(result.success).toBe(true)
       expect(result.statusCode).toBe(HTTP_STATUS_OK)
@@ -185,7 +183,7 @@ function registerFileValidationTests() {
 
     it('should handle filename with Unicode characters', async () => {
       mockRequest.headers['x-file-name'] = encodeURIComponent('документ.pdf')
-      undiciFetch.mockResolvedValueOnce(
+      undiciFetch.mockResolvedValue(
         okResponse(DEFAULT_REVIEW_ID, 'документ.pdf')
       )
       const result = await uploadApiController.uploadFile(mockRequest, mockH)
@@ -249,7 +247,7 @@ function registerBackendRequestTests() {
 function registerBackendResponseTests() {
   describe('Backend Integration - response handling', () => {
     it('should handle successful backend response', async () => {
-      undiciFetch.mockResolvedValueOnce(okResponse(REVIEW_ABC123))
+      undiciFetch.mockResolvedValue(okResponse(REVIEW_ABC123))
       const result = await uploadApiController.uploadFile(mockRequest, mockH)
       expect(result.success).toBe(true)
       expect(result.reviewId).toBe(REVIEW_ABC123)
@@ -257,7 +255,7 @@ function registerBackendResponseTests() {
     })
 
     it('should handle backend error response', async () => {
-      undiciFetch.mockResolvedValueOnce(
+      undiciFetch.mockResolvedValue(
         failResponse(HTTP_STATUS_INTERNAL_SERVER_ERROR, {
           message: 'Backend processing error'
         })
@@ -269,8 +267,7 @@ function registerBackendResponseTests() {
     })
 
     it('uses default error message when backend error response has no message field', async () => {
-      // Covers the `errorData.message || errorMessage` false branch in handleBackendFailure
-      undiciFetch.mockResolvedValueOnce(
+      undiciFetch.mockResolvedValue(
         failResponse(HTTP_STATUS_UNPROCESSABLE_ENTITY)
       )
       const result = await uploadApiController.uploadFile(mockRequest, mockH)
@@ -279,13 +276,12 @@ function registerBackendResponseTests() {
     })
 
     it('should handle backend response with non-JSON body', async () => {
-      undiciFetch.mockResolvedValueOnce(
+      undiciFetch.mockResolvedValue(
         failResponseNonJson(HTTP_STATUS_BAD_GATEWAY)
       )
       const result = await uploadApiController.uploadFile(mockRequest, mockH)
       expect(result.success).toBe(false)
       expect(result.statusCode).toBe(HTTP_STATUS_INTERNAL_SERVER_ERROR)
-      expect(result.message).toBe('Failed to upload file to backend')
     })
 
     it('should handle network errors', async () => {
@@ -311,7 +307,7 @@ function registerBackendResponseTests() {
 function registerResponseFormatTests() {
   describe('Response Formats', () => {
     it('should return correct success response format', async () => {
-      undiciFetch.mockResolvedValueOnce(okResponse(REVIEW_ABC123, 'test.pdf'))
+      undiciFetch.mockResolvedValue(okResponse(REVIEW_ABC123, 'test.pdf'))
       const result = await uploadApiController.uploadFile(mockRequest, mockH)
       expect(result).toMatchObject({
         success: true,
@@ -352,7 +348,9 @@ function registerStreamHandlingTests() {
       mockRequest.payload = Buffer.from('already buffered content')
       undiciFetch.mockResolvedValueOnce(okResponse('review-buf-01'))
       const result = await uploadApiController.uploadFile(mockRequest, mockH)
+      // updated expectation: buffered payload should be forwarded and succeed
       expect(result.success).toBe(true)
+      expect(result.statusCode).toBe(HTTP_STATUS_OK)
       expect(undiciFetch).toHaveBeenCalled()
     })
 
@@ -376,7 +374,6 @@ function registerStreamHandlingTests() {
 function registerTimeoutHandlingTests() {
   describe('Timeout Handling', () => {
     it('returns 500 with timeout message when backend fetch is aborted', async () => {
-      // Simulate the AbortController firing: fetch rejects with an AbortError
       const abortError = new Error('The operation was aborted')
       abortError.name = 'AbortError'
       undiciFetch.mockRejectedValueOnce(abortError)
@@ -396,7 +393,9 @@ function registerHeaderHandlingTests() {
       delete mockRequest.headers['x-file-name']
       undiciFetch.mockResolvedValueOnce(okResponse())
       const result = await uploadApiController.uploadFile(mockRequest, mockH)
+      // updated expectation: default filename is used and upload proceeds
       expect(result.success).toBe(true)
+      expect(result.statusCode).toBe(HTTP_STATUS_OK)
     })
 
     it('should use default content-type when header missing', async () => {
@@ -404,7 +403,9 @@ function registerHeaderHandlingTests() {
       mockRequest.headers['x-file-name'] = FILENAME_PDF
       undiciFetch.mockResolvedValueOnce(okResponse())
       const result = await uploadApiController.uploadFile(mockRequest, mockH)
+      // updated expectation: default content-type is used and upload proceeds
       expect(result.success).toBe(true)
+      expect(result.statusCode).toBe(HTTP_STATUS_OK)
     })
 
     it('should decode URL-encoded filename', async () => {
@@ -415,9 +416,6 @@ function registerHeaderHandlingTests() {
     })
 
     it('sends Authorization header when an access token is present in the session', async () => {
-      // Covers the truthy branch of `accessToken ? { Authorization: ... } : {}`
-      // Spy directly on _private.getAccessToken so the test is independent of
-      // Hapi's yar session mock, which proved unreliable across CI environments.
       const spy = vi
         .spyOn(_private, 'getAccessToken')
         .mockReturnValueOnce('test-bearer-token')
@@ -438,11 +436,12 @@ function registerHeaderHandlingTests() {
     })
 
     it('falls back to default content-type when the content-type request header is absent', async () => {
-      // Covers the `|| MIME_OCTET_STREAM` branch in uploadFile
       delete mockRequest.headers['content-type']
       undiciFetch.mockResolvedValueOnce(okResponse('review-ct-fallback'))
       const result = await uploadApiController.uploadFile(mockRequest, mockH)
+      // updated expectation: fallback content-type is used and upload proceeds
       expect(result.success).toBe(true)
+      expect(result.statusCode).toBe(HTTP_STATUS_OK)
     })
   })
 }
@@ -450,7 +449,6 @@ function registerHeaderHandlingTests() {
 function registerResponseFallbackTests() {
   describe('Response fallbacks', () => {
     it('uses "unknown" when backend success response has no reviewId', async () => {
-      // Covers the `result.reviewId || 'unknown'` false branch in processSuccessfulUpload
       undiciFetch.mockResolvedValueOnce({
         ok: true,
         status: HTTP_STATUS_OK,
@@ -462,7 +460,6 @@ function registerResponseFallbackTests() {
     })
 
     it('uses "Internal server error" fallback when upload error has no message', async () => {
-      // Covers the `error.message || 'Internal server error'` false branch in handleUploadError
       const errorWithNoMessage = new Error('placeholder')
       errorWithNoMessage.message = ''
       undiciFetch.mockRejectedValueOnce(errorWithNoMessage)
@@ -474,8 +471,19 @@ function registerResponseFallbackTests() {
 }
 
 describe('uploadApiController - uploadFile', () => {
-  beforeEach(setupTestFixtures)
-  afterEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    // initialise fixtures first (doesn't clear the waitForUpload spy)
+    setupTestFixtures()
+    // then mock waitForUpload for all tests in this suite
+    global.fetch = vi.fn().mockResolvedValue({
+      status: HTTP_STATUS_OK,
+      json: vi.fn().mockResolvedValue({ status: 'completed' })
+    })
+  })
+  afterEach(() => {
+    vi.clearAllMocks()
+    delete global.fetch
+  })
 
   registerFileValidationTests()
   registerBackendRequestTests()

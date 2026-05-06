@@ -129,31 +129,14 @@ function convertLinksToMarkdown($, rootEl) {
 }
 
 /**
- * Parse raw GOV.UK HTML with cheerio, strip noise, extract content regions
- * using known selectors, convert links to Markdown, and return a minimal
- * HTML document string suitable for forwarding to the backend review API.
- *
- * Throws with a user-facing message if:
- *  - No content selectors matched (unsupported layout)
- *  - The extracted plain text is below the minimum useful threshold
- *  - The extracted plain text exceeds the maximum character limit
- *
- * @param {string} html - raw GOV.UK page HTML
- * @param {string} sourceUrl - original URL (embedded in <meta> and used for title fallback)
- * @returns {{ htmlDoc: string, title: string, charCount: number }}
+ * Walk CONTENT_SELECTORS, skip overlapping or empty elements, convert links to
+ * Markdown in place, and return a list of `<section>` HTML strings.
+ * Ancestor/descendant overlap detection prevents duplicate content when both a
+ * parent container and one of its children match different selectors.
+ * @param {import('cheerio').CheerioAPI} $
+ * @returns {string[]}
  */
-function extractContent(html, sourceUrl) {
-  const $ = load(html)
-
-  // Extract H1 title before any DOM manipulation
-  const rawTitle =
-    $('h1.gem-c-title__text').first().text().trim() ||
-    $('h1.gem-c-heading__text').first().text().trim() ||
-    $('h1').first().text().trim()
-
-  // Remove structural noise
-  $(NOISE_SELECTORS).remove()
-
+function collectSections($) {
   const sections = []
   const matchedEls = [] // raw DOM nodes for ancestor/descendant overlap detection
 
@@ -179,6 +162,37 @@ function extractContent(html, sourceUrl) {
       sections.push(`<section>\n${$(el).html().trim()}\n</section>`)
     })
   }
+
+  return sections
+}
+
+/**
+ * Parse raw GOV.UK HTML with cheerio, strip noise, extract content regions
+ * using known selectors, convert links to Markdown, and return a minimal
+ * HTML document string suitable for forwarding to the backend review API.
+ *
+ * Throws with a user-facing message if:
+ *  - No content selectors matched (unsupported layout)
+ *  - The extracted plain text is below the minimum useful threshold
+ *  - The extracted plain text exceeds the maximum character limit
+ *
+ * @param {string} html - raw GOV.UK page HTML
+ * @param {string} sourceUrl - original URL (embedded in <meta> and used for title fallback)
+ * @returns {{ htmlDoc: string, title: string, charCount: number }}
+ */
+function extractContent(html, sourceUrl) {
+  const $ = load(html)
+
+  // Extract H1 title before any DOM manipulation
+  const rawTitle =
+    $('h1.gem-c-title__text').first().text().trim() ||
+    $('h1.gem-c-heading__text').first().text().trim() ||
+    $('h1').first().text().trim()
+
+  // Remove structural noise
+  $(NOISE_SELECTORS).remove()
+
+  const sections = collectSections($)
 
   if (sections.length === 0) {
     throw new Error(
@@ -340,6 +354,67 @@ function extractPage(html, url, h) {
 }
 
 /**
+ * Return the Hapi response for a successful backend submission.
+ * Logs the outcome and forwards the reviewId to the caller.
+ * @param {object} result - parsed JSON body from the backend
+ * @param {string} url - original GOV.UK URL (for logging)
+ * @param {string} backendRequestTime - elapsed seconds as a formatted string
+ * @param {object} h - Hapi response toolkit
+ */
+function handleBackendSuccess(result, url, backendRequestTime, h) {
+  logger.info(
+    { url, reviewId: result.reviewId, backendRequestTime },
+    `url-review: review submitted successfully in ${backendRequestTime}s`
+  )
+  return h
+    .response({
+      success: true,
+      message: 'URL content submitted for review',
+      reviewId: result.reviewId
+    })
+    .code(HTTP_STATUS.OK)
+}
+
+/**
+ * Return the Hapi response when the backend fetch throws.
+ * AbortError is treated as a request timeout; all other errors become 500 responses.
+ * @param {Error} error
+ * @param {string} url - original GOV.UK URL (for logging)
+ * @param {number} backendRequestStart - Date.now() captured before the fetch
+ * @param {object} h - Hapi response toolkit
+ */
+function handleBackendFetchError(error, url, backendRequestStart, h) {
+  const backendRequestTime = (
+    (Date.now() - backendRequestStart) /
+    1000
+  ).toFixed(2)
+
+  if (error.name === 'AbortError') {
+    logger.error(
+      { url, backendRequestTime },
+      `url-review: backend request timed out after ${BACKEND_TIMEOUT_MS / 1000}s`
+    )
+    return h
+      .response({
+        success: false,
+        message: 'The request timed out. Please try again.'
+      })
+      .code(HTTP_STATUS.INTERNAL_SERVER_ERROR)
+  }
+
+  logger.error(
+    { err: error, url, backendRequestTime },
+    'url-review: backend submission error'
+  )
+  return h
+    .response({
+      success: false,
+      message: error.message || 'Internal server error'
+    })
+    .code(HTTP_STATUS.INTERNAL_SERVER_ERROR)
+}
+
+/**
  * Step 3: Forward extracted content to the backend review API.
  */
 async function submitToBackend(
@@ -394,46 +469,9 @@ async function submitToBackend(
     }
 
     const result = await backendResponse.json()
-    logger.info(
-      { url, reviewId: result.reviewId, backendRequestTime },
-      `url-review: review submitted successfully in ${backendRequestTime}s`
-    )
-    return h
-      .response({
-        success: true,
-        message: 'URL content submitted for review',
-        reviewId: result.reviewId
-      })
-      .code(HTTP_STATUS.OK)
+    return handleBackendSuccess(result, url, backendRequestTime, h)
   } catch (backendError) {
-    const backendRequestTime = (
-      (Date.now() - backendRequestStart) /
-      1000
-    ).toFixed(2)
-
-    if (backendError.name === 'AbortError') {
-      logger.error(
-        { url, backendRequestTime },
-        `url-review: backend request timed out after ${BACKEND_TIMEOUT_MS / 1000}s`
-      )
-      return h
-        .response({
-          success: false,
-          message: 'The request timed out. Please try again.'
-        })
-        .code(HTTP_STATUS.INTERNAL_SERVER_ERROR)
-    }
-
-    logger.error(
-      { err: backendError, url, backendRequestTime },
-      'url-review: backend submission error'
-    )
-    return h
-      .response({
-        success: false,
-        message: backendError.message || 'Internal server error'
-      })
-      .code(HTTP_STATUS.INTERNAL_SERVER_ERROR)
+    return handleBackendFetchError(backendError, url, backendRequestStart, h)
   } finally {
     clearTimeout(timer)
   }

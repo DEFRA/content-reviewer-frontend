@@ -4,11 +4,7 @@ import * as uiFeedback from './ui-feedback.js'
 import * as reviewHistory from './review-history.js'
 import * as domElements from './dom-elements.js'
 import * as inputControls from './input-controls.js'
-import {
-  PROGRESS_INITIAL,
-  PROGRESS_PROCESSING,
-  RELOAD_DELAY
-} from './constants.js'
+import { PROGRESS_INITIAL, PROGRESS_PROCESSING } from './constants.js'
 
 const TEST_FILE_TYPE = 'text/plain'
 const TEST_FILENAME = 'test.txt'
@@ -80,19 +76,6 @@ describe('submitFileUpload - success', () => {
       })
     )
     expect(result).toEqual(mockResponse)
-  })
-
-  it('should reload page after successful upload', async () => {
-    const file = new File(['data'], TEST_FILENAME, { type: TEST_FILE_TYPE })
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ reviewId: MOCK_REVIEW_ID })
-    })
-    const uploadPromise = apiClient.submitFileUpload(file)
-    await vi.advanceTimersByTimeAsync(0)
-    await uploadPromise
-    await vi.advanceTimersByTimeAsync(RELOAD_DELAY)
-    expect(mockLocation.reload).toHaveBeenCalled()
   })
 
   it('should show progress during file upload', async () => {
@@ -177,7 +160,7 @@ describe('submitFileUpload - updateReviewHistory absent (addReviewToHistory fall
 })
 
 describe('submitFileUpload - JSON parse error message', () => {
-  it('should show "Upload failed: Please enter a valid input" for JSON errors', async () => {
+  it('should show "Upload failed: Uploaded file could not be processed. Please ensure it is a valid PDF or Word document and try again." for JSON errors', async () => {
     const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
     mockFetch.mockRejectedValueOnce(new Error('not valid JSON received'))
 
@@ -186,7 +169,7 @@ describe('submitFileUpload - JSON parse error message', () => {
     await uploadPromise
 
     expect(uiFeedback.showDocumentError).toHaveBeenCalledWith(
-      'Upload failed: Please enter a valid input'
+      'Upload failed: Uploaded file could not be processed. Please ensure it is a valid PDF or Word document and try again.'
     )
   })
 })

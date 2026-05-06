@@ -99,16 +99,15 @@ async function sendFileToBackend(
 /**
  * Handle backend upload failure
  */
-async function handleBackendFailure(response, fileName, h) {
+async function handleBackendFailure(result, fileName, h) {
   let errorMessage = 'Failed to upload file to backend'
   try {
-    const errorData = await response.json()
-    errorMessage = errorData.message || errorMessage
+    errorMessage = result.message || errorMessage
   } catch {
     // Response body was not JSON — keep default message
   }
   logger.error(
-    `Backend upload failed for file: ${fileName} with status: ${response.status} and message: ${errorMessage}`
+    `Backend upload failed for file: ${fileName} and message: ${errorMessage}`
   )
   return h
     .response({
@@ -122,13 +121,12 @@ async function handleBackendFailure(response, fileName, h) {
  * Process successful backend response
  */
 async function processSuccessfulUpload(
-  response,
+  result,
   fileName,
   backendRequestTime,
   startTime,
   h
 ) {
-  const result = await response.json()
   const totalProcessingTime = (Date.now() - startTime) / 1000
 
   logger.info(
@@ -230,14 +228,37 @@ export const uploadApiController = {
       )
       const response = backendResult.response
       const backendRequestTime = backendResult.backendRequestTime
-
+      const result = await response.json()
       // Handle backend response
-      if (!response.ok) {
-        return await handleBackendFailure(response, fileName, h)
+      if (response.ok) {
+        logger.info(
+          `Backend upload initiated successfully and waiting for upload status for reviewId=${result.reviewId}`
+        )
+        // Poll backend for upload status until it's no longer 'initiated'
+        const uploadStatus = await waitForUpload(result.reviewId)
+        logger.info(
+          `Upload status for reviewId=${result.reviewId} is now ${uploadStatus.status}`
+        )
+        if (
+          uploadStatus.status === 'rejected' ||
+          uploadStatus.status === 'error'
+        ) {
+          logger.info(
+            `Upload rejected for reviewId=${result.reviewId} with reason: ${uploadStatus.message}`
+          )
+          return h
+            .response({
+              success: false,
+              message: uploadStatus.message
+            })
+            .code(HTTP_STATUS_INTERNAL_SERVER_ERROR)
+        }
+      } else {
+        return await handleBackendFailure(result, fileName, h)
       }
 
       return await processSuccessfulUpload(
-        response,
+        result,
         fileName,
         backendRequestTime,
         startTime,
@@ -247,4 +268,43 @@ export const uploadApiController = {
       return handleUploadError(error, startTime, h)
     }
   }
+}
+
+export async function waitForUpload(
+  reviewId,
+  interval = 1000,
+  maxAttempts = 60
+) {
+  const backendUrl = config.get('backendUrl')
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      const res = await fetch(`${backendUrl}/api/upload-status/${reviewId}`)
+      if (res.status !== HTTP_STATUS_OK) {
+        logger.info(
+          `Upload status check returned status ${res.status} for reviewId=${reviewId}`
+        )
+        await delay(interval)
+        continue
+      }
+
+      const json = await res.json()
+      if (json.status && isTerminalStatus(json.status)) {
+        return json
+      }
+
+      await delay(interval)
+    } catch (err) {
+      throw new Error(`Failed to poll upload status: ${err.message}`)
+    }
+  }
+
+  throw new Error(`Timeout waiting for upload status for reviewId=${reviewId}`)
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function isTerminalStatus(status) {
+  return status === 'rejected' || status === 'completed' || status === 'error'
 }
