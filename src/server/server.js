@@ -132,7 +132,10 @@ function injectUserContext(server) {
   })
 }
 
-const FIVE_MINUTES_MS = 5 * 60 * 1000
+const SECONDS_PER_MINUTE = 60
+const REFRESH_WINDOW_MINUTES = 5
+const FIVE_MINUTES_MS =
+  REFRESH_WINDOW_MINUTES * SECONDS_PER_MINUTE * MS_PER_SECOND
 
 /**
  * Silently refresh the backend JWT access token when it is within 5 minutes
