@@ -195,8 +195,14 @@ export const fetchUrlController = {
 
     logger.info({ url: parsedUrl.toString() }, 'fetch-url: proxying request')
 
+    const fetchStart = performance.now()
     try {
       const { html } = await fetchGovUkHtml(parsedUrl)
+      const fetchDuration = Math.round(performance.now() - fetchStart)
+      logger.info(
+        { url: parsedUrl.toString(), durationMs: fetchDuration },
+        `fetch-url: GOV.UK page fetched in ${fetchDuration}ms`
+      )
       return h.response(html).code(HTTP_STATUS.OK).type('text/html')
     } catch (error) {
       logger.error(

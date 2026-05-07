@@ -160,6 +160,19 @@ export async function getReviewsController(request, h) {
 
     const data = await response.json()
     const normalizedReviews = normalizeReviews(data.reviews)
+    const totalDuration = Date.now() - startTime
+
+    logger.info(
+      {
+        count: normalizedReviews.length,
+        backendRequestTimeMs: Math.round(backendRequestTime * 1000),
+        totalDurationMs: totalDuration,
+        userId: userId || 'all',
+        limit,
+        skip
+      },
+      `Reviews fetched in ${totalDuration}ms (backend: ${Math.round(backendRequestTime * 1000)}ms, count: ${normalizedReviews.length})`
+    )
 
     return h
       .response({

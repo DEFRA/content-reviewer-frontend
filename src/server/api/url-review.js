@@ -484,6 +484,7 @@ async function submitToBackend(
 export const urlReviewController = {
   async handler(request, h) {
     const { url } = request.payload
+    const startTime = performance.now()
 
     const parsedUrl = parseAllowedUrl(url)
     if (!parsedUrl) {
@@ -495,11 +496,13 @@ export const urlReviewController = {
 
     logger.info({ url: parsedUrl.toString() }, 'url-review: fetching page')
 
+    const fetchStart = performance.now()
     const {
       html,
       finalUrl,
       errorResponse: fetchErr
     } = await fetchPage(parsedUrl, url, h)
+    const fetchDuration = Math.round(performance.now() - fetchStart)
     if (fetchErr) {
       return fetchErr
     }
@@ -509,14 +512,24 @@ export const urlReviewController = {
       return redirectErr
     }
 
+    const extractStart = performance.now()
     const { extracted, errorResponse: extractErr } = extractPage(html, url, h)
+    const extractDuration = Math.round(performance.now() - extractStart)
     if (extractErr) {
       return extractErr
     }
 
+    const priorDuration = Math.round(performance.now() - startTime)
     logger.info(
-      { url, charCount: extracted.charCount, title: extracted.title },
-      'url-review: content extracted, forwarding to backend'
+      {
+        url,
+        charCount: extracted.charCount,
+        title: extracted.title,
+        fetchDurationMs: fetchDuration,
+        extractDurationMs: extractDuration,
+        priorDurationMs: priorDuration
+      },
+      `url-review: content extracted in ${extractDuration}ms (fetch: ${fetchDuration}ms), forwarding to backend`
     )
 
     const slug = url
