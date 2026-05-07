@@ -358,9 +358,6 @@ describe('resultsController - data transformation scenarios', () => {
     expect(
       result.data.results.result.reviewData.reviewedContent.annotatedSections
     ).toEqual([])
-    expect(
-      result.data.results.result.reviewData.reviewedContent.issues
-    ).toEqual([])
     expect(result.data.results.result.reviewData.improvements).toEqual([])
   })
 
@@ -395,15 +392,12 @@ describe('resultsController - data transformation scenarios', () => {
   })
 })
 
-// Legacy scores schema (buildScoresMap fallback)
+// Scores schema — only the five standard category keys are recognised
 describe('resultsController - legacy scores schema', () => {
-  it('should build scores map from legacy accessibility/style/tone/overall keys', async () => {
+  it('should produce empty scores map when only unknown legacy keys (style/tone/overall) are present', async () => {
     const mockRequest = createMockRequest({ id: 'legacy-scores' })
     const mockH = createMockH()
 
-    // Provide only legacy keys — note: 'accessibility' IS in the five-category schema
-    // so we must NOT include it here, otherwise the fallback won't trigger.
-    // The legacy fallback only fires when none of the five-category keys are present.
     globalThis.fetch.mockResolvedValueOnce({
       ok: true,
       status: 200,
@@ -418,7 +412,6 @@ describe('resultsController - legacy scores schema', () => {
             overall: 70
           },
           annotatedSections: [],
-          issues: [],
           improvements: []
         }
       })
@@ -428,10 +421,11 @@ describe('resultsController - legacy scores schema', () => {
 
     const scoresMap = result.data.results.result.reviewData.scores
 
-    // Each legacy key should map to its label with score divided by 20
-    expect(scoresMap['Style']).toEqual({ score: 3, note: '' })
-    expect(scoresMap['Tone']).toEqual({ score: 2, note: '' })
-    expect(scoresMap['Overall']).toEqual({ score: 4, note: '' }) // Math.round(70/20)=4
+    // Legacy style/tone/overall keys are no longer recognised — scores map should be empty
+    expect(scoresMap['Style']).toBeUndefined()
+    expect(scoresMap['Tone']).toBeUndefined()
+    expect(scoresMap['Overall']).toBeUndefined()
+    expect(scoresMap).toEqual({})
   })
 
   it('should produce empty scores map when no recognised score keys present', async () => {

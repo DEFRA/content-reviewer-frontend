@@ -129,7 +129,7 @@ const logReviewResults = (
   }
 ) => {
   logger.info(
-    `Review history fetched - count: ${reviewHistory.length}, total: ${totalReviews}, pages: ${totalPages}, currentPage: ${currentPage}, pageSize: ${pageSize}, backendRequestTime: ${backendRequestTime}ms, missingId: ${missingId}`
+    `[RESPONSE TIME] Review history fetched - count: ${reviewHistory.length}, total: ${totalReviews}, pages: ${totalPages}, currentPage: ${currentPage}, pageSize: ${pageSize}, backendRequestTime: ${backendRequestTime}ms, missingId: ${missingId}`
   )
 }
 

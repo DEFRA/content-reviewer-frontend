@@ -201,7 +201,7 @@ async function reviewText(request, h) {
     const result = await response.json()
     const totalProcessingTime = (Date.now() - startTime) / 1000
 
-    logger.info('Text review request successful', {
+    logger.info('[RESPONSE TIME] Text review request successful', {
       reviewId: result.reviewId,
       textLength: textInfo.length,
       wordCount: textInfo.wordCount,
@@ -221,7 +221,8 @@ async function reviewText(request, h) {
 
     if (error.name === 'AbortError') {
       logger.error(
-        `Text review backend request timed out after ${BACKEND_TIMEOUT_MS / 1000}s — totalProcessingTime: ${totalProcessingTime}s`
+        { timeoutMs: BACKEND_TIMEOUT_MS, totalProcessingTime },
+        `[TIMEOUT] Text review backend request timed out after ${BACKEND_TIMEOUT_MS / 1000}s — totalProcessingTime: ${totalProcessingTime}s`
       )
       return h
         .response({

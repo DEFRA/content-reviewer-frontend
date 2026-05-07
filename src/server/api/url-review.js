@@ -279,10 +279,17 @@ function fetchPage(parsedUrl, url, h) {
   return fetchGovUkHtml(parsedUrl)
     .then(({ html, finalUrl }) => ({ html, finalUrl }))
     .catch((fetchError) => {
-      logger.error(
-        { err: fetchError, url },
-        'url-review: upstream fetch failed'
-      )
+      if (fetchError.name === 'AbortError') {
+        logger.error(
+          { url, timeoutMs: 30_000 },
+          '[TIMEOUT] url-review: GOV.UK upstream fetch timed out after 30s'
+        )
+      } else {
+        logger.error(
+          { err: fetchError, url },
+          'url-review: upstream fetch failed'
+        )
+      }
       return {
         errorResponse: h
           .response({ success: false, message: mapFetchError(fetchError) })
@@ -364,7 +371,7 @@ function extractPage(html, url, h) {
 function handleBackendSuccess(result, url, backendRequestTime, h) {
   logger.info(
     { url, reviewId: result.reviewId, backendRequestTime },
-    `url-review: review submitted successfully in ${backendRequestTime}s`
+    `[RESPONSE TIME] url-review: review submitted successfully in ${backendRequestTime}s`
   )
   return h
     .response({
@@ -391,8 +398,8 @@ function handleBackendFetchError(error, url, backendRequestStart, h) {
 
   if (error.name === 'AbortError') {
     logger.error(
-      { url, backendRequestTime },
-      `url-review: backend request timed out after ${BACKEND_TIMEOUT_MS / 1000}s`
+      { url, backendRequestTime, timeoutMs: BACKEND_TIMEOUT_MS },
+      `[TIMEOUT] url-review: backend request timed out after ${BACKEND_TIMEOUT_MS / 1000}s`
     )
     return h
       .response({
@@ -484,6 +491,7 @@ async function submitToBackend(
 export const urlReviewController = {
   async handler(request, h) {
     const { url } = request.payload
+    const startTime = performance.now()
 
     const parsedUrl = parseAllowedUrl(url)
     if (!parsedUrl) {
@@ -495,11 +503,13 @@ export const urlReviewController = {
 
     logger.info({ url: parsedUrl.toString() }, 'url-review: fetching page')
 
+    const fetchStart = performance.now()
     const {
       html,
       finalUrl,
       errorResponse: fetchErr
     } = await fetchPage(parsedUrl, url, h)
+    const fetchDuration = Math.round(performance.now() - fetchStart)
     if (fetchErr) {
       return fetchErr
     }
@@ -509,14 +519,24 @@ export const urlReviewController = {
       return redirectErr
     }
 
+    const extractStart = performance.now()
     const { extracted, errorResponse: extractErr } = extractPage(html, url, h)
+    const extractDuration = Math.round(performance.now() - extractStart)
     if (extractErr) {
       return extractErr
     }
 
+    const priorDuration = Math.round(performance.now() - startTime)
     logger.info(
-      { url, charCount: extracted.charCount, title: extracted.title },
-      'url-review: content extracted, forwarding to backend'
+      {
+        url,
+        charCount: extracted.charCount,
+        title: extracted.title,
+        fetchDurationMs: fetchDuration,
+        extractDurationMs: extractDuration,
+        priorDurationMs: priorDuration
+      },
+      `[RESPONSE TIME] url-review: content extracted in ${extractDuration}ms (fetch: ${fetchDuration}ms), forwarding to backend`
     )
 
     const slug = url

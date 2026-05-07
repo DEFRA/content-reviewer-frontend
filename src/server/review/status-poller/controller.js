@@ -37,21 +37,41 @@ export const reviewStatusPollerController = {
    * API endpoint to get review status
    */
   async getReviewStatus(request, h) {
+    const startTime = performance.now()
     try {
       const { reviewId } = request.params
       const config = request.server.app.config
       const backendUrl = config.get('backendUrl')
 
+      request.logger.info({ reviewId }, '[status-poller] Polling review status')
+
       // Fetch status from backend
-      const response = await fetch(`${backendUrl}/api/results/${reviewId}`, {
-        dispatcher: keepAliveAgent
-      })
+      const fetchStart = performance.now()
+      const response = await fetch(
+        `${backendUrl}/api/results/${reviewId}/status`,
+        {
+          dispatcher: keepAliveAgent
+        }
+      )
+      const fetchDuration = Math.round(performance.now() - fetchStart)
 
       if (!response.ok) {
         throw new Error('Failed to fetch review status')
       }
 
       const statusData = await response.json()
+      const totalDuration = Math.round(performance.now() - startTime)
+
+      request.logger.info(
+        {
+          reviewId,
+          status: statusData.status,
+          fetchDurationMs: fetchDuration,
+          totalDurationMs: totalDuration
+        },
+        `[RESPONSE TIME] [status-poller] Review status retrieved in ${totalDuration}ms (status: ${statusData.status})`
+      )
+
       return h.response(statusData).code(HTTP_STATUS_OK)
     } catch (error) {
       request.logger.error(error, 'Failed to get review status')

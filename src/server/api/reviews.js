@@ -160,6 +160,19 @@ export async function getReviewsController(request, h) {
 
     const data = await response.json()
     const normalizedReviews = normalizeReviews(data.reviews)
+    const totalDuration = Date.now() - startTime
+
+    logger.info(
+      {
+        count: normalizedReviews.length,
+        backendRequestTimeMs: Math.round(backendRequestTime * 1000),
+        totalDurationMs: totalDuration,
+        userId: userId || 'all',
+        limit,
+        skip
+      },
+      `[RESPONSE TIME] Reviews fetched in ${totalDuration}ms (backend: ${Math.round(backendRequestTime * 1000)}ms, count: ${normalizedReviews.length})`
+    )
 
     return h
       .response({
@@ -180,7 +193,8 @@ export async function getReviewsController(request, h) {
 
     if (error.name === 'AbortError') {
       logger.error(
-        `Reviews backend request timed out after ${BACKEND_TIMEOUT_MS / 1000}s — totalProcessingTime: ${totalProcessingTime}s`
+        { timeoutMs: BACKEND_TIMEOUT_MS, totalProcessingTime },
+        `[TIMEOUT] Reviews backend request timed out after ${BACKEND_TIMEOUT_MS / 1000}s — totalProcessingTime: ${totalProcessingTime}s`
       )
       return createErrorResponse(
         h,

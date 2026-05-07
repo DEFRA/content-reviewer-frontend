@@ -97,7 +97,8 @@ function handleDeleteError(error, reviewId, requestLogger, startTime, h) {
 
   if (error.name === 'AbortError') {
     logger.error(
-      `Delete review backend request timed out after ${BACKEND_TIMEOUT_MS / 1000}s — reviewId: ${reviewId}, totalProcessingTime: ${totalProcessingTime}s`
+      { reviewId, timeoutMs: BACKEND_TIMEOUT_MS, totalProcessingTime },
+      `[TIMEOUT] Delete review backend request timed out after ${BACKEND_TIMEOUT_MS / 1000}s — reviewId: ${reviewId}, totalProcessingTime: ${totalProcessingTime}s`
     )
     return h
       .response({
@@ -161,7 +162,7 @@ export async function deleteReviewController(request, h) {
 
     const data = await response.json()
     logger.info(
-      `Review deleted successfully - reviewId: ${reviewId}, requestTime: ${backendRequestTime}s`
+      `[RESPONSE TIME] Review deleted successfully - reviewId: ${reviewId}, requestTime: ${backendRequestTime}s`
     )
 
     return h
