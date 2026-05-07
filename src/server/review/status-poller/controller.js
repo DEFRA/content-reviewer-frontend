@@ -1,7 +1,4 @@
 import { Agent } from 'undici'
-import { createLogger } from '../../common/helpers/logging/logger.js'
-
-const logger = createLogger()
 
 const HTTP_STATUS_OK = 200
 const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500
@@ -46,7 +43,7 @@ export const reviewStatusPollerController = {
       const config = request.server.app.config
       const backendUrl = config.get('backendUrl')
 
-      logger.info({ reviewId }, '[status-poller] Polling review status')
+      request.logger.info({ reviewId }, '[status-poller] Polling review status')
 
       // Fetch status from backend
       const fetchStart = performance.now()
@@ -65,23 +62,19 @@ export const reviewStatusPollerController = {
       const statusData = await response.json()
       const totalDuration = Math.round(performance.now() - startTime)
 
-      logger.info(
+      request.logger.info(
         {
           reviewId,
           status: statusData.status,
           fetchDurationMs: fetchDuration,
           totalDurationMs: totalDuration
         },
-        `[status-poller] Review status retrieved in ${totalDuration}ms (status: ${statusData.status})`
+        `[RESPONSE TIME] [status-poller] Review status retrieved in ${totalDuration}ms (status: ${statusData.status})`
       )
 
       return h.response(statusData).code(HTTP_STATUS_OK)
     } catch (error) {
-      const totalDuration = Math.round(performance.now() - startTime)
-      request.logger.error(
-        { error: error.message, durationMs: totalDuration },
-        'Failed to get review status'
-      )
+      request.logger.error(error, 'Failed to get review status')
       return h
         .response({
           error: 'Failed to get review status',

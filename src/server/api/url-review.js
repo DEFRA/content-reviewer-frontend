@@ -279,10 +279,17 @@ function fetchPage(parsedUrl, url, h) {
   return fetchGovUkHtml(parsedUrl)
     .then(({ html, finalUrl }) => ({ html, finalUrl }))
     .catch((fetchError) => {
-      logger.error(
-        { err: fetchError, url },
-        'url-review: upstream fetch failed'
-      )
+      if (fetchError.name === 'AbortError') {
+        logger.error(
+          { url, timeoutMs: 30_000 },
+          '[TIMEOUT] url-review: GOV.UK upstream fetch timed out after 30s'
+        )
+      } else {
+        logger.error(
+          { err: fetchError, url },
+          'url-review: upstream fetch failed'
+        )
+      }
       return {
         errorResponse: h
           .response({ success: false, message: mapFetchError(fetchError) })
@@ -364,7 +371,7 @@ function extractPage(html, url, h) {
 function handleBackendSuccess(result, url, backendRequestTime, h) {
   logger.info(
     { url, reviewId: result.reviewId, backendRequestTime },
-    `url-review: review submitted successfully in ${backendRequestTime}s`
+    `[RESPONSE TIME] url-review: review submitted successfully in ${backendRequestTime}s`
   )
   return h
     .response({
@@ -391,8 +398,8 @@ function handleBackendFetchError(error, url, backendRequestStart, h) {
 
   if (error.name === 'AbortError') {
     logger.error(
-      { url, backendRequestTime },
-      `url-review: backend request timed out after ${BACKEND_TIMEOUT_MS / 1000}s`
+      { url, backendRequestTime, timeoutMs: BACKEND_TIMEOUT_MS },
+      `[TIMEOUT] url-review: backend request timed out after ${BACKEND_TIMEOUT_MS / 1000}s`
     )
     return h
       .response({
@@ -529,7 +536,7 @@ export const urlReviewController = {
         extractDurationMs: extractDuration,
         priorDurationMs: priorDuration
       },
-      `url-review: content extracted in ${extractDuration}ms (fetch: ${fetchDuration}ms), forwarding to backend`
+      `[RESPONSE TIME] url-review: content extracted in ${extractDuration}ms (fetch: ${fetchDuration}ms), forwarding to backend`
     )
 
     const slug = url

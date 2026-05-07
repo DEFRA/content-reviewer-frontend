@@ -171,7 +171,7 @@ export async function getReviewsController(request, h) {
         limit,
         skip
       },
-      `Reviews fetched in ${totalDuration}ms (backend: ${Math.round(backendRequestTime * 1000)}ms, count: ${normalizedReviews.length})`
+      `[RESPONSE TIME] Reviews fetched in ${totalDuration}ms (backend: ${Math.round(backendRequestTime * 1000)}ms, count: ${normalizedReviews.length})`
     )
 
     return h
@@ -193,7 +193,8 @@ export async function getReviewsController(request, h) {
 
     if (error.name === 'AbortError') {
       logger.error(
-        `Reviews backend request timed out after ${BACKEND_TIMEOUT_MS / 1000}s — totalProcessingTime: ${totalProcessingTime}s`
+        { timeoutMs: BACKEND_TIMEOUT_MS, totalProcessingTime },
+        `[TIMEOUT] Reviews backend request timed out after ${BACKEND_TIMEOUT_MS / 1000}s — totalProcessingTime: ${totalProcessingTime}s`
       )
       return createErrorResponse(
         h,

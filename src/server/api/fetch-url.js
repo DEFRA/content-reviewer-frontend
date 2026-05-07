@@ -157,10 +157,17 @@ export async function fetchGovUkHtml(parsedUrl) {
       return { html, finalUrl: response.url }
     } catch (err) {
       lastError = err
-      logger.warn(
-        { err, url: parsedUrl.toString(), attempt },
-        `fetch-url: attempt ${attempt + 1} failed`
-      )
+      if (err.name === 'AbortError') {
+        logger.warn(
+          { url: parsedUrl.toString(), attempt, timeoutMs: FETCH_TIMEOUT_MS },
+          `[TIMEOUT] fetch-url: GOV.UK fetch timed out after ${FETCH_TIMEOUT_MS / 1000}s (attempt ${attempt + 1})`
+        )
+      } else {
+        logger.warn(
+          { err, url: parsedUrl.toString(), attempt },
+          `fetch-url: attempt ${attempt + 1} failed`
+        )
+      }
       // Only retry on network errors or 5xx; don't retry 4xx (client error)
       const status = Number(err.message?.match(/\d{3}/)?.[0])
       if (
@@ -201,7 +208,7 @@ export const fetchUrlController = {
       const fetchDuration = Math.round(performance.now() - fetchStart)
       logger.info(
         { url: parsedUrl.toString(), durationMs: fetchDuration },
-        `fetch-url: GOV.UK page fetched in ${fetchDuration}ms`
+        `[RESPONSE TIME] fetch-url: GOV.UK page fetched in ${fetchDuration}ms`
       )
       return h.response(html).code(HTTP_STATUS.OK).type('text/html')
     } catch (error) {

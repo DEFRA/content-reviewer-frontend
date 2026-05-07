@@ -20,6 +20,7 @@ function makeRequest(overrides = {}) {
       }
     },
     logger: {
+      info: vi.fn(),
       error: vi.fn()
     },
     ...overrides

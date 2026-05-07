@@ -47,7 +47,7 @@ export const resultsController = {
           issueCount: envelope.issueCount,
           status: envelope.status
         },
-        `[FRONTEND] Results page rendered - TOTAL: ${totalDuration}ms`
+        `[RESPONSE TIME] [FRONTEND] Results page rendered - TOTAL: ${totalDuration}ms`
       )
 
       return renderResultsView(h, reviewId, reviewResults)
@@ -97,7 +97,7 @@ async function fetchResultEnvelope(request, reviewId) {
       issueCount: body.data?.issueCount,
       fetchDurationMs: fetchDuration
     },
-    `[FRONTEND] Result envelope received in ${fetchDuration}ms`
+    `[RESPONSE TIME] [FRONTEND] Result envelope received in ${fetchDuration}ms`
   )
 
   return { envelope: body.data, fetchDuration }
