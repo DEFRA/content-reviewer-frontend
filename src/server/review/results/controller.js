@@ -1,6 +1,5 @@
 const HTTP_STATUS_BAD_REQUEST = 400
 const PROGRESS_PROCESSING = 50
-const SCORE_DISPLAY_SCALE = 20 // converts 0-100 envelope scores back to 0-5 for "X/5" display
 
 export const resultsController = {
   handler: async (request, h) => {
@@ -133,10 +132,7 @@ function transformEnvelopeToViewData(envelope, reviewId) {
       reviewData: {
         scores: scoresMap,
         reviewedContent: {
-          // annotatedSections drives the highlighted content display
-          annotatedSections: envelope.annotatedSections || [],
-          // issues for any direct issue-list rendering
-          issues: envelope.issues || []
+          annotatedSections: envelope.annotatedSections || []
         },
         improvements: envelope.improvements || []
       }
@@ -147,12 +143,9 @@ function transformEnvelopeToViewData(envelope, reviewId) {
 /**
  * Convert the scores object from the result envelope into the
  * { Label: { score, note } } map that review-output.njk iterates over.
- *
- * Supports both the new five-category schema and the legacy three-key schema.
- * Converts 0-100 values back to 0-5 scale for the "X/5" scorecard display.
+ * Scores are already stored as 1–5 in the envelope.
  */
 function buildScoresMap(flatScores) {
-  // Five-category schema (preferred) — exactly five categories, no Overall row
   const categoryMap = [
     {
       key: 'plainEnglish',
@@ -181,26 +174,8 @@ function buildScoresMap(flatScores) {
   for (const { key, noteKey, label } of categoryMap) {
     if (flatScores[key] !== undefined) {
       map[label] = {
-        score: Math.round(flatScores[key] / SCORE_DISPLAY_SCALE),
-        note: noteKey ? flatScores[noteKey] || '' : ''
-      }
-    }
-  }
-
-  // Fallback: legacy three-key schema (style / tone / overall)
-  if (Object.keys(map).length === 0) {
-    const legacyMap = {
-      accessibility: 'Accessibility',
-      style: 'Style',
-      tone: 'Tone',
-      overall: 'Overall'
-    }
-    for (const [key, label] of Object.entries(legacyMap)) {
-      if (flatScores[key] !== undefined) {
-        map[label] = {
-          score: Math.round(flatScores[key] / SCORE_DISPLAY_SCALE),
-          note: ''
-        }
+        score: flatScores[key],
+        note: flatScores[noteKey] || ''
       }
     }
   }

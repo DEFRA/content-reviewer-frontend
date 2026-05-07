@@ -43,9 +43,12 @@ export const reviewStatusPollerController = {
       const backendUrl = config.get('backendUrl')
 
       // Fetch status from backend
-      const response = await fetch(`${backendUrl}/api/results/${reviewId}`, {
-        dispatcher: keepAliveAgent
-      })
+      const response = await fetch(
+        `${backendUrl}/api/results/${reviewId}/status`,
+        {
+          dispatcher: keepAliveAgent
+        }
+      )
 
       if (!response.ok) {
         throw new Error('Failed to fetch review status')
