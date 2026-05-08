@@ -154,6 +154,36 @@ function handleBackendFailure(
 }
 
 /**
+ * Handle errors from the text review submission.
+ */
+function handleTextReviewError(h, error, startTime) {
+  const totalProcessingTime = (Date.now() - startTime) / 1000
+
+  if (error.name === 'AbortError') {
+    logger.error(
+      { timeoutMs: BACKEND_TIMEOUT_MS, totalProcessingTime },
+      `[TIMEOUT] Text review backend request timed out after ${BACKEND_TIMEOUT_MS / 1000}s — totalProcessingTime: ${totalProcessingTime}s`
+    )
+    return h
+      .response({
+        success: false,
+        message: 'The request timed out. Please try again.'
+      })
+      .code(HTTP_STATUS.INTERNAL_SERVER_ERROR)
+  }
+
+  logger.error(
+    `Text review API request failed with error - error: ${error.message}, totalProcessingTime: ${totalProcessingTime}s`
+  )
+  return h
+    .response({
+      success: false,
+      message: error.message || 'Internal server error'
+    })
+    .code(HTTP_STATUS.INTERNAL_SERVER_ERROR)
+}
+
+/**
  * Handle text content submission for review
  */
 async function reviewText(request, h) {
@@ -201,7 +231,7 @@ async function reviewText(request, h) {
     const result = await response.json()
     const totalProcessingTime = (Date.now() - startTime) / 1000
 
-    logger.info('Text review request successful', {
+    logger.info('[RESPONSE TIME] Text review request successful', {
       reviewId: result.reviewId,
       textLength: textInfo.length,
       wordCount: textInfo.wordCount,
@@ -217,29 +247,7 @@ async function reviewText(request, h) {
       })
       .code(HTTP_STATUS.OK)
   } catch (error) {
-    const totalProcessingTime = (Date.now() - startTime) / 1000
-
-    if (error.name === 'AbortError') {
-      logger.error(
-        `Text review backend request timed out after ${BACKEND_TIMEOUT_MS / 1000}s — totalProcessingTime: ${totalProcessingTime}s`
-      )
-      return h
-        .response({
-          success: false,
-          message: 'The request timed out. Please try again.'
-        })
-        .code(HTTP_STATUS.INTERNAL_SERVER_ERROR)
-    }
-
-    logger.error(
-      `Text review API request failed with error - error: ${error.message}, totalProcessingTime: ${totalProcessingTime}s`
-    )
-    return h
-      .response({
-        success: false,
-        message: error.message || 'Internal server error'
-      })
-      .code(HTTP_STATUS.INTERNAL_SERVER_ERROR)
+    return handleTextReviewError(h, error, startTime)
   }
 }
 

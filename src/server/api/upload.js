@@ -130,7 +130,7 @@ async function processSuccessfulUpload(
   const totalProcessingTime = (Date.now() - startTime) / 1000
 
   logger.info(
-    `File: ${fileName} uploaded successfully to backend. Backend response time: ${backendRequestTime}s, Total processing time: ${totalProcessingTime}s`
+    `[RESPONSE TIME] File: ${fileName} uploaded successfully to backend. Backend response time: ${backendRequestTime}s, Total processing time: ${totalProcessingTime}s`
   )
 
   logger.info(`File uploaded successfully: ${result.reviewId || 'unknown'}`)
