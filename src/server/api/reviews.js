@@ -126,6 +126,35 @@ async function fetchReviewsFromBackend(limit, skip, _page, userId = null) {
  * @property {string} timestamp
  */
 /**
+ * Handle errors from the reviews fetch.
+ */
+function handleReviewsError(h, error, startTime, limit, skip, requestLogger) {
+  const totalProcessingTime = (Date.now() - startTime) / 1000
+
+  if (error.name === 'AbortError') {
+    logger.error(
+      { timeoutMs: BACKEND_TIMEOUT_MS, totalProcessingTime },
+      `[TIMEOUT] Reviews backend request timed out after ${BACKEND_TIMEOUT_MS / 1000}s — totalProcessingTime: ${totalProcessingTime}s`
+    )
+    return createErrorResponse(
+      h,
+      'The request timed out. Please try again.',
+      limit,
+      skip
+    )
+  }
+
+  logger.error('Review history API request failed with error', {
+    error: error.message,
+    stack: error.stack,
+    totalProcessingTime: `${totalProcessingTime}s`,
+    endpoint: `${backendUrl}/api/reviews?limit=${limit}&skip=${skip}`
+  })
+  requestLogger.error({ error: error.message }, 'Error fetching review history')
+  return createErrorResponse(h, error.message, limit, skip)
+}
+
+/**
  * Get review history from backend
  * @param {import('@hapi/hapi').Request} request
  * @param {import('@hapi/hapi').ResponseToolkit} h
@@ -189,32 +218,6 @@ export async function getReviewsController(request, h) {
       })
       .code(OK)
   } catch (error) {
-    const totalProcessingTime = (Date.now() - startTime) / 1000
-
-    if (error.name === 'AbortError') {
-      logger.error(
-        { timeoutMs: BACKEND_TIMEOUT_MS, totalProcessingTime },
-        `[TIMEOUT] Reviews backend request timed out after ${BACKEND_TIMEOUT_MS / 1000}s — totalProcessingTime: ${totalProcessingTime}s`
-      )
-      return createErrorResponse(
-        h,
-        'The request timed out. Please try again.',
-        limit,
-        skip
-      )
-    }
-
-    logger.error('Review history API request failed with error', {
-      error: error.message,
-      stack: error.stack,
-      totalProcessingTime: `${totalProcessingTime}s`,
-      endpoint: `${backendUrl}/api/reviews?limit=${limit}&skip=${skip}`
-    })
-
-    requestLogger.error(
-      { error: error.message },
-      'Error fetching review history'
-    )
-    return createErrorResponse(h, error.message, limit, skip)
+    return handleReviewsError(h, error, startTime, limit, skip, requestLogger)
   }
 }
