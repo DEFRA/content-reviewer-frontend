@@ -129,7 +129,9 @@ export const config = convict({
       engine: {
         doc: 'backend cache is written to',
         format: ['redis', 'memory'],
-        default: isProduction ? 'redis' : 'memory',
+        // Use Redis in all CDP environments (ENVIRONMENT is set by the platform).
+        // Fall back to in-memory only for local development where Redis is not running.
+        default: process.env.ENVIRONMENT ? 'redis' : 'memory',
         env: 'SESSION_CACHE_ENGINE'
       },
       name: {

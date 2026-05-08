@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, vi } from 'vitest'
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest'
 import { azureAuth } from './azure-auth.js'
 
 const mockMsalClient = vi.hoisted(() => ({
@@ -39,6 +39,10 @@ const TEST_CONSTANTS = {
   USER_EMAIL: 'test@example.com',
   USER_NAME: 'Test User',
   SESSION_ID: 'session-123',
+  BACKEND_URL: 'http://localhost:3001',
+  ACCESS_TOKEN: 'backend-access-token-abc',
+  REFRESH_TOKEN: 'backend-refresh-token-xyz',
+  EXPIRES_IN: 3600,
   ZERO: 0,
   ONE: 1
 }
@@ -59,29 +63,47 @@ const CONFIG_KEYS = {
 
 function setupMockConfig() {
   mockConfig.get.mockImplementation((key) => {
-    if (key === CONFIG_KEYS.REDIRECT_URI) {
-      return TEST_CONSTANTS.REDIRECT_URI
-    }
-    if (key === CONFIG_KEYS.TENANT_ID) {
-      return TEST_CONSTANTS.TENANT_ID
-    }
+    if (key === CONFIG_KEYS.REDIRECT_URI) return TEST_CONSTANTS.REDIRECT_URI
+    if (key === CONFIG_KEYS.TENANT_ID) return TEST_CONSTANTS.TENANT_ID
     if (key === CONFIG_KEYS.POST_LOGOUT_URI) {
       return TEST_CONSTANTS.POST_LOGOUT_URI
     }
+    if (key === 'backendUrl') return TEST_CONSTANTS.BACKEND_URL
     return null
   })
 }
 
 function setupMockConfigWithoutTenant() {
   mockConfig.get.mockImplementation((key) => {
-    if (key === CONFIG_KEYS.REDIRECT_URI) {
-      return TEST_CONSTANTS.REDIRECT_URI
-    }
+    if (key === CONFIG_KEYS.REDIRECT_URI) return TEST_CONSTANTS.REDIRECT_URI
     if (key === CONFIG_KEYS.POST_LOGOUT_URI) {
       return TEST_CONSTANTS.POST_LOGOUT_URI
     }
+    if (key === 'backendUrl') return TEST_CONSTANTS.BACKEND_URL
     return null
   })
+}
+
+function makeBackendLoginOk() {
+  return vi.fn().mockResolvedValue({
+    ok: true,
+    json: vi.fn().mockResolvedValue({
+      accessToken: TEST_CONSTANTS.ACCESS_TOKEN,
+      refreshToken: TEST_CONSTANTS.REFRESH_TOKEN,
+      expiresIn: TEST_CONSTANTS.EXPIRES_IN
+    })
+  })
+}
+
+function makeCallbackRequest(overrides = {}) {
+  return {
+    query: { code: TEST_CONSTANTS.AUTH_CODE },
+    auth: { credentials: null },
+    cookieAuth: { set: vi.fn() },
+    yar: { get: vi.fn().mockReturnValue(null), set: vi.fn(), clear: vi.fn() },
+    path: '/auth/callback',
+    ...overrides
+  }
 }
 
 describe('azureAuth Plugin - Registration', () => {
@@ -209,19 +231,24 @@ describe('azureAuth - Login Handler - Errors', () => {
 describe('azureAuth - Callback Handler - Success', () => {
   let mockServer
   let callbackHandler
+
   beforeEach(() => {
     vi.clearAllMocks()
     setupMockConfig()
+    vi.stubGlobal('fetch', makeBackendLoginOk())
     mockServer = {
       route: vi.fn((routes) => {
         const callbackRoute = routes.find((r) => r.path === ROUTES.CALLBACK)
-        if (callbackRoute) {
-          callbackHandler = callbackRoute.handler
-        }
+        if (callbackRoute) callbackHandler = callbackRoute.handler
       })
     }
     azureAuth.plugin.register(mockServer)
   })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   test('Should exchange code for tokens and set session', async () => {
     mockMsalClient.acquireTokenByCode.mockResolvedValueOnce({
       account: {
@@ -230,23 +257,17 @@ describe('azureAuth - Callback Handler - Success', () => {
         name: TEST_CONSTANTS.USER_NAME
       }
     })
-    const setCookieAuth = vi.fn()
-    const request = {
-      query: { code: TEST_CONSTANTS.AUTH_CODE },
-      auth: { credentials: null },
-      cookieAuth: { set: setCookieAuth },
-      yar: { get: vi.fn().mockReturnValue(null), clear: vi.fn() }
-    }
-    const h = {
-      redirect: vi.fn((url) => ({ redirectTo: url }))
-    }
+    const request = makeCallbackRequest()
+    const h = { redirect: vi.fn((url) => ({ redirectTo: url })) }
+
     await callbackHandler(request, h)
+
     expect(mockMsalClient.acquireTokenByCode).toHaveBeenCalledWith({
       code: TEST_CONSTANTS.AUTH_CODE,
       scopes: ['openid', 'profile', 'email'],
       redirectUri: TEST_CONSTANTS.REDIRECT_URI
     })
-    expect(setCookieAuth).toHaveBeenCalledWith({
+    expect(request.cookieAuth.set).toHaveBeenCalledWith({
       user: {
         id: TEST_CONSTANTS.USER_ID,
         email: TEST_CONSTANTS.USER_EMAIL,
@@ -255,6 +276,128 @@ describe('azureAuth - Callback Handler - Success', () => {
       isAuthenticated: true
     })
     expect(h.redirect).toHaveBeenCalledWith('/')
+  })
+
+  test('Should call backend login and store tokens in Yar after successful MSAL exchange', async () => {
+    mockMsalClient.acquireTokenByCode.mockResolvedValueOnce({
+      account: {
+        homeAccountId: TEST_CONSTANTS.USER_ID,
+        username: TEST_CONSTANTS.USER_EMAIL,
+        name: TEST_CONSTANTS.USER_NAME
+      }
+    })
+    const request = makeCallbackRequest()
+    const h = { redirect: vi.fn((url) => ({ redirectTo: url })) }
+
+    await callbackHandler(request, h)
+
+    expect(fetch).toHaveBeenCalledWith(
+      `${TEST_CONSTANTS.BACKEND_URL}/api/v1/auth/login`,
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: TEST_CONSTANTS.USER_ID,
+          email: TEST_CONSTANTS.USER_EMAIL,
+          name: TEST_CONSTANTS.USER_NAME
+        })
+      })
+    )
+    expect(request.yar.set).toHaveBeenCalledWith(
+      'auth',
+      expect.objectContaining({
+        accessToken: TEST_CONSTANTS.ACCESS_TOKEN,
+        refreshToken: TEST_CONSTANTS.REFRESH_TOKEN,
+        expiresIn: TEST_CONSTANTS.EXPIRES_IN,
+        expiresAt: expect.any(Number)
+      })
+    )
+  })
+
+  test('Should set expiresAt to approximately now + expiresIn * 1000', async () => {
+    mockMsalClient.acquireTokenByCode.mockResolvedValueOnce({
+      account: {
+        homeAccountId: TEST_CONSTANTS.USER_ID,
+        username: TEST_CONSTANTS.USER_EMAIL,
+        name: TEST_CONSTANTS.USER_NAME
+      }
+    })
+    const request = makeCallbackRequest()
+    const before = Date.now()
+    await callbackHandler(request, { redirect: vi.fn() })
+    const after = Date.now()
+
+    const [, { expiresAt }] = request.yar.set.mock.calls[0]
+    const expectedMin = before + TEST_CONSTANTS.EXPIRES_IN * 1000
+    const expectedMax = after + TEST_CONSTANTS.EXPIRES_IN * 1000
+    expect(expiresAt).toBeGreaterThanOrEqual(expectedMin)
+    expect(expiresAt).toBeLessThanOrEqual(expectedMax)
+  })
+
+  test('Should still redirect successfully even if backend login returns non-2xx', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: false, json: vi.fn() })
+    )
+    mockMsalClient.acquireTokenByCode.mockResolvedValueOnce({
+      account: {
+        homeAccountId: TEST_CONSTANTS.USER_ID,
+        username: TEST_CONSTANTS.USER_EMAIL,
+        name: TEST_CONSTANTS.USER_NAME
+      }
+    })
+    const request = makeCallbackRequest()
+    const h = { redirect: vi.fn((url) => ({ redirectTo: url })) }
+
+    await callbackHandler(request, h)
+
+    expect(h.redirect).toHaveBeenCalledWith('/')
+    expect(request.yar.set).not.toHaveBeenCalled()
+    expect(mockLogger.error).toHaveBeenCalled()
+  })
+
+  test('Should still redirect successfully if backend login fetch throws', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValue(new Error('Network error'))
+    )
+    mockMsalClient.acquireTokenByCode.mockResolvedValueOnce({
+      account: {
+        homeAccountId: TEST_CONSTANTS.USER_ID,
+        username: TEST_CONSTANTS.USER_EMAIL,
+        name: TEST_CONSTANTS.USER_NAME
+      }
+    })
+    const request = makeCallbackRequest()
+    const h = { redirect: vi.fn((url) => ({ redirectTo: url })) }
+
+    await callbackHandler(request, h)
+
+    expect(h.redirect).toHaveBeenCalledWith('/')
+    expect(request.yar.set).not.toHaveBeenCalled()
+    expect(mockLogger.error).toHaveBeenCalled()
+  })
+
+  test('Should redirect to saved returnTo URL after successful login', async () => {
+    mockMsalClient.acquireTokenByCode.mockResolvedValueOnce({
+      account: {
+        homeAccountId: TEST_CONSTANTS.USER_ID,
+        username: TEST_CONSTANTS.USER_EMAIL,
+        name: TEST_CONSTANTS.USER_NAME
+      }
+    })
+    const request = makeCallbackRequest({
+      yar: {
+        get: vi.fn().mockReturnValue('/review/abc-123'),
+        set: vi.fn(),
+        clear: vi.fn()
+      }
+    })
+    const h = { redirect: vi.fn((url) => ({ redirectTo: url })) }
+
+    await callbackHandler(request, h)
+
+    expect(h.redirect).toHaveBeenCalledWith('/review/abc-123')
   })
 })
 
@@ -298,32 +441,26 @@ describe('azureAuth - Callback Handler - Auth Failure', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     setupMockConfig()
+    vi.stubGlobal('fetch', makeBackendLoginOk())
     mockServer = {
       route: vi.fn((routes) => {
         const callbackRoute = routes.find((r) => r.path === ROUTES.CALLBACK)
-        if (callbackRoute) {
-          callbackHandler = callbackRoute.handler
-        }
+        if (callbackRoute) callbackHandler = callbackRoute.handler
       })
     }
     azureAuth.plugin.register(mockServer)
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
   test('Should redirect to error page on auth failure', async () => {
     mockMsalClient.acquireTokenByCode.mockRejectedValueOnce(
       new Error('Token error')
     )
-    const setCookieAuth = vi.fn()
-    const request = {
-      query: { code: TEST_CONSTANTS.AUTH_CODE },
-      auth: { credentials: null },
-      cookieAuth: { set: setCookieAuth },
-      yar: { get: vi.fn().mockReturnValue(null), clear: vi.fn() }
-    }
-    const h = {
-      redirect: vi.fn((url) => ({ redirectTo: url }))
-    }
+    const request = makeCallbackRequest()
+    const h = { redirect: vi.fn((url) => ({ redirectTo: url })) }
     await callbackHandler(request, h)
-    expect(setCookieAuth).not.toHaveBeenCalled()
+    expect(request.cookieAuth.set).not.toHaveBeenCalled()
     expect(h.redirect).toHaveBeenCalledWith(ROUTES.LOGIN_ERROR)
   })
 })
@@ -432,15 +569,17 @@ describe('azureAuth - Callback Handler - username nullish coalescing', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     setupMockConfig()
+    vi.stubGlobal('fetch', makeBackendLoginOk())
     mockServer = {
       route: vi.fn((routes) => {
         const callbackRoute = routes.find((r) => r.path === ROUTES.CALLBACK)
-        if (callbackRoute) {
-          callbackHandler = callbackRoute.handler
-        }
+        if (callbackRoute) callbackHandler = callbackRoute.handler
       })
     }
     azureAuth.plugin.register(mockServer)
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
   test('Should log "unknown" when account.username is null', async () => {
     mockMsalClient.acquireTokenByCode.mockResolvedValueOnce({
@@ -450,16 +589,8 @@ describe('azureAuth - Callback Handler - username nullish coalescing', () => {
         name: TEST_CONSTANTS.USER_NAME
       }
     })
-    const setCookieAuth = vi.fn()
-    const request = {
-      query: { code: TEST_CONSTANTS.AUTH_CODE },
-      auth: { credentials: null },
-      cookieAuth: { set: setCookieAuth },
-      yar: { get: vi.fn().mockReturnValue(null), clear: vi.fn() }
-    }
-    const h = {
-      redirect: vi.fn((url) => ({ redirectTo: url }))
-    }
+    const request = makeCallbackRequest()
+    const h = { redirect: vi.fn((url) => ({ redirectTo: url })) }
     await callbackHandler(request, h)
     expect(mockLogger.info).toHaveBeenCalledWith('User authenticated: unknown')
     expect(h.redirect).toHaveBeenCalledWith('/')
@@ -472,22 +603,21 @@ describe('azureAuth - Callback Handler - MSAL not initialised', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     setupMockConfig()
+    vi.stubGlobal('fetch', makeBackendLoginOk())
     mockServer = {
       route: vi.fn((routes) => {
         const callbackRoute = routes.find((r) => r.path === ROUTES.CALLBACK)
-        if (callbackRoute) {
-          callbackHandler = callbackRoute.handler
-        }
+        if (callbackRoute) callbackHandler = callbackRoute.handler
       })
     }
     azureAuth.plugin.register(mockServer)
   })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
 
   test('Should redirect to error page when MSAL is null', async () => {
-    // Temporarily set msalClient to null on the module
     vi.mocked(await import('../../config/azure-auth.js')).msalClient = null
-
-    // Rebuild so the handler closes over null msalClient
     azureAuth.plugin.register(mockServer)
 
     const request = {
@@ -495,9 +625,7 @@ describe('azureAuth - Callback Handler - MSAL not initialised', () => {
       auth: { credentials: null },
       cookieAuth: { set: vi.fn() }
     }
-    const h = {
-      redirect: vi.fn((url) => ({ redirectTo: url }))
-    }
+    const h = { redirect: vi.fn((url) => ({ redirectTo: url })) }
 
     await callbackHandler(request, h)
 
@@ -506,7 +634,6 @@ describe('azureAuth - Callback Handler - MSAL not initialised', () => {
     )
     expect(h.redirect).toHaveBeenCalledWith(ROUTES.LOGIN_ERROR)
 
-    // Restore msalClient
     vi.mocked(await import('../../config/azure-auth.js')).msalClient =
       mockMsalClient
   })

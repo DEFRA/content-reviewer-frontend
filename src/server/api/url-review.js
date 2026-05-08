@@ -430,7 +430,8 @@ async function submitToBackend(
   finalTitle,
   userId,
   backendUrl,
-  h
+  h,
+  accessToken = null
 ) {
   // AbortController enforces BACKEND_TIMEOUT_MS on the backend review call.
   const controller = new AbortController()
@@ -443,7 +444,8 @@ async function submitToBackend(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(userId ? { 'x-user-id': userId } : {})
+        ...(userId ? { 'x-user-id': userId } : {}),
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
       },
       body: JSON.stringify({
         content: extracted.htmlDoc,
@@ -550,7 +552,16 @@ export const urlReviewController = {
 
     const userId = getUserIdentifier(request)
     const backendUrl = config.get('backendUrl')
+    const accessToken = request.yar?.get('auth')?.accessToken ?? null
 
-    return submitToBackend(url, extracted, finalTitle, userId, backendUrl, h)
+    return submitToBackend(
+      url,
+      extracted,
+      finalTitle,
+      userId,
+      backendUrl,
+      h,
+      accessToken
+    )
   }
 }
