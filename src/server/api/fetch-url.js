@@ -91,6 +91,26 @@ function isFastlyErrorPage(html) {
 }
 
 /**
+ * Logs Fastly CDN response headers when present, to aid diagnosis of
+ * CDN-related failures (cache state, edge node, cache hit/miss).
+ * @param {URL} parsedUrl
+ * @param {number} attempt
+ * @param {Object} fastlyDiagnostics
+ */
+function logFastlyHeaders(parsedUrl, attempt, fastlyDiagnostics) {
+  if (
+    fastlyDiagnostics.xServedBy ||
+    fastlyDiagnostics.xCache ||
+    fastlyDiagnostics.via
+  ) {
+    logger.info(
+      { url: parsedUrl.toString(), attempt, fastlyDiagnostics },
+      'fetch-url: Fastly CDN response headers received'
+    )
+  }
+}
+
+/**
  * Fetches the HTML for a validated gov.uk URL server-side, avoiding CORS.
  * Retries up to FETCH_MAX_RETRIES times on transient 5xx / network errors.
  * Logs Fastly CDN response headers to aid diagnosis of CDN-related failures.
@@ -118,16 +138,7 @@ export async function fetchGovUkHtml(parsedUrl) {
         via: response.headers?.get('via'),
         xVarnish: response.headers?.get('x-varnish')
       }
-      if (
-        fastlyDiagnostics.xServedBy ||
-        fastlyDiagnostics.xCache ||
-        fastlyDiagnostics.via
-      ) {
-        logger.info(
-          { url: parsedUrl.toString(), attempt, fastlyDiagnostics },
-          'fetch-url: Fastly CDN response headers received'
-        )
-      }
+      logFastlyHeaders(parsedUrl, attempt, fastlyDiagnostics)
 
       if (!response.ok) {
         throw new Error(`Upstream responded with ${response.status}`)
@@ -157,10 +168,17 @@ export async function fetchGovUkHtml(parsedUrl) {
       return { html, finalUrl: response.url }
     } catch (err) {
       lastError = err
-      logger.warn(
-        { err, url: parsedUrl.toString(), attempt },
-        `fetch-url: attempt ${attempt + 1} failed`
-      )
+      if (err.name === 'AbortError') {
+        logger.warn(
+          { url: parsedUrl.toString(), attempt, timeoutMs: FETCH_TIMEOUT_MS },
+          `[TIMEOUT] fetch-url: GOV.UK fetch timed out after ${FETCH_TIMEOUT_MS / 1000}s (attempt ${attempt + 1})`
+        )
+      } else {
+        logger.warn(
+          { err, url: parsedUrl.toString(), attempt },
+          `fetch-url: attempt ${attempt + 1} failed`
+        )
+      }
       // Only retry on network errors or 5xx; don't retry 4xx (client error)
       const status = Number(err.message?.match(/\d{3}/)?.[0])
       if (
@@ -195,8 +213,14 @@ export const fetchUrlController = {
 
     logger.info({ url: parsedUrl.toString() }, 'fetch-url: proxying request')
 
+    const fetchStart = performance.now()
     try {
       const { html } = await fetchGovUkHtml(parsedUrl)
+      const fetchDuration = Math.round(performance.now() - fetchStart)
+      logger.info(
+        { url: parsedUrl.toString(), durationMs: fetchDuration },
+        `[RESPONSE TIME] fetch-url: GOV.UK page fetched in ${fetchDuration}ms`
+      )
       return h.response(html).code(HTTP_STATUS.OK).type('text/html')
     } catch (error) {
       logger.error(

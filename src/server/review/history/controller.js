@@ -55,7 +55,7 @@ export const reviewHistoryController = {
       const totalProcessingTime = (Date.now() - startTime) / 1000
 
       logger.info(
-        `Review history processed - count: ${data.reviews?.length ?? 0}, total: ${data.total ?? data.count ?? 0}, time: ${totalProcessingTime}s`
+        `[RESPONSE TIME] Review history processed - count: ${data.reviews?.length ?? 0}, total: ${data.total ?? data.count ?? 0}, time: ${totalProcessingTime}s`
       )
 
       return h.view(HISTORY_VIEW, {
@@ -137,7 +137,7 @@ export const reviewHistoryController = {
       }
 
       logger.info(
-        `Review deleted - id: ${reviewId}, time: ${totalProcessingTime}s`
+        `[RESPONSE TIME] Review deleted - id: ${reviewId}, time: ${totalProcessingTime}s`
       )
 
       return h.view(CONFIRM_DELETE_VIEW, {

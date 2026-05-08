@@ -102,16 +102,6 @@
       <div class="content-body govuk-body">
         {{ assembledContent | convertNewlines | safe }}
       </div>
-    {%- elif reviewData.reviewedContent and reviewData.reviewedContent.issues
-            and reviewData.reviewedContent.issues.length > 0 -%}
-      {# Fallback: no annotatedSections — render evidence spans using issue chunkIdx #}
-      <div class="content-body govuk-body">
-        {% for issue in reviewData.reviewedContent.issues %}
-          <a href="#improvement-{{ issue.chunkIdx }}" class="highlight-link" aria-label="Issue {{ loop.index }}: {{ issue.category }}">
-            <mark class="highlight-general highlight-{{ issue.category | lower | replace(' ', '-') }}">{{ issue.evidence | renderUrlContent(true) | safe }}</mark>
-          </a>{{ ' ' }}
-        {% endfor %}
-      </div>
     {%- else -%}
       <div class="content-body govuk-body"><p>No content available for annotation.</p></div>
     {%- endif -%}
