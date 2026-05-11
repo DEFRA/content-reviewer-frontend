@@ -91,7 +91,13 @@ function createErrorResponse(h, message, _limit, _skip) {
  * @param {string|null} userId - Authenticated user ID for per-user filtering
  * @returns {Promise<Object>}
  */
-async function fetchReviewsFromBackend(limit, skip, _page, userId = null) {
+async function fetchReviewsFromBackend(
+  limit,
+  skip,
+  _page,
+  userId = null,
+  accessToken = null
+) {
   const params = new URLSearchParams({ limit, skip })
   if (userId) {
     params.set('userId', userId)
@@ -106,6 +112,9 @@ async function fetchReviewsFromBackend(limit, skip, _page, userId = null) {
 
   try {
     const response = await fetch(endpoint, {
+      headers: {
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
+      },
       dispatcher: keepAliveAgent,
       signal: controller.signal
     })
@@ -166,10 +175,11 @@ export async function getReviewsController(request, h) {
   const { limit, page, skip } = calculatePagination(request.query)
   // Scope results to the authenticated user's reviews.
   const userId = getUserIdentifier(request)
+  const accessToken = request.yar?.get('auth')?.accessToken ?? null
 
   try {
     const { response, backendRequestTime, endpoint } =
-      await fetchReviewsFromBackend(limit, skip, page, userId)
+      await fetchReviewsFromBackend(limit, skip, page, userId, accessToken)
 
     if (!response.ok) {
       logger.error(

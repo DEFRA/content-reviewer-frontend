@@ -78,6 +78,7 @@ async function submitToBackend(
 
   // Pass the authenticated user's ID so the backend scopes the review to that user.
   const userId = getUserIdentifier(request)
+  const accessToken = request.yar?.get('auth')?.accessToken ?? null
 
   const backendRequestStart = Date.now()
 
@@ -92,7 +93,8 @@ async function submitToBackend(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(userId ? { 'x-user-id': userId } : {})
+        ...(userId ? { 'x-user-id': userId } : {}),
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
       },
       body: JSON.stringify({
         content: textContent,

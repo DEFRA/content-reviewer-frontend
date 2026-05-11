@@ -4,6 +4,47 @@ import { createLogger } from '../common/helpers/logging/logger.js'
 
 const logger = createLogger()
 
+/**
+ * Exchange the authenticated user's identity for backend JWT tokens by calling
+ * POST /api/v1/auth/login on the backend.  Tokens are stored in the Yar session
+ * under the key 'auth' so all subsequent backend API calls can attach them as
+ * Authorization: Bearer headers.
+ *
+ * @param {object} request - Hapi request
+ * @param {{ id: string, email: string, name: string }} user
+ * @returns {Promise<void>}
+ */
+async function exchangeForBackendTokens(request, user) {
+  const backendUrl = config.get('backendUrl')
+  try {
+    const response = await fetch(`${backendUrl}/api/v1/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: user.id,
+        email: user.email,
+        name: user.name
+      })
+    })
+    if (!response.ok) {
+      logger.error(
+        { status: response.status, userId: user.id },
+        'Backend auth login returned non-2xx — proceeding without backend tokens'
+      )
+      return
+    }
+    const { accessToken, refreshToken, expiresIn } = await response.json()
+    const expiresAt = Date.now() + expiresIn * 1000
+    request.yar.set('auth', { accessToken, refreshToken, expiresIn, expiresAt })
+    logger.info({ userId: user.id }, 'Backend JWT tokens stored in session')
+  } catch (error) {
+    logger.error(
+      { error: error.message, userId: user.id },
+      'Failed to exchange identity for backend JWT tokens — proceeding without tokens'
+    )
+  }
+}
+
 const AUTH_FAILED_REDIRECT = '/auth/login-page?error=auth_failed'
 
 // ── Route handlers ─────────────────────────────────────────────────────────────
@@ -63,15 +104,18 @@ async function callbackHandler(request, h) {
       redirectUri: config.get('azure.redirectUri')
     })
     const account = response.account
+    const user = {
+      id: account.homeAccountId,
+      email: account.username,
+      name: account.name
+    }
 
-    request.cookieAuth.set({
-      user: {
-        id: account.homeAccountId,
-        email: account.username,
-        name: account.name
-      },
-      isAuthenticated: true
-    })
+    request.cookieAuth.set({ user, isAuthenticated: true })
+
+    // Exchange Azure identity for backend-scoped JWT tokens.
+    // Errors are caught inside exchangeForBackendTokens — auth still succeeds
+    // even if the backend token exchange fails (graceful degradation).
+    await exchangeForBackendTokens(request, user)
 
     logger.info(`User authenticated: ${account.username ?? 'unknown'}`)
     const returnTo = request.yar.get('returnTo') || '/'

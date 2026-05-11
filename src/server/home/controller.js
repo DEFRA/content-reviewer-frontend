@@ -99,10 +99,13 @@ const calculatePagination = (limit, pageSize, data, normalizedLength) => {
 /**
  * Process backend response and normalize data
  */
-const processBackendResponse = async (backendEndpoint) => {
+const processBackendResponse = async (backendEndpoint, accessToken = null) => {
   const startTime = Date.now()
   const response = await fetch(backendEndpoint, {
-    dispatcher: keepAliveAgent
+    dispatcher: keepAliveAgent,
+    headers: {
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
+    }
   })
   const data = await response.json()
   const backendRequestTime = Date.now() - startTime
@@ -142,7 +145,8 @@ const fetchReviewHistory = async (
   pageSize,
   currentPage,
   skip,
-  userId
+  userId,
+  accessToken = null
 ) => {
   let reviewHistory = []
   let totalReviews = 0
@@ -158,7 +162,7 @@ const fetchReviewHistory = async (
     )
 
     const { data, normalized, missingId, backendRequestTime } =
-      await processBackendResponse(backendEndpoint)
+      await processBackendResponse(backendEndpoint, accessToken)
 
     reviewHistory = normalized
     const pagination = calculatePagination(
@@ -202,6 +206,7 @@ export const homeController = {
 
     // Scope review history to the authenticated user's own reviews.
     const userId = getUserIdentifier(request)
+    const accessToken = request.yar?.get('auth')?.accessToken ?? null
 
     const { limit, pageSize, currentPage, skip } = getPaginationParams(request)
     const { reviewHistory, totalReviews, totalPages } =
@@ -211,7 +216,8 @@ export const homeController = {
         pageSize,
         currentPage,
         skip,
-        userId
+        userId,
+        accessToken
       )
 
     const viewData = {
