@@ -541,13 +541,15 @@ describe('upload/form-handler - handleFormSubmit catch block', () => {
     radioMod.getSelectedAction.mockReturnValue(RADIO_ACTION_TEXT)
   })
 
-  it('should handle errors silently when handleTextSubmit throws (catch block)', async () => {
+  it('should show error and re-enable submit when handleTextSubmit throws (catch block)', async () => {
     document.getElementById(TEXT_CONTENT_ID).value = VALID_TEXT
     const { submitTextReview: submitMock } = await import('./api-client.js')
     submitMock.mockRejectedValueOnce(new Error('Unexpected server failure'))
 
     const event = makeSubmitEvent()
-    await expect(handleFormSubmit(event)).resolves.not.toThrow()
+    await handleFormSubmit(event)
+
+    expect(showError).toHaveBeenCalledWith('Unexpected server failure')
   })
 })
 

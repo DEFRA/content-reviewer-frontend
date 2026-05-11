@@ -157,5 +157,10 @@ export async function handleFormSubmit(e) {
       updateCharacterCount()
       await handleTextSubmit(elements)
     }
-  } catch (error) {}
+  } catch (error) {
+    showError(
+      error.message || 'An unexpected error occurred. Please try again.'
+    )
+    enableSubmit(elements)
+  }
 }
