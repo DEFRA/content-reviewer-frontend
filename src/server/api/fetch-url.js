@@ -1,4 +1,5 @@
 import { createLogger } from '../common/helpers/logging/logger.js'
+import { config } from '../../config/config.js'
 
 const logger = createLogger()
 
@@ -11,7 +12,9 @@ const HTTP_STATUS = {
 }
 
 const ALLOWED_HOSTNAME = 'www.gov.uk'
-const FETCH_TIMEOUT_MS = 30_000
+// Hard timeout (ms) on each GOV.UK upstream fetch. Sourced from `fetch.timeoutMs`
+// (FETCH_TIMEOUT_MS) — set in cdp-app-config per environment.
+const FETCH_TIMEOUT_MS = config.get('fetch.timeoutMs')
 const FETCH_MAX_RETRIES = 2
 const FASTLY_ERROR_SNIPPET_CHARS = 300
 

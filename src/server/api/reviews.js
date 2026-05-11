@@ -6,8 +6,9 @@ import { Agent } from 'undici'
 const logger = createLogger()
 const backendUrl = config.get('backendUrl')
 
-// Hard limit on frontend → backend calls. Must be well below the Hapi socket timeout (90 s).
-const BACKEND_TIMEOUT_MS = 30_000
+// Hard limit on frontend → backend calls. Sourced from `backend.requestTimeoutMs`
+// (BACKEND_REQUEST_TIMEOUT_MS) — set in cdp-app-config per environment.
+const BACKEND_TIMEOUT_MS = config.get('backend.requestTimeoutMs')
 
 const PAGE_SIZE = 25
 const MAX_PAGE = 1000 // caps skip at MAX_PAGE * PAGE_SIZE = 25,000 items
