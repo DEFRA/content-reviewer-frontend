@@ -234,6 +234,36 @@ export const config = convict({
     default: 'http://localhost:8085',
     env: 'BACKEND_URL'
   },
+  backend: {
+    requestTimeoutMs: {
+      doc: 'Hard timeout (ms) on every frontend → backend HTTP call (upload, text review, URL review, reviews list, delete review). Enforced via AbortController on each fetch. Must remain well below the Hapi socket timeout so the handler can return a clean 503 before the connection is dropped.',
+      format: Number,
+      default: 30_000,
+      env: 'BACKEND_REQUEST_TIMEOUT_MS'
+    }
+  },
+  fetch: {
+    timeoutMs: {
+      doc: 'Hard timeout (ms) on the server-side fetch of GOV.UK pages (URL-review feature). Enforced via AbortController. GOV.UK is fast under normal conditions; 30 s is generous and surfaces upstream slowness without holding the frontend handler indefinitely.',
+      format: Number,
+      default: 30_000,
+      env: 'FETCH_TIMEOUT_MS'
+    }
+  },
+  routes: {
+    socketTimeoutLongMs: {
+      doc: 'Per-route socket timeout (ms) for the URL-review route, which performs a GOV.UK fetch + extraction + backend submission in a single handler. Set higher than the default Hapi socket timeout to accommodate the combined upstream calls.',
+      format: Number,
+      default: 60_000,
+      env: 'ROUTE_SOCKET_TIMEOUT_LONG_MS'
+    },
+    socketTimeoutFetchMs: {
+      doc: 'Per-route socket timeout (ms) for the fetch-url proxy route, which only fetches the GOV.UK HTML. Matches `fetch.timeoutMs` so the socket does not outlive the in-handler AbortController.',
+      format: Number,
+      default: 30_000,
+      env: 'ROUTE_SOCKET_TIMEOUT_FETCH_MS'
+    }
+  },
   cdpUploader: {
     url: {
       doc: 'CDP Uploader service URL',

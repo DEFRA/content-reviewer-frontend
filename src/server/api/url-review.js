@@ -7,8 +7,10 @@ import { fetchGovUkHtml, parseAllowedUrl } from './fetch-url.js'
 
 const logger = createLogger()
 
-// Hard limit on frontend → backend calls. Must be well below the Hapi socket timeout (90 s).
-const BACKEND_TIMEOUT_MS = 30_000
+// Hard limit on frontend → backend calls. Sourced from `backend.requestTimeoutMs`
+// (BACKEND_REQUEST_TIMEOUT_MS) — set in cdp-app-config per environment. Must
+// remain well below the Hapi socket timeout.
+const BACKEND_TIMEOUT_MS = config.get('backend.requestTimeoutMs')
 
 const keepAliveAgent = new Agent({
   keepAliveTimeout: 30_000,
