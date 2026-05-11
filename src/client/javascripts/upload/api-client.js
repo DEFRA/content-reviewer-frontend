@@ -32,16 +32,11 @@ function redirectIfUnauthorised(response) {
   return false
 }
 
-async function extractJsonErrorMessage(response, contentType, defaultMessage) {
+async function extractJsonErrorMessage(response, defaultMessage) {
   try {
     const errorData = await response.json()
     return errorData.message || defaultMessage
   } catch {
-    // Response body is not valid JSON — keep default message and log for diagnosis
-    console.error(
-      '[UPLOAD-HANDLER] Non-JSON error response from /api/review/text',
-      { status: response.status, contentType }
-    )
     return defaultMessage
   }
 }
@@ -71,13 +66,10 @@ function handleReviewHistory(data, previewText) {
 function startAutoRefresh() {
   if (typeof globalThis.forceStartAutoRefresh === 'function') {
     globalThis.forceStartAutoRefresh()
-  } else if (typeof globalThis.startAutoRefresh === 'function') {
+    return
+  }
+  if (typeof globalThis.startAutoRefresh === 'function') {
     globalThis.startAutoRefresh()
-  } else {
-    // No auto-refresh function available
-    console.warn(
-      '[UPLOAD-HANDLER] No auto-refresh function found on globalThis.'
-    )
   }
 }
 
@@ -102,10 +94,8 @@ export async function submitUrlReview(sourceUrl) {
       if (redirectIfUnauthorised(response)) {
         return undefined
       }
-      const contentType = response.headers?.get('content-type') ?? ''
       const message = await extractJsonErrorMessage(
         response,
-        contentType,
         'URL review upload failed'
       )
       throw new Error(message)
@@ -116,7 +106,6 @@ export async function submitUrlReview(sourceUrl) {
     startAutoRefresh()
     return data
   } catch (error) {
-    console.error('[UPLOAD-HANDLER] URL review upload error:', error)
     const userMessage = JSON_PARSE_ERROR_PATTERNS.some((p) =>
       error.message.includes(p)
     )
@@ -153,7 +142,6 @@ export async function submitTextReview(textContent) {
     }
     showProgress('Processing review...', PROGRESS_PROCESSING)
     const data = await response.json()
-    console.log('[UPLOAD-HANDLER] Text review submitted successfully:', data)
     hideProgress()
     hideError()
     elements.textContentInput.value = ''
@@ -166,7 +154,6 @@ export async function submitTextReview(textContent) {
     startAutoRefresh()
     return data
   } catch (error) {
-    console.error('[UPLOAD-HANDLER] Text review error:', error)
     const userMessage = JSON_PARSE_ERROR_PATTERNS.some((p) =>
       error.message.includes(p)
     )
@@ -205,7 +192,6 @@ export async function submitFileUpload(file) {
       throw new Error(errorData.message || 'Upload failed')
     }
     const data = await response.json()
-    console.log('[UPLOAD-HANDLER] File uploaded successfully:', data)
     hideProgress()
     const fileInputEl = getFileInput()
     if (fileInputEl) {
@@ -220,7 +206,6 @@ export async function submitFileUpload(file) {
     startAutoRefresh()
     return data
   } catch (error) {
-    console.error('[UPLOAD-HANDLER] Upload error:', error)
     const userMessage = JSON_PARSE_ERROR_PATTERNS.some((p) =>
       error.message.includes(p)
     )

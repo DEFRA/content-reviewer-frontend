@@ -498,8 +498,6 @@
           apiUrl = `/api/reviews?limit=${limit}`;
         }
 
-        console.log(`[HOME] Auto-refresh polling: ${apiUrl}`);
-
         const response = await fetch(apiUrl, {
           method: 'GET',
           headers: { 'Accept': 'application/json' },
@@ -513,12 +511,10 @@
             return;
           }
           // Transient error - skip this cycle, keep the interval running
-          console.warn(`[HOME] Auto-refresh got non-OK response: ${response.status} - will retry`);
           return;
         }
 
         const data = await response.json();
-        console.log(`[HOME] Auto-refresh received ${(data.reviews || []).length} reviews`);
 
         // Normalize review data for client-side rendering
         const normalized = (data.reviews || []).map(r => {
@@ -561,7 +557,6 @@
         // - DOM had pending rows before the update (in-flight, not yet in backend), OR
         // - DOM still has pending rows after the update
         const hasActiveReviews = activeInApi.length > 0 || hadDomPendingRows || domPendingRowsAfter.length > 0;
-        console.log(`[HOME] Auto-refresh - API active: ${activeInApi.length}, DOM before: ${domPendingRowsBefore.length}, DOM after: ${domPendingRowsAfter.length}, keepRunning: ${hasActiveReviews}`);
 
         // Hide the server-rendered upload success banner once all reviews are settled
         const uploadSuccessEl = document.getElementById('uploadSuccess');
@@ -571,7 +566,6 @@
 
         // Stop auto-refresh only when there are no active reviews remaining
         if (!hasActiveReviews && autoRefreshInterval) {
-          console.log('[HOME] No active reviews - stopping auto-refresh');
           clearInterval(autoRefreshInterval);
           autoRefreshInterval = null;
         } else if (hasActiveReviews && !autoRefreshInterval) {
@@ -580,11 +574,8 @@
         }
 
       } catch (error) {
-        if (error.name !== 'AbortError') {
-          console.error('[HOME] Error updating review history:', error);
-          // Keep the interval running - network errors are transient
-        }
         // AbortError is expected during page navigation; ignore silently
+        // Other errors are transient - keep the interval running
       } finally {
         isRefreshing = false;
         currentAbortController = null;
@@ -1054,8 +1045,6 @@
           }
         }
       });
-
-      console.log(`[HOME] Page load - active reviews in DOM: ${hasActiveReviews}`);
 
       // Always do an immediate refresh on page load to get latest server-side status.
       updateReviewHistory();

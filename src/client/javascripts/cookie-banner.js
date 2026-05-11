@@ -74,8 +74,7 @@ class CookieBanner {
       if (cookie.startsWith(nameEQ)) {
         try {
           return JSON.parse(cookie.substring(nameEQ.length, cookie.length))
-        } catch (e) {
-          console.error('Failed to parse cookie preferences:', e)
+        } catch {
           return null
         }
       }

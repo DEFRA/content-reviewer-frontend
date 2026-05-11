@@ -192,8 +192,7 @@
               }
             }
           })
-          .catch(error => {
-            console.error('Poll error:', error);
+          .catch(() => {
             attempts++;
             if (attempts < maxAttempts) {
               setTimeout(pollStatus, pollInterval);
