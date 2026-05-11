@@ -32,7 +32,7 @@ function redirectIfUnauthorised(response) {
   return false
 }
 
-async function extractJsonErrorMessage(response, contentType, defaultMessage) {
+async function extractJsonErrorMessage(response, defaultMessage) {
   try {
     const errorData = await response.json()
     return errorData.message || defaultMessage
@@ -66,7 +66,9 @@ function handleReviewHistory(data, previewText) {
 function startAutoRefresh() {
   if (typeof globalThis.forceStartAutoRefresh === 'function') {
     globalThis.forceStartAutoRefresh()
-  } else if (typeof globalThis.startAutoRefresh === 'function') {
+    return
+  }
+  if (typeof globalThis.startAutoRefresh === 'function') {
     globalThis.startAutoRefresh()
   }
 }
@@ -92,10 +94,8 @@ export async function submitUrlReview(sourceUrl) {
       if (redirectIfUnauthorised(response)) {
         return undefined
       }
-      const contentType = response.headers?.get('content-type') ?? ''
       const message = await extractJsonErrorMessage(
         response,
-        contentType,
         'URL review upload failed'
       )
       throw new Error(message)

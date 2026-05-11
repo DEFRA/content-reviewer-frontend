@@ -74,7 +74,7 @@ class CookieBanner {
       if (cookie.startsWith(nameEQ)) {
         try {
           return JSON.parse(cookie.substring(nameEQ.length, cookie.length))
-        } catch (e) {
+        } catch {
           return null
         }
       }
