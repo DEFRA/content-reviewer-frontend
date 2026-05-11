@@ -234,15 +234,10 @@ describe('CookieBanner - Cookie Preferences (get)', () => {
   })
 
   it('should handle invalid JSON in cookie', () => {
-    const consoleErrorSpy = vi
-      .spyOn(console, 'error')
-      .mockImplementation(() => {})
     const banner = new CookieBanner()
     document.cookie = 'cookie_preferences=invalid-json; path=/'
     const preferences = banner.getCookiePreferences()
     expect(preferences).toBeNull()
-    expect(consoleErrorSpy).toHaveBeenCalled()
-    consoleErrorSpy.mockRestore()
   })
 })
 

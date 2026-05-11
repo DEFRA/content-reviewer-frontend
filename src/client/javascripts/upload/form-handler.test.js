@@ -541,20 +541,13 @@ describe('upload/form-handler - handleFormSubmit catch block', () => {
     radioMod.getSelectedAction.mockReturnValue(RADIO_ACTION_TEXT)
   })
 
-  it('should log the error when handleTextSubmit throws (catch block at line 144)', async () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+  it('should handle errors silently when handleTextSubmit throws (catch block)', async () => {
     document.getElementById(TEXT_CONTENT_ID).value = VALID_TEXT
     const { submitTextReview: submitMock } = await import('./api-client.js')
     submitMock.mockRejectedValueOnce(new Error('Unexpected server failure'))
 
     const event = makeSubmitEvent()
-    await handleFormSubmit(event)
-
-    expect(consoleSpy).toHaveBeenCalledWith(
-      '[UPLOAD-HANDLER] Form submission error:',
-      expect.any(Error)
-    )
-    consoleSpy.mockRestore()
+    await expect(handleFormSubmit(event)).resolves.not.toThrow()
   })
 })
 

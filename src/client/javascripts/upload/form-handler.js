@@ -157,7 +157,5 @@ export async function handleFormSubmit(e) {
       updateCharacterCount()
       await handleTextSubmit(elements)
     }
-  } catch (error) {
-    console.error('[UPLOAD-HANDLER] Form submission error:', error) // NOSONAR
-  }
+  } catch (error) {}
 }

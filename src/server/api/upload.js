@@ -69,10 +69,6 @@ async function sendFileToBackend(
   )
   const backendRequestStart = Date.now()
   try {
-    logger.info(
-      `File converted to buffer. Size: ${fileBuffer.length} bytes for: ${fileName}`
-    )
-
     const response = await undiciFetch(`${backendUrl}/api/upload`, {
       method: 'POST',
       body: fileBuffer,
@@ -204,8 +200,6 @@ export const uploadApiController = {
         `Extracted file info - filename: ${fileName}, contentType: ${contentType}, mimeType: ${mimeType}`
       )
 
-      // ✅ Convert stream to buffer
-      logger.info('Converting file stream to buffer...')
       const fileBuffer = await fileStreamToBuffer(fileStream)
 
       logger.info(

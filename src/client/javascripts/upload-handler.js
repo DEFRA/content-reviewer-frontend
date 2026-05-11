@@ -34,9 +34,6 @@ function initialize() {
 
   // Exit early if form doesn't exist
   if (!elements.form) {
-    console.warn(
-      '[UPLOAD-HANDLER] Form element not found, skipping initialization'
-    )
     return
   }
 
@@ -60,8 +57,6 @@ function initialize() {
 
   // Set up form submission handler
   elements.form.addEventListener('submit', handleFormSubmit)
-
-  console.log('[UPLOAD-HANDLER] Upload handler initialized successfully')
 }
 
 // Initialize on DOM content loaded
