@@ -158,6 +158,9 @@ export async function handleFormSubmit(e) {
       await handleTextSubmit(elements)
     }
   } catch (error) {
-    console.error('[UPLOAD-HANDLER] Form submission error:', error) // NOSONAR
+    showError(
+      error.message || 'An unexpected error occurred. Please try again.'
+    )
+    enableSubmit(elements)
   }
 }

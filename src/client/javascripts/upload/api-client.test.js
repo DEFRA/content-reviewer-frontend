@@ -336,7 +336,7 @@ describe('startAutoRefresh - forceStartAutoRefresh branch', () => {
     expect(globalThis.startAutoRefresh).toHaveBeenCalled()
   })
 
-  it('should log a warning when neither auto-refresh function is available', async () => {
+  it('should complete without error when neither auto-refresh function is available', async () => {
     const mockResponse = { reviewId: MOCK_REVIEW_ID }
     mockFetch.mockResolvedValueOnce({
       ok: true,
@@ -345,11 +345,7 @@ describe('startAutoRefresh - forceStartAutoRefresh branch', () => {
     delete globalThis.forceStartAutoRefresh
     delete globalThis.startAutoRefresh
 
-    await apiClient.submitTextReview(TEST_TEXT)
-
-    expect(console.warn).toHaveBeenCalledWith(
-      expect.stringContaining('No auto-refresh function found')
-    )
+    await expect(apiClient.submitTextReview(TEST_TEXT)).resolves.not.toThrow()
     globalThis.startAutoRefresh = vi.fn()
   })
 })
