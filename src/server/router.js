@@ -1,5 +1,6 @@
 import inert from '@hapi/inert'
 
+import { config } from '../config/config.js'
 import { home } from './home/index.js'
 import { about } from './about/index.js'
 import { health } from './health/index.js'
@@ -66,7 +67,10 @@ function registerApiRoutes(server) {
     handler: urlReviewController.handler,
     options: {
       payload: { parse: true, allow: 'application/json' },
-      timeout: { socket: 60_000 } // Allow up to 60s for fetch + extraction + backend
+      // Longer per-route socket timeout because this handler chains a GOV.UK
+      // fetch + content extraction + backend submission in one request.
+      // Sourced from `routes.socketTimeoutLongMs` (ROUTE_SOCKET_TIMEOUT_LONG_MS).
+      timeout: { socket: config.get('routes.socketTimeoutLongMs') }
     }
   })
 
@@ -76,7 +80,10 @@ function registerApiRoutes(server) {
     handler: fetchUrlController.handler,
     options: {
       auth: false,
-      timeout: { socket: 30_000 } // Allow up to 30s for gov.uk pages to respond
+      // Per-route socket timeout for the GOV.UK proxy. Matches fetch.timeoutMs
+      // so the socket does not outlive the in-handler AbortController.
+      // Sourced from `routes.socketTimeoutFetchMs` (ROUTE_SOCKET_TIMEOUT_FETCH_MS).
+      timeout: { socket: config.get('routes.socketTimeoutFetchMs') }
     }
   })
 }

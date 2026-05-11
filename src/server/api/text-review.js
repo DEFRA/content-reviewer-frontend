@@ -5,9 +5,10 @@ import { Agent } from 'undici'
 
 const logger = createLogger()
 
-// Hard limit on frontend → backend calls. Backend responds quickly (async via SQS)
-// so 30 s is more than enough. Must be well below the Hapi socket timeout (90 s).
-const BACKEND_TIMEOUT_MS = 30_000
+// Hard limit on frontend → backend calls. Backend responds quickly (async via SQS).
+// Sourced from `backend.requestTimeoutMs` (BACKEND_REQUEST_TIMEOUT_MS) — set in
+// cdp-app-config per environment. Must remain well below the Hapi socket timeout.
+const BACKEND_TIMEOUT_MS = config.get('backend.requestTimeoutMs')
 
 // Reuse a single undici Agent with keep-alive for all text review backend calls
 const keepAliveAgent = new Agent({
