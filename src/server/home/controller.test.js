@@ -33,7 +33,8 @@ const mockConfig = {
 const mockRequest = (overrides = {}) => ({
   query: {},
   yar: {
-    flash: vi.fn(() => [])
+    flash: vi.fn(() => []),
+    get: vi.fn(() => null)
   },
   server: {
     app: {
