@@ -113,7 +113,7 @@ async function fetchResultEnvelope(request, reviewId) {
  *     .issues                                 - spec issues[]
  *   results.result.reviewData.improvements    - spec improvements[]
  *   results.issueCount
- *   results.scores                            - flat { accessibility, style, tone, overall }
+ *   results.scores                            - flat { plainEnglish, govukStyle }
  *   results.processedAt
  *   results.tokenUsed
  */
@@ -152,21 +152,10 @@ function buildScoresMap(flatScores) {
       noteKey: 'plainEnglishNote',
       label: 'Plain English'
     },
-    { key: 'clarity', noteKey: 'clarityNote', label: 'Clarity & Structure' },
-    {
-      key: 'accessibility',
-      noteKey: 'accessibilityNote',
-      label: 'Accessibility'
-    },
     {
       key: 'govukStyle',
       noteKey: 'govukStyleNote',
       label: 'GOV.UK Style Compliance'
-    },
-    {
-      key: 'completeness',
-      noteKey: 'completenessNote',
-      label: 'Content Completeness'
     }
   ]
 

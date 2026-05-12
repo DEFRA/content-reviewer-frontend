@@ -528,7 +528,7 @@ describe('resultsController - buildScoresMap noteKey fallback to empty string', 
         data: {
           status: 'completed',
           processedAt: '2026-02-25T12:00:00Z',
-          // plainEnglish key present (triggers five-category schema) but plainEnglishNote absent
+          // plainEnglish key present but plainEnglishNote absent
           scores: {
             plainEnglish: 80
           },
