@@ -19,6 +19,36 @@ const keepAliveAgent = new Agent({
   connections: 5
 })
 
+async function fetchReviewsFromBackend(request) {
+  const config = request.server.app.config
+  const backendUrl = config.get('backendUrl')
+
+  const userId = getUserIdentifier(request)
+  const params = new URLSearchParams({ limit: 100 })
+  if (userId) {
+    params.set('userId', userId)
+  }
+
+  const accessToken = request.yar?.get('auth')?.accessToken ?? null
+  const response = await fetch(
+    `${backendUrl}/api/reviews?${params.toString()}`,
+    {
+      dispatcher: keepAliveAgent,
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {}
+    }
+  )
+
+  if (!response.ok) {
+    logger.error('Review history fetch failed', {
+      status: response.status,
+      statusText: response.statusText
+    })
+    throw new Error('Failed to fetch review history')
+  }
+
+  return response.json()
+}
+
 export const reviewHistoryController = {
   /**
    * Show review history page
@@ -27,41 +57,13 @@ export const reviewHistoryController = {
     const startTime = Date.now()
 
     try {
-      const config = request.server.app.config
-      const backendUrl = config.get('backendUrl')
-
-      // Scope results to the authenticated/session user
-      const userId = getUserIdentifier(request)
-      const params = new URLSearchParams({ limit: 100 })
-      if (userId) {
-        params.set('userId', userId)
-      }
-      const endpoint = `${backendUrl}/api/reviews?${params.toString()}`
-
-      const accessToken = request.yar?.get('auth')?.accessToken ?? null
-      const backendRequestStart = Date.now()
-      const response = await fetch(endpoint, {
-        dispatcher: keepAliveAgent,
-        headers: {
-          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
-        }
-      })
-      const backendRequestTime = (Date.now() - backendRequestStart) / 1000
-
-      if (!response.ok) {
-        logger.error('Review history fetch failed', {
-          status: response.status,
-          statusText: response.statusText,
-          requestTime: `${backendRequestTime}s`
-        })
-        throw new Error('Failed to fetch review history')
-      }
-
-      const data = await response.json()
+      const data = await fetchReviewsFromBackend(request)
+      const reviews = data.reviews ?? []
+      const count = data.total ?? data.count ?? 0
       const totalProcessingTime = (Date.now() - startTime) / 1000
 
       logger.info(
-        `[RESPONSE TIME] Review history processed - count: ${data.reviews?.length ?? 0}, total: ${data.total ?? data.count ?? 0}, time: ${totalProcessingTime}s`
+        `[RESPONSE TIME] Review history processed - count: ${reviews.length}, total: ${count}, time: ${totalProcessingTime}s`
       )
 
       return h.view(HISTORY_VIEW, {
@@ -71,8 +73,8 @@ export const reviewHistoryController = {
           { text: 'Home', href: '/' },
           { text: REVIEW_HISTORY_TITLE }
         ],
-        reviews: data.reviews || [],
-        count: data.total || data.count || 0
+        reviews,
+        count
       })
     } catch (error) {
       const totalProcessingTime = (Date.now() - startTime) / 1000
