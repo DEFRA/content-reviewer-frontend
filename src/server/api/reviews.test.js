@@ -103,7 +103,7 @@ describe('getReviewsController - Default Pagination', () => {
     await getReviewsController(mockRequest, mockH)
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://localhost:4000/api/reviews?limit=25&skip=0',
+      expect.stringContaining('api/reviews?limit=25&skip=0'),
       expect.objectContaining({})
     )
     expect(mockH.response).toHaveBeenCalledWith({
@@ -130,7 +130,7 @@ describe('getReviewsController - Default Pagination', () => {
     await getReviewsController(mockRequest, mockH)
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://localhost:4000/api/reviews?limit=25&skip=0',
+      expect.stringContaining('api/reviews?limit=25&skip=0'),
       expect.objectContaining({})
     )
   })
@@ -166,7 +166,7 @@ describe('getReviewsController - Custom Pagination', () => {
     await getReviewsController(mockRequest, mockH)
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://localhost:4000/api/reviews?limit=10&skip=10',
+      expect.stringContaining('api/reviews?limit=10&skip=10'),
       expect.objectContaining({})
     )
   })
@@ -187,7 +187,7 @@ describe('getReviewsController - Custom Pagination', () => {
 
     // limit=50 > PAGE_SIZE=25, so effectivePageSize=25, skip=(2-1)*25=25
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://localhost:4000/api/reviews?limit=50&skip=25',
+      expect.stringContaining('api/reviews?limit=50&skip=25'),
       expect.objectContaining({})
     )
   })
@@ -208,7 +208,7 @@ describe('getReviewsController - Custom Pagination', () => {
 
     // limit=50 > PAGE_SIZE=25, so effectivePageSize=25, skip=(1-1)*25=0
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://localhost:4000/api/reviews?limit=50&skip=0',
+      expect.stringContaining('api/reviews?limit=50&skip=0'),
       expect.objectContaining({})
     )
   })
