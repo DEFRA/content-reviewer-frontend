@@ -38,8 +38,14 @@ export const reviewHistoryController = {
       }
       const endpoint = `${backendUrl}/api/reviews?${params.toString()}`
 
+      const accessToken = request.yar?.get('auth')?.accessToken ?? null
       const backendRequestStart = Date.now()
-      const response = await fetch(endpoint, { dispatcher: keepAliveAgent })
+      const response = await fetch(endpoint, {
+        dispatcher: keepAliveAgent,
+        headers: {
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
+        }
+      })
       const backendRequestTime = (Date.now() - backendRequestStart) / 1000
 
       if (!response.ok) {
@@ -119,10 +125,14 @@ export const reviewHistoryController = {
       const config = request.server.app.config
       const backendUrl = config.get('backendUrl')
 
+      const accessToken = request.yar?.get('auth')?.accessToken ?? null
       const backendRequestStart = Date.now()
       const response = await fetch(`${backendUrl}/api/reviews/${reviewId}`, {
         method: 'DELETE',
-        dispatcher: keepAliveAgent
+        dispatcher: keepAliveAgent,
+        headers: {
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
+        }
       })
       const backendRequestTime = (Date.now() - backendRequestStart) / 1000
       const totalProcessingTime = (Date.now() - startTime) / 1000
