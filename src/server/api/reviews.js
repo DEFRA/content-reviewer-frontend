@@ -16,6 +16,9 @@ const MAX_LIMIT = 100 // hard ceiling on requested page size
 const INTERNAL_SERVER_ERROR = 500
 const OK = 200
 
+// Tracks last known review count per userId to suppress redundant backend logs
+const lastCountByUser = new Map()
+
 // Reuse a single undici Agent with keep-alive across all /api/reviews fetch calls.
 // Node 18+ built-in fetch uses undici internally, so passing an undici Agent
 // as the `dispatcher` option is the correct way to enable connection reuse.
@@ -102,6 +105,10 @@ async function fetchReviewsFromBackend(
   const params = new URLSearchParams({ limit, skip })
   if (userId) {
     params.set('userId', userId)
+  }
+  const userKey = userId || 'all'
+  if (lastCountByUser.has(userKey)) {
+    params.set('lastKnownCount', lastCountByUser.get(userKey))
   }
   const endpoint = `${backendUrl}/api/reviews?${params.toString()}`
   const startTime = Date.now()
@@ -201,6 +208,8 @@ export async function getReviewsController(request, h) {
     const data = await response.json()
     const normalizedReviews = normalizeReviews(data.reviews)
     const totalDuration = Date.now() - startTime
+
+    lastCountByUser.set(userId || 'all', normalizedReviews.length)
 
     logger.info(
       {

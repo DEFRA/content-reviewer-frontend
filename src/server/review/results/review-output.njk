@@ -68,12 +68,44 @@
 
       html { scroll-behavior: smooth; }
 
+      /* Forward direction: highlight the improvement card when scrolled to. */
       .improvement-item:target {
         outline: 3px solid #1d70b8;
         outline-offset: 4px;
         background-color: #e8f4fd;
         border-radius: 4px;
       }
+
+      /*
+        Reverse direction: highlight the <mark> in "Your content" when the user
+        clicks "Return to highlighted text" on an improvement card.
+        A short pulse draws the eye so the user can see where they landed.
+      */
+      mark[id]:target {
+        outline: 3px solid #1d70b8;
+        outline-offset: 2px;
+        animation: returnPulse 1.5s ease-out;
+      }
+      @keyframes returnPulse {
+        0%   { background-color: #ffdd00; }
+        100% { background-color: inherit; }
+      }
+
+      /* Leave room for any sticky header / cookie banner above an anchor target. */
+      .improvement-item,
+      mark[id] {
+        scroll-margin-top: 80px;
+      }
+
+      /* "Return to highlighted text" link sits bottom-right of each card. */
+      .return-to-text {
+        text-align: right;
+        margin-top: 0.5em;
+        margin-bottom: 0;
+      }
+
+      /* Back-link adds no value on print — hide it. */
+      @media print { .return-to-text { display: none; } }
     </style>
   {% endif %}
 
@@ -89,9 +121,13 @@
             {#
               section.issueIdx is the sequential 0-based index produced by _sortAndAlignPairs.
               It is guaranteed to match loop.index0 of the improvements list below (1:1).
+              We use this 1:1 mapping to look up the improvement's stable issueId UUID, which
+              becomes the <mark>'s id — the target for the reverse "Return to highlighted text"
+              link rendered in each improvement card below.
             #}
             {%- set categoryClass = 'highlight-' + (section.category | lower | replace(' ', '-')) -%}
-            <a href="#improvement-{{ section.issueIdx }}" class="highlight-link" aria-label="Issue {{ section.issueIdx + 1 }}: {{ section.category }}"><mark class="highlight-general {{ categoryClass }}">{{ section.text | renderUrlContent(true) | safe }}</mark></a>
+            {%- set linkedImprovement = reviewData.improvements[section.issueIdx] -%}
+            <a href="#improvement-{{ section.issueIdx }}" class="highlight-link" aria-label="Issue {{ section.issueIdx + 1 }}: {{ section.category }}"><mark{% if linkedImprovement and linkedImprovement.issueId %} id="{{ linkedImprovement.issueId }}"{% endif %} class="highlight-general {{ categoryClass }}">{{ section.text | renderUrlContent(true) | safe }}</mark></a>
           {%- else -%}
             {{ section.text | renderUrlContent(true) | safe }}
           {%- endif -%}
@@ -126,6 +162,20 @@
                     <p class="after-text"><strong>Suggested:</strong> {{ improvement.suggested }}</p>
                   {% endif %}
                 </div>
+              {% endif %}
+              {#
+                Reverse-navigation link. Points to the matching <mark> in "Your content"
+                via the improvement's stable issueId UUID. Rendered only when an issueId
+                is present so a data inconsistency never produces a dead link.
+              #}
+              {% if improvement.issueId %}
+                <p class="return-to-text">
+                  <a href="#{{ improvement.issueId }}"
+                     class="govuk-link govuk-link--no-visited-state"
+                     aria-label="Return to issue {{ loop.index }} highlighted in your content">
+                    Return to highlighted text
+                  </a>
+                </p>
               {% endif %}
             </li>
           {% endif %}
