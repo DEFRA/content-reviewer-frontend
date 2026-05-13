@@ -151,6 +151,7 @@ const fetchReviewHistory = async (
   let reviewHistory = []
   let totalReviews = 0
   let totalPages = 1
+  const startTime = Date.now()
 
   try {
     const { backendEndpoint } = getBackendEndpoint(
@@ -183,11 +184,10 @@ const fetchReviewHistory = async (
       missingId
     })
   } catch (error) {
+    const durationMs = Date.now() - startTime
     logger.error(
-      `Failed to fetch review history for home page - message: ${error.message}, backendUrl: ${backendUrl}`,
-      {
-        stack: error.stack
-      }
+      { error: error.message, stack: error.stack, durationMs, backendUrl },
+      `Failed to fetch review history for home page after ${durationMs}ms`
     )
   }
 

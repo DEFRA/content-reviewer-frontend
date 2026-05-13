@@ -209,19 +209,25 @@ export async function getReviewsController(request, h) {
     const normalizedReviews = normalizeReviews(data.reviews)
     const totalDuration = Date.now() - startTime
 
-    lastCountByUser.set(userId || 'all', normalizedReviews.length)
+    const userKey = userId || 'all'
+    const previousCount = lastCountByUser.get(userKey)
+    const countChanged =
+      previousCount === undefined || previousCount !== normalizedReviews.length
+    lastCountByUser.set(userKey, normalizedReviews.length)
 
-    logger.info(
-      {
-        count: normalizedReviews.length,
-        backendRequestTimeMs: Math.round(backendRequestTime * 1000),
-        totalDurationMs: totalDuration,
-        userId: userId || 'all',
-        limit,
-        skip
-      },
-      `[RESPONSE TIME] Reviews fetched in ${totalDuration}ms (backend: ${Math.round(backendRequestTime * 1000)}ms, count: ${normalizedReviews.length})`
-    )
+    if (countChanged) {
+      logger.info(
+        {
+          count: normalizedReviews.length,
+          backendRequestTimeMs: Math.round(backendRequestTime * 1000),
+          totalDurationMs: totalDuration,
+          userId: userKey,
+          limit,
+          skip
+        },
+        `[RESPONSE TIME] Reviews fetched in ${totalDuration}ms (backend: ${Math.round(backendRequestTime * 1000)}ms, count: ${normalizedReviews.length})`
+      )
+    }
 
     return h
       .response({
