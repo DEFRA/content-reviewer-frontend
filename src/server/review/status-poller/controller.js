@@ -74,7 +74,11 @@ export const reviewStatusPollerController = {
 
       return h.response(statusData).code(HTTP_STATUS_OK)
     } catch (error) {
-      request.logger.error(error, 'Failed to get review status')
+      const totalDuration = Math.round(performance.now() - startTime)
+      request.logger.error(
+        { error: error.message, durationMs: totalDuration },
+        `Failed to get review status after ${totalDuration}ms`
+      )
       return h
         .response({
           error: 'Failed to get review status',

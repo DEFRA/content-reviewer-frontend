@@ -107,8 +107,11 @@ describe('reviewStatusPollerController - getReviewStatus', () => {
     await reviewStatusPollerController.getReviewStatus(request, h)
 
     expect(request.logger.error).toHaveBeenCalledWith(
-      fetchError,
-      'Failed to get review status'
+      expect.objectContaining({
+        error: 'network failure',
+        durationMs: expect.any(Number)
+      }),
+      expect.stringContaining('Failed to get review status')
     )
     expect(h.response().code).toHaveBeenCalledWith(
       HTTP_STATUS_INTERNAL_SERVER_ERROR

@@ -226,9 +226,10 @@ export const fetchUrlController = {
       )
       return h.response(html).code(HTTP_STATUS.OK).type('text/html')
     } catch (error) {
+      const fetchDuration = Math.round(performance.now() - fetchStart)
       logger.error(
-        { err: error, url, message: error.message },
-        'fetch-url: upstream fetch failed after retries'
+        { err: error, url, message: error.message, durationMs: fetchDuration },
+        `fetch-url: upstream fetch failed after retries in ${fetchDuration}ms`
       )
       const upstreamStatus = Number(error.message?.match(/\d{3}/)?.[0])
       let message
