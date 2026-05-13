@@ -157,8 +157,12 @@ describe('homeController - error handling', () => {
     const req = mockRequest()
     await homeController.handler(req, mockH)
     expect(mockLoggerError).toHaveBeenCalledWith(
-      expect.stringContaining('Connection refused'),
-      expect.objectContaining({ stack: expect.any(String) })
+      expect.objectContaining({
+        error: 'Connection refused',
+        stack: expect.any(String),
+        durationMs: expect.any(Number)
+      }),
+      expect.stringContaining('Failed to fetch review history')
     )
   })
 })
