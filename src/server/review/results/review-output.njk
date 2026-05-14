@@ -28,7 +28,21 @@
 
   {# ── Scorecard ────────────────────────────────────────────────────────── #}
   {% if reviewData.scores %}
-    <div class="govuk-accordion" data-module="govuk-accordion" id="accordion-scores">
+    {#
+      data-remember-expanded="false" disables GOV.UK Frontend's default behaviour
+      of restoring the user's previous expand/collapse state from localStorage.
+      Combined with the markup-level `aria-expanded="false"` below, this guarantees
+      the scorecard always loads collapsed on a real page load — first visit,
+      refresh, or navigation to a different review ID.
+
+      Note: When the browser restores the page from its in-memory back/forward
+      cache (bfcache) the DOM is replayed as-is — no JS runs — so an expanded
+      scorecard will reappear expanded after a back-button click. This is
+      standard browser behaviour, not specific to this app. Resolving it would
+      need an inline script gated by a CSP nonce, which is currently out of
+      scope.
+    #}
+    <div class="govuk-accordion" data-module="govuk-accordion" data-remember-expanded="false" id="accordion-scores">
       <div class="govuk-accordion__section">
         <div class="govuk-accordion__section-header">
           <h2 class="govuk-accordion__section-heading">
