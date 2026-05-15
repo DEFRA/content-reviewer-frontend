@@ -39,6 +39,15 @@ export function isValidFileType(file) {
   return hasValidExt || hasValidMime
 }
 
+export function isValidFileSize(file) {
+  if (!file || typeof file.size !== 'number') {
+    return false
+  }
+  const maxSize = 10 * 1024 * 1024 // 10 MB
+  const isTooLarge = file.size > maxSize
+  return !isTooLarge
+}
+
 // Progress values
 export const PROGRESS_INITIAL = 30
 export const PROGRESS_PROCESSING = 70
