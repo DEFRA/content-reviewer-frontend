@@ -1,5 +1,9 @@
 // Form submission handler
-import { CHARACTER_LIMIT, isValidFileType } from './constants.js'
+import {
+  CHARACTER_LIMIT,
+  isValidFileSize,
+  isValidFileType
+} from './constants.js'
 import { getElements, getFileInput } from './dom-elements.js'
 import {
   hideError,
@@ -31,6 +35,7 @@ const ERROR_UNSUPPORTED_LAYOUT =
 const ERROR_NO_FILE = 'Select a file to upload'
 const ERROR_INVALID_FILE_TYPE =
   'The selected file must be a PDF or Word document'
+const ERROR_INVALID_FILE_SIZE = 'The selected file must be 10 MB or smaller'
 
 function disableSubmit(elements) {
   if (elements.uploadButton) {
@@ -101,6 +106,11 @@ async function handleDocumentSubmit(elements) {
   }
   if (!isValidFileType(file)) {
     showDocumentError(ERROR_INVALID_FILE_TYPE)
+    enableSubmit(elements)
+    return
+  }
+  if (!isValidFileSize(file)) {
+    showDocumentError(ERROR_INVALID_FILE_SIZE)
     enableSubmit(elements)
     return
   }

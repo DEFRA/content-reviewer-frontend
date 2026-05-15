@@ -20,7 +20,8 @@ import {
   HISTORY_UPDATE_DELAY,
   PREVIEW_WORDS_LIMIT,
   PREVIEW_CHARS_LIMIT,
-  isValidFileType
+  isValidFileType,
+  isValidFileSize
 } from './constants.js'
 
 describe('upload/constants', () => {
@@ -125,5 +126,18 @@ describe('upload/constants - isValidFileType', () => {
 
     // Restore
     globalThis.contentReviewMaxCharLength = originalValue
+  })
+})
+describe('upload/constants - isValidFileSize', () => {
+  it('returns false for null/undefined', () => {
+    expect(isValidFileSize(null)).toBe(false)
+    expect(isValidFileSize(undefined)).toBe(false)
+  })
+
+  it('accepts files <= 10 MB and rejects larger files', () => {
+    const tenMB = 10 * 1024 * 1024
+    expect(isValidFileSize({ size: tenMB - 1 })).toBe(true)
+    expect(isValidFileSize({ size: tenMB })).toBe(true)
+    expect(isValidFileSize({ size: tenMB + 1 })).toBe(false)
   })
 })
