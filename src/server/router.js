@@ -4,7 +4,7 @@ import { config } from '../config/config.js'
 import { home } from './home/index.js'
 import { about } from './about/index.js'
 import { health } from './health/index.js'
-//import { upload } from './upload/index.js' // Removed - upload now handled via AJAX on homepage
+import { upload } from './upload/index.js'
 import review from './review/index.js'
 import { cookies } from './cookies/index.js'
 import { privacy } from './privacy/index.js'
@@ -97,12 +97,13 @@ export const router = {
       await server.register([
         home,
         about,
+        upload,
         review,
         cookies,
         privacy,
         accessibility,
         contact
-      ]) // upload removed - now via AJAX API
+      ])
 
       // Static assets
       await server.register([serveStaticFiles])
