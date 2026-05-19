@@ -43,8 +43,9 @@ describe('uploadController', () => {
     })
   })
 
-  it('should initiate upload and redirect', async () => {
-    const h = { redirect: vi.fn(), view: vi.fn() }
+  it('should initiate upload and return the CDP Uploader URL as JSON', async () => {
+    const mockCode = vi.fn()
+    const h = { response: vi.fn().mockReturnValue({ code: mockCode }) }
     const request = {
       server: { info: { protocol: 'http' } },
       info: { host: 'localhost' },
@@ -53,7 +54,28 @@ describe('uploadController', () => {
     }
 
     await uploadController.initiateUpload(request, h)
-    expect(h.redirect).toHaveBeenCalledWith('http://example.com/upload')
+
+    expect(h.response).toHaveBeenCalledWith(
+      expect.objectContaining({ uploadUrl: 'http://example.com/upload' })
+    )
+    expect(mockCode).toHaveBeenCalledWith(200)
+  })
+
+  it('should not register a CDP Uploader webhook callback (frontend orchestrates step c)', async () => {
+    const mockCode = vi.fn()
+    const h = { response: vi.fn().mockReturnValue({ code: mockCode }) }
+    const request = {
+      server: { info: { protocol: 'http' } },
+      info: { host: 'localhost' },
+      yar: { id: 'session-1', set: vi.fn() },
+      logger: { info: vi.fn(), error: vi.fn() }
+    }
+
+    await uploadController.initiateUpload(request, h)
+
+    expect(initiateUpload).toHaveBeenCalledWith(
+      expect.not.objectContaining({ callback: expect.anything() })
+    )
   })
 
   it('should return upload status', async () => {
@@ -71,36 +93,22 @@ describe('uploadController', () => {
     })
   })
 
-  it('should handle upload completion with success', async () => {
-    const h = { redirect: vi.fn() }
-    const request = {
-      yar: {
-        get: vi.fn().mockReturnValue('123'),
-        clear: vi.fn(),
-        set: vi.fn(),
-        flash: vi.fn()
-      },
-      server: {
-        app: { config: { get: vi.fn().mockReturnValue('http://backend') } }
-      },
-      logger: { info: vi.fn(), error: vi.fn() }
-    }
-
-    await uploadController.uploadComplete(request, h)
-    expect(h.redirect).toHaveBeenCalledWith('/review/status-poller/review-abc')
-  })
-
-  it('should use "anonymous" userId when yar.id is not set', async () => {
-    const h = { redirect: vi.fn() }
+  it('should use "unknown" userId when yar.id is not set', async () => {
+    const mockCode = vi.fn()
+    const h = { response: vi.fn().mockReturnValue({ code: mockCode }) }
     const request = {
       server: { info: { protocol: 'http' } },
       info: { host: 'localhost' },
-      yar: { id: undefined, set: vi.fn() }, // id is undefined → 'anonymous'
+      yar: { id: undefined, set: vi.fn() },
       logger: { info: vi.fn(), error: vi.fn() }
     }
 
     await uploadController.initiateUpload(request, h)
-    expect(h.redirect).toHaveBeenCalledWith('http://example.com/upload')
+
+    expect(h.response).toHaveBeenCalledWith(
+      expect.objectContaining({ uploadUrl: 'http://example.com/upload' })
+    )
+    expect(mockCode).toHaveBeenCalledWith(200)
   })
 })
 
@@ -112,8 +120,9 @@ describe('uploadController - initiateUpload error', () => {
     initiateUpload.mockRejectedValue(new Error('CDP uploader unavailable'))
   })
 
-  it('should render upload form with error message on initiateUpload failure', async () => {
-    const h = { view: vi.fn(), redirect: vi.fn() }
+  it('should return JSON 500 with error message when initiateUpload fails', async () => {
+    const mockCode = vi.fn()
+    const h = { response: vi.fn().mockReturnValue({ code: mockCode }) }
     const request = {
       server: { info: { protocol: 'http' } },
       info: { host: 'localhost' },
@@ -123,12 +132,12 @@ describe('uploadController - initiateUpload error', () => {
 
     await uploadController.initiateUpload(request, h)
 
-    expect(h.view).toHaveBeenCalledWith(
-      'upload/index',
+    expect(h.response).toHaveBeenCalledWith(
       expect.objectContaining({
-        errorMessage: expect.stringContaining('Failed to initiate upload')
+        message: expect.stringContaining('Failed to initiate upload')
       })
     )
+    expect(mockCode).toHaveBeenCalledWith(500)
     expect(request.logger.error).toHaveBeenCalled()
   })
 })
@@ -136,29 +145,37 @@ describe('uploadController - initiateUpload error', () => {
 // ─── statusPoller — no uploadId in session ───────────────────────────────────
 
 describe('uploadController - statusPoller', () => {
-  it('should redirect to /upload when no uploadId in session', async () => {
+  it('should redirect to / when neither reviewId nor uploadId is available', async () => {
     const h = { redirect: vi.fn(), view: vi.fn() }
     const request = {
-      yar: { get: vi.fn().mockReturnValue(null) }
+      query: {},
+      yar: { get: vi.fn().mockReturnValue(null), set: vi.fn() }
     }
 
     await uploadController.statusPoller(request, h)
 
-    expect(h.redirect).toHaveBeenCalledWith('/upload')
+    expect(h.redirect).toHaveBeenCalledWith('/')
     expect(h.view).not.toHaveBeenCalled()
   })
 
-  it('should render status-poller view when uploadId is present', async () => {
+  it('should render status-poller view with uploadId and reviewId from session', async () => {
     const h = { redirect: vi.fn(), view: vi.fn() }
     const request = {
-      yar: { get: vi.fn().mockReturnValue('upload-789') }
+      query: { reviewId: 'review-abc' },
+      yar: {
+        get: vi.fn((key) => (key === 'currentUploadId' ? 'upload-789' : null)),
+        set: vi.fn()
+      }
     }
 
     await uploadController.statusPoller(request, h)
 
     expect(h.view).toHaveBeenCalledWith(
       'upload/status-poller',
-      expect.objectContaining({ uploadId: 'upload-789' })
+      expect.objectContaining({
+        uploadId: 'upload-789',
+        reviewId: 'review-abc'
+      })
     )
   })
 })
@@ -191,289 +208,126 @@ describe('uploadController - getStatus error', () => {
   })
 })
 
-// ─── handleSuccessfulUpload — AI review failure path ─────────────────────────
+// ─── triggerReview ────────────────────────────────────────────────────────────
 
-describe('uploadController - handleSuccessfulUpload AI review failure', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: false,
-        status: 503,
-        json: vi.fn().mockResolvedValue({})
-      })
-    )
-  })
-
-  it('should render success view when AI review initiation fails', async () => {
-    const h = { view: vi.fn(), redirect: vi.fn() }
-    const request = {
-      yar: { set: vi.fn(), flash: vi.fn() },
-      logger: { info: vi.fn(), error: vi.fn() }
-    }
-    const fileDetails = {
-      filename: 'doc.pdf',
-      contentLength: 1024,
-      detectedContentType: 'application/pdf',
-      fileId: 'f1',
-      s3Bucket: 'bucket',
-      s3Key: 'key/doc.pdf'
-    }
-
-    await uploadController.handleSuccessfulUpload(
-      request,
-      h,
-      fileDetails,
-      'http://backend'
-    )
-
-    expect(request.logger.error).toHaveBeenCalled()
-    expect(h.view).toHaveBeenCalledWith(
-      'upload/success',
-      expect.objectContaining({
-        pageTitle: 'Upload Successful'
-      })
-    )
-    expect(request.yar.flash).toHaveBeenCalledWith(
-      'uploadSuccess',
-      expect.stringContaining('AI review could not start')
-    )
-  })
-})
-
-// ─── renderUploadSuccessView ───────────────────────────────────────────────────
-
-describe('uploadController - renderUploadSuccessView', () => {
-  it('should render upload/success view with formatted file details', () => {
-    const h = { view: vi.fn() }
-    const fileDetails = {
-      filename: 'report.pdf',
-      contentLength: 2048,
-      detectedContentType: 'application/pdf',
-      fileId: 'fid-1',
-      s3Bucket: 'my-bucket',
-      s3Key: 'uploads/report.pdf'
-    }
-
-    uploadController.renderUploadSuccessView(h, fileDetails)
-
-    expect(h.view).toHaveBeenCalledWith(
-      'upload/success',
-      expect.objectContaining({
-        pageTitle: 'Upload Successful',
-        heading: 'Upload Successful',
-        fileDetails: expect.objectContaining({
-          filename: 'report.pdf',
-          fileStatus: 'Uploaded (Review pending)'
-        })
-      })
-    )
-  })
-})
-
-// ─── uploadComplete — no uploadId in session ─────────────────────────────────
-
-describe('uploadController - uploadComplete no uploadId', () => {
-  it('should redirect to / when no uploadId in session', async () => {
-    const h = { redirect: vi.fn() }
-    const request = {
-      yar: { get: vi.fn().mockReturnValue(null) },
-      logger: { info: vi.fn(), error: vi.fn() }
-    }
-
-    await uploadController.uploadComplete(request, h)
-
-    expect(h.redirect).toHaveBeenCalledWith('/')
-  })
-})
-
-// ─── uploadComplete — rejected files path ────────────────────────────────────
-
-describe('uploadController - uploadComplete rejected files', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    getUploadStatus.mockResolvedValue({
-      uploadStatus: 'rejected',
-      numberOfRejectedFiles: 1,
-      form: { file: { errorMessage: 'File type not allowed' } }
-    })
-  })
-
-  it('should flash uploadError and redirect to / when files are rejected', async () => {
-    const h = { redirect: vi.fn() }
-    const flashFn = vi.fn()
-    const request = {
-      yar: {
-        get: vi.fn().mockReturnValue('upload-rej'),
-        clear: vi.fn(),
-        set: vi.fn(),
-        flash: flashFn
-      },
-      server: {
-        app: { config: { get: vi.fn().mockReturnValue('http://backend') } }
-      },
-      logger: { info: vi.fn(), error: vi.fn() }
-    }
-
-    await uploadController.uploadComplete(request, h)
-
-    expect(flashFn).toHaveBeenCalledWith('uploadError', 'File type not allowed')
-    expect(h.redirect).toHaveBeenCalledWith('/')
-  })
-
-  it('should use default error message when file errorMessage is absent', async () => {
-    getUploadStatus.mockResolvedValue({
-      uploadStatus: 'rejected',
-      numberOfRejectedFiles: 1,
-      form: { file: {} }
-    })
-
-    const h = { redirect: vi.fn() }
-    const flashFn = vi.fn()
-    const request = {
-      yar: {
-        get: vi.fn().mockReturnValue('upload-rej2'),
-        clear: vi.fn(),
-        set: vi.fn(),
-        flash: flashFn
-      },
-      server: {
-        app: { config: { get: vi.fn().mockReturnValue('http://backend') } }
-      },
-      logger: { info: vi.fn(), error: vi.fn() }
-    }
-
-    await uploadController.uploadComplete(request, h)
-
-    expect(flashFn).toHaveBeenCalledWith(
-      'uploadError',
-      'The file could not be uploaded. Please try again.'
-    )
-    expect(h.redirect).toHaveBeenCalledWith('/')
-  })
-})
-
-// ─── uploadComplete — catch / error path ─────────────────────────────────────
-
-describe('uploadController - uploadComplete error', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    getUploadStatus.mockRejectedValue(new Error('Status check failed'))
-  })
-
-  it('should flash uploadError and redirect to / when getUploadStatus throws', async () => {
-    const h = { redirect: vi.fn() }
-    const flashFn = vi.fn()
-    const request = {
-      yar: {
-        get: vi.fn().mockReturnValue('upload-err'),
-        clear: vi.fn(),
-        set: vi.fn(),
-        flash: flashFn
-      },
-      server: {
-        app: { config: { get: vi.fn().mockReturnValue('http://backend') } }
-      },
-      logger: { info: vi.fn(), error: vi.fn() }
-    }
-
-    await uploadController.uploadComplete(request, h)
-
-    expect(flashFn).toHaveBeenCalledWith(
-      'uploadError',
-      'An error occurred while processing your upload.'
-    )
-    expect(h.redirect).toHaveBeenCalledWith('/')
-    expect(request.logger.error).toHaveBeenCalled()
-  })
-})
-
-// ─── uploadComplete — form.file absent (|| {} fallback) ──────────────────────
-
-describe('uploadController - uploadComplete missing form.file', () => {
+describe('uploadController - triggerReview', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     getUploadStatus.mockResolvedValue({
       uploadStatus: 'ready',
       numberOfRejectedFiles: 0,
-      form: {} // no .file property → triggers || {} fallback at line 231
+      form: {
+        file: {
+          filename: 'doc.pdf',
+          s3Key: 'uploads/doc.pdf',
+          contentType: 'application/pdf'
+        }
+      }
     })
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
         ok: true,
-        json: vi.fn().mockResolvedValue({ reviewId: 'review-no-file' })
+        json: vi.fn().mockResolvedValue({ success: true })
       })
     )
   })
 
-  it('should use empty object for fileDetails when form.file is absent', async () => {
-    const h = { redirect: vi.fn(), view: vi.fn() }
+  it('should call getUploadStatus and forward S3 details to backend /upload-callback', async () => {
+    const mockCode = vi.fn()
+    const h = { response: vi.fn().mockReturnValue({ code: mockCode }) }
     const request = {
-      yar: {
-        get: vi.fn().mockReturnValue('upload-no-file'),
-        clear: vi.fn(),
-        set: vi.fn(),
-        flash: vi.fn()
-      },
-      server: {
-        app: { config: { get: vi.fn().mockReturnValue('http://backend') } }
-      },
+      payload: { uploadId: 'upload-123', reviewId: 'review-abc' },
+      yar: { id: 'session-1' },
       logger: { info: vi.fn(), error: vi.fn() }
     }
 
-    // Should complete without throwing (fileDetails = {})
-    await uploadController.uploadComplete(request, h)
+    await uploadController.triggerReview(request, h)
 
-    // The successful path redirects to the status poller
-    expect(h.redirect).toHaveBeenCalledWith(
-      expect.stringContaining('/review/status-poller/')
-    )
-  })
-})
-
-// ─── handleCallback ───────────────────────────────────────────────────────────
-
-describe('uploadController - handleCallback', () => {
-  it('should return received:true on success', async () => {
-    const mockCodeFn = vi.fn()
-    const h = {
-      response: vi.fn().mockReturnValue({ code: mockCodeFn })
-    }
-    const request = {
-      payload: { uploadId: 'cb-123' },
-      logger: { info: vi.fn(), error: vi.fn() }
-    }
-
-    await uploadController.handleCallback(request, h)
-
-    expect(h.response).toHaveBeenCalledWith({ received: true })
-    expect(mockCodeFn).toHaveBeenCalledWith(200)
-  })
-
-  it('should return 500 when callback processing throws', async () => {
-    const mockCodeFn = vi.fn()
-    const h = {
-      response: vi.fn().mockReturnValue({ code: mockCodeFn })
-    }
-    const request = {
-      // logger.info throws to trigger the catch block
-      logger: {
-        info: vi.fn(() => {
-          throw new Error('Logging failed')
+    expect(getUploadStatus).toHaveBeenCalledWith('upload-123')
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/upload-callback'),
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          'Content-Type': 'application/json'
         }),
-        error: vi.fn()
-      },
-      payload: null
+        body: expect.stringContaining('"reviewId":"review-abc"')
+      })
+    )
+    expect(h.response).toHaveBeenCalledWith({ reviewId: 'review-abc' })
+    expect(mockCode).toHaveBeenCalledWith(200)
+  })
+
+  it('should include the S3 form data from CDP Uploader status in the backend call', async () => {
+    const mockCode = vi.fn()
+    const h = { response: vi.fn().mockReturnValue({ code: mockCode }) }
+    const request = {
+      payload: { uploadId: 'upload-123', reviewId: 'review-abc' },
+      yar: { id: 'session-1' },
+      logger: { info: vi.fn(), error: vi.fn() }
     }
 
-    await uploadController.handleCallback(request, h)
+    await uploadController.triggerReview(request, h)
+
+    const [, fetchOptions] = fetch.mock.calls[0]
+    const body = JSON.parse(fetchOptions.body)
+    expect(body.form).toEqual({
+      file: {
+        filename: 'doc.pdf',
+        s3Key: 'uploads/doc.pdf',
+        contentType: 'application/pdf'
+      }
+    })
+    expect(body.uploadStatus).toBe('ready')
+    expect(body.numberOfRejectedFiles).toBe(0)
+  })
+
+  it('should return 500 when getUploadStatus throws', async () => {
+    getUploadStatus.mockRejectedValue(new Error('CDP Uploader unreachable'))
+    const mockCode = vi.fn()
+    const h = { response: vi.fn().mockReturnValue({ code: mockCode }) }
+    const request = {
+      payload: { uploadId: 'fail-id', reviewId: 'review-abc' },
+      yar: { id: 'session-1' },
+      logger: { info: vi.fn(), error: vi.fn() }
+    }
+
+    await uploadController.triggerReview(request, h)
 
     expect(h.response).toHaveBeenCalledWith(
-      expect.objectContaining({ error: 'Failed to process callback' })
+      expect.objectContaining({
+        error: expect.stringContaining('Failed to trigger review')
+      })
     )
-    expect(mockCodeFn).toHaveBeenCalledWith(500)
+    expect(mockCode).toHaveBeenCalledWith(500)
     expect(request.logger.error).toHaveBeenCalled()
+  })
+
+  it('should return 500 when backend /upload-callback returns non-OK', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 503,
+        json: vi.fn().mockResolvedValue({ message: 'Backend unavailable' })
+      })
+    )
+    const mockCode = vi.fn()
+    const h = { response: vi.fn().mockReturnValue({ code: mockCode }) }
+    const request = {
+      payload: { uploadId: 'upload-123', reviewId: 'review-abc' },
+      yar: { id: 'session-1' },
+      logger: { info: vi.fn(), error: vi.fn() }
+    }
+
+    await uploadController.triggerReview(request, h)
+
+    expect(h.response).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: expect.stringContaining('Failed to trigger review')
+      })
+    )
+    expect(mockCode).toHaveBeenCalledWith(500)
   })
 })

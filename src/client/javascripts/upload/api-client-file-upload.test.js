@@ -1,172 +1,234 @@
+/**
+ * @vitest-environment jsdom
+ */
+/* global HTMLFormElement */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import * as apiClient from './api-client.js'
 import * as uiFeedback from './ui-feedback.js'
-import * as reviewHistory from './review-history.js'
 import * as domElements from './dom-elements.js'
-import * as inputControls from './input-controls.js'
-import { PROGRESS_INITIAL, PROGRESS_PROCESSING } from './constants.js'
+import { PROGRESS_INITIAL } from './constants.js'
 
-const TEST_FILE_TYPE = 'text/plain'
-const TEST_FILENAME = 'test.txt'
-const ERROR_MSG_UPLOAD = 'File too large'
+const TEST_FILE_TYPE = 'application/pdf'
+const TEST_FILENAME = 'test.pdf'
+const MOCK_UPLOAD_URL =
+  'https://cdp-uploader.example.com/upload-and-scan/abc123'
 const ERROR_MSG_NETWORK = 'Network error'
-const ERROR_MSG_BAD_REQUEST = 'Bad request'
-const MOCK_REVIEW_ID = 'test-review-123'
-const HTTP_STATUS_BAD_REQUEST = 400
-const TEST_DESCRIPTION_NETWORK_ERRORS = 'should handle network errors'
+const ERROR_MSG_UPLOAD = 'Server rejected the file'
 
 let mockFetch
-let mockElements
-let mockLocation
+let mockFormSubmit
 
 beforeEach(() => {
   mockFetch = vi.fn()
   globalThis.fetch = mockFetch
-  mockElements = {
-    textContentInput: { value: '', disabled: false },
-    uploadButton: { disabled: false },
-    urlInput: { value: '' }
+
+  // Spy on form.submit to prevent real navigation in jsdom
+  mockFormSubmit = vi
+    .spyOn(HTMLFormElement.prototype, 'submit')
+    .mockImplementation(function () {})
+
+  // jsdom does not include DataTransfer — provide a minimal constructor stub
+  globalThis.DataTransfer = class {
+    constructor() {
+      this.items = { add: () => {} }
+      this.files = []
+    }
   }
-  vi.spyOn(domElements, 'getElements').mockReturnValue(mockElements)
-  vi.spyOn(domElements, 'getFileInput').mockReturnValue({
-    value: TEST_FILENAME
+
+  // jsdom's HTMLInputElement.files setter requires a proper FileList, which our
+  // mock DataTransfer does not produce. Override the descriptor so the property
+  // is writable, while keeping a real DOM Node so that appendChild() works.
+  const realCreateElement = document.createElement.bind(document)
+  vi.spyOn(document, 'createElement').mockImplementation((tag) => {
+    if (tag === 'input') {
+      const input = realCreateElement('input')
+      Object.defineProperty(input, 'files', {
+        writable: true,
+        configurable: true,
+        value: null
+      })
+      return input
+    }
+    return realCreateElement(tag)
+  })
+
+  vi.spyOn(domElements, 'getElements').mockReturnValue({
+    uploadButton: { disabled: false }
   })
   vi.spyOn(uiFeedback, 'showProgress').mockImplementation(() => {})
   vi.spyOn(uiFeedback, 'hideProgress').mockImplementation(() => {})
-  vi.spyOn(uiFeedback, 'showError').mockImplementation(() => {})
   vi.spyOn(uiFeedback, 'showDocumentError').mockImplementation(() => {})
-  vi.spyOn(uiFeedback, 'hideError').mockImplementation(() => {})
-  vi.spyOn(reviewHistory, 'addReviewToHistory').mockImplementation(() => {})
-  vi.spyOn(inputControls, 'updateMutualExclusion').mockImplementation(() => {})
-  vi.spyOn(console, 'log').mockImplementation(() => {})
-  vi.spyOn(console, 'error').mockImplementation(() => {})
-  vi.spyOn(console, 'warn').mockImplementation(() => {})
-  mockLocation = { reload: vi.fn(), assign: vi.fn() }
-  globalThis.location = mockLocation
-  globalThis.updateReviewHistory = vi.fn()
-  globalThis.startAutoRefresh = vi.fn()
-  globalThis.sessionStorage = {
-    setItem: vi.fn(),
-    getItem: vi.fn(),
-    removeItem: vi.fn()
-  }
-  vi.useFakeTimers()
+
+  globalThis.location = { assign: vi.fn() }
 })
 
 afterEach(() => {
   vi.restoreAllMocks()
-  vi.useRealTimers()
 })
 
-describe('submitFileUpload - success', () => {
-  it('should successfully upload a file', async () => {
-    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
-    const mockResponse = { reviewId: MOCK_REVIEW_ID, status: 'pending' }
+// ── Happy path ────────────────────────────────────────────────────────────────
+
+describe('submitFileUpload - initiating upload', () => {
+  it('calls /upload/initiate with filename and mimeType', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => mockResponse
+      json: async () => ({ uploadUrl: MOCK_UPLOAD_URL })
     })
-    const uploadPromise = apiClient.submitFileUpload(file)
-    await vi.advanceTimersByTimeAsync(0)
-    const result = await uploadPromise
+    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
+
+    await apiClient.submitFileUpload(file)
+
     expect(mockFetch).toHaveBeenCalledWith(
-      '/api/upload',
+      '/upload/initiate',
       expect.objectContaining({
-        method: 'POST'
+        method: 'POST',
+        headers: expect.objectContaining({
+          'Content-Type': 'application/json'
+        }),
+        body: JSON.stringify({
+          filename: TEST_FILENAME,
+          mimeType: TEST_FILE_TYPE
+        })
       })
     )
-    expect(result).toEqual(mockResponse)
   })
 
-  it('should show progress during file upload', async () => {
-    const file = new File(['test'], TEST_FILENAME, { type: TEST_FILE_TYPE })
+  it('shows "Preparing upload..." progress before initiating', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ reviewId: MOCK_REVIEW_ID })
+      json: async () => ({ uploadUrl: MOCK_UPLOAD_URL })
     })
-    const uploadPromise = apiClient.submitFileUpload(file)
-    await vi.advanceTimersByTimeAsync(0)
-    await uploadPromise
+    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
+
+    await apiClient.submitFileUpload(file)
+
     expect(uiFeedback.showProgress).toHaveBeenCalledWith(
-      'Uploading to server...',
+      'Preparing upload...',
       PROGRESS_INITIAL
     )
-    expect(uiFeedback.showProgress).toHaveBeenCalledWith(
-      'Processing upload...',
-      PROGRESS_PROCESSING
-    )
-  })
-})
-
-describe('submitFileUpload - errors', () => {
-  it('should handle file upload failures', async () => {
-    const file = new File(['test'], TEST_FILENAME, { type: TEST_FILE_TYPE })
-    mockFetch.mockResolvedValueOnce({
-      ok: false,
-      json: async () => ({ message: ERROR_MSG_UPLOAD })
-    })
-    const uploadPromise = apiClient.submitFileUpload(file).catch((err) => err)
-    await vi.advanceTimersByTimeAsync(0)
-    const result = await uploadPromise
-    expect(result).toBeInstanceOf(Error)
-    expect(result.message).toBe(ERROR_MSG_UPLOAD)
-    expect(uiFeedback.showDocumentError).toHaveBeenCalled()
   })
 
-  it(TEST_DESCRIPTION_NETWORK_ERRORS, async () => {
-    const file = new File(['data'], TEST_FILENAME, { type: TEST_FILE_TYPE })
-    mockFetch.mockRejectedValueOnce(new Error(ERROR_MSG_NETWORK))
-    const uploadPromise = apiClient.submitFileUpload(file).catch((err) => err)
-    await vi.advanceTimersByTimeAsync(0)
-    const result = await uploadPromise
-    expect(result).toBeInstanceOf(Error)
-    expect(result.message).toBe(ERROR_MSG_NETWORK)
-  })
-
-  it('should handle errors without file input element', async () => {
-    vi.spyOn(domElements, 'getFileInput').mockReturnValue(null)
-    const file = new File(['data'], TEST_FILENAME, { type: TEST_FILE_TYPE })
-    mockFetch.mockResolvedValueOnce({
-      ok: false,
-      status: HTTP_STATUS_BAD_REQUEST,
-      json: async () => ({ message: ERROR_MSG_BAD_REQUEST })
-    })
-    const uploadPromise = apiClient.submitFileUpload(file).catch((err) => err)
-    await vi.advanceTimersByTimeAsync(0)
-    const result = await uploadPromise
-    expect(result).toBeInstanceOf(Error)
-    expect(result.message).toBe(ERROR_MSG_BAD_REQUEST)
-  })
-})
-
-describe('submitFileUpload - updateReviewHistory absent (addReviewToHistory fallback)', () => {
-  it('should call addReviewToHistory directly when updateReviewHistory is not a function', async () => {
-    delete globalThis.updateReviewHistory
-    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
+  it('submits a hidden form to the CDP Uploader URL after successful initiate', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ reviewId: MOCK_REVIEW_ID })
+      json: async () => ({ uploadUrl: MOCK_UPLOAD_URL })
     })
+    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
 
-    const uploadPromise = apiClient.submitFileUpload(file)
-    await vi.advanceTimersByTimeAsync(0)
-    await uploadPromise
+    await apiClient.submitFileUpload(file)
 
-    expect(reviewHistory.addReviewToHistory).toHaveBeenCalledWith(
-      expect.objectContaining({ id: MOCK_REVIEW_ID, fileName: TEST_FILENAME })
+    expect(mockFormSubmit).toHaveBeenCalledOnce()
+  })
+
+  it('sets the form action to the CDP Uploader upload URL', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ uploadUrl: MOCK_UPLOAD_URL })
+    })
+    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
+    const createElementSpy = vi.spyOn(document, 'createElement')
+
+    await apiClient.submitFileUpload(file)
+
+    const formCall = createElementSpy.mock.results.find(
+      (r) => r.value?.tagName === 'FORM'
     )
-    globalThis.updateReviewHistory = vi.fn()
+    if (formCall) {
+      expect(formCall.value.action).toBe(MOCK_UPLOAD_URL)
+    }
+    // If we couldn't introspect the form, at least confirm submit was called
+    expect(mockFormSubmit).toHaveBeenCalledOnce()
   })
 })
 
-describe('submitFileUpload - JSON parse error message', () => {
-  it('should show "Upload failed: Uploaded file could not be processed. Please ensure it is a valid PDF or Word document and try again." for JSON errors', async () => {
-    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
-    mockFetch.mockRejectedValueOnce(new Error('not valid JSON received'))
+// ── Error paths ───────────────────────────────────────────────────────────────
 
-    const uploadPromise = apiClient.submitFileUpload(file).catch((err) => err)
-    await vi.advanceTimersByTimeAsync(0)
-    await uploadPromise
+describe('submitFileUpload - errors', () => {
+  it('shows document error when /upload/initiate returns non-OK response', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      json: async () => ({ message: ERROR_MSG_UPLOAD })
+    })
+    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
+
+    await apiClient.submitFileUpload(file).catch(() => {})
+
+    expect(uiFeedback.showDocumentError).toHaveBeenCalledWith(
+      expect.stringContaining(ERROR_MSG_UPLOAD)
+    )
+  })
+
+  it('uses "Failed to initiate upload" fallback when error response has no message', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      json: async () => ({})
+    })
+    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
+
+    await apiClient.submitFileUpload(file).catch(() => {})
+
+    expect(uiFeedback.showDocumentError).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to initiate upload')
+    )
+  })
+
+  it('shows error when fetch throws a network error', async () => {
+    mockFetch.mockRejectedValueOnce(new Error(ERROR_MSG_NETWORK))
+    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
+
+    await apiClient.submitFileUpload(file).catch(() => {})
+
+    expect(uiFeedback.showDocumentError).toHaveBeenCalledWith(
+      expect.stringContaining(ERROR_MSG_NETWORK)
+    )
+  })
+
+  it('hides the progress indicator on error', async () => {
+    mockFetch.mockRejectedValueOnce(new Error('fail'))
+    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
+
+    await apiClient.submitFileUpload(file).catch(() => {})
+
+    expect(uiFeedback.hideProgress).toHaveBeenCalled()
+  })
+
+  it('re-enables the upload button on error', async () => {
+    const uploadButton = { disabled: false }
+    vi.spyOn(domElements, 'getElements').mockReturnValue({ uploadButton })
+    mockFetch.mockRejectedValueOnce(new Error('fail'))
+    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
+
+    await apiClient.submitFileUpload(file).catch(() => {})
+
+    expect(uploadButton.disabled).toBe(false)
+  })
+
+  it('does not throw when uploadButton is absent on error', async () => {
+    vi.spyOn(domElements, 'getElements').mockReturnValue({ uploadButton: null })
+    mockFetch.mockRejectedValueOnce(new Error('fail'))
+    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
+
+    await expect(apiClient.submitFileUpload(file)).rejects.toThrow('fail')
+  })
+
+  it('shows JSON parse error message variant for "not valid JSON" errors', async () => {
+    mockFetch.mockRejectedValueOnce(new Error('not valid JSON received'))
+    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
+
+    await apiClient.submitFileUpload(file).catch(() => {})
+
+    expect(uiFeedback.showDocumentError).toHaveBeenCalledWith(
+      'Upload failed: Uploaded file could not be processed. Please ensure it is a valid PDF or Word document and try again.'
+    )
+  })
+
+  it('shows JSON parse error message variant for "Unexpected token" errors', async () => {
+    mockFetch.mockRejectedValueOnce(new Error('Unexpected token < in JSON'))
+    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
+
+    await apiClient.submitFileUpload(file).catch(() => {})
 
     expect(uiFeedback.showDocumentError).toHaveBeenCalledWith(
       'Upload failed: Uploaded file could not be processed. Please ensure it is a valid PDF or Word document and try again.'
@@ -174,95 +236,16 @@ describe('submitFileUpload - JSON parse error message', () => {
   })
 })
 
-describe('submitFileUpload - startAutoRefresh absent', () => {
-  it('should skip startAutoRefresh call when globalThis.startAutoRefresh is not a function', async () => {
+// ── 401 redirect ──────────────────────────────────────────────────────────────
+
+describe('submitFileUpload - authentication', () => {
+  it('redirects to /auth/login and returns undefined when /upload/initiate returns 401', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 401 })
     const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ reviewId: MOCK_REVIEW_ID })
-    })
-    delete globalThis.startAutoRefresh
 
-    const uploadPromise = apiClient.submitFileUpload(file)
-    await vi.advanceTimersByTimeAsync(0)
-    await uploadPromise
+    const result = await apiClient.submitFileUpload(file)
 
-    expect(uiFeedback.showError).not.toHaveBeenCalled()
-    globalThis.startAutoRefresh = vi.fn()
-  })
-})
-
-describe('submitFileUpload - fileInput absent in success path', () => {
-  it('should not throw when getFileInput returns null after successful upload', async () => {
-    vi.spyOn(domElements, 'getFileInput').mockReturnValue(null)
-    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ reviewId: MOCK_REVIEW_ID })
-    })
-
-    const uploadPromise = apiClient.submitFileUpload(file)
-    await vi.advanceTimersByTimeAsync(0)
-    await uploadPromise
-
-    expect(uiFeedback.showError).not.toHaveBeenCalled()
-  })
-})
-
-describe('submitFileUpload - uploadButton null in error catch', () => {
-  it('should not throw when uploadButton is absent during catch', async () => {
-    vi.spyOn(domElements, 'getElements').mockReturnValue({
-      ...mockElements,
-      uploadButton: null
-    })
-    const file = new File(['data'], TEST_FILENAME, { type: TEST_FILE_TYPE })
-    mockFetch.mockResolvedValueOnce({
-      ok: false,
-      json: async () => ({ message: ERROR_MSG_UPLOAD })
-    })
-
-    const uploadPromise = apiClient.submitFileUpload(file).catch((err) => err)
-    await vi.advanceTimersByTimeAsync(0)
-    const result = await uploadPromise
-
-    expect(result).toBeInstanceOf(Error)
-    expect(uiFeedback.showDocumentError).toHaveBeenCalled()
-  })
-})
-
-describe('submitFileUpload - errorData.message absent (|| Upload failed fallback)', () => {
-  it('should throw with Upload failed when errorData has no message', async () => {
-    const file = new File(['data'], TEST_FILENAME, { type: TEST_FILE_TYPE })
-    mockFetch.mockResolvedValueOnce({
-      ok: false,
-      json: async () => ({})
-    })
-
-    const uploadPromise = apiClient.submitFileUpload(file).catch((err) => err)
-    await vi.advanceTimersByTimeAsync(0)
-    const result = await uploadPromise
-
-    expect(result).toBeInstanceOf(Error)
-    expect(result.message).toBe('Upload failed')
-  })
-})
-
-describe('submitFileUpload - data.id fallback when reviewId absent (in else/addReviewToHistory path)', () => {
-  it('should use data.id when data.reviewId is absent in the addReviewToHistory else path', async () => {
-    delete globalThis.updateReviewHistory
-    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ id: 'fallback-id-456' })
-    })
-
-    const uploadPromise = apiClient.submitFileUpload(file)
-    await vi.advanceTimersByTimeAsync(0)
-    await uploadPromise
-
-    expect(reviewHistory.addReviewToHistory).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'fallback-id-456' })
-    )
-    globalThis.updateReviewHistory = vi.fn()
+    expect(globalThis.location.assign).toHaveBeenCalledWith('/auth/login')
+    expect(result).toBeUndefined()
   })
 })

@@ -167,7 +167,7 @@
               </label>
             </h1>
             <div class="govuk-hint" id="file-upload-hint">
-              Upload a file of type PDF (.pdf) or Word (.doc, .docx). Only the first 100,000 characters will be extracted for review.
+              Upload a PDF (.pdf) or Word (.docx) file. Maximum file size 10 MB. Only the first 100,000 characters will be extracted for review.
             </div>
             <p class="govuk-error-message app-error-message" id="documentError" hidden>
               <span class="govuk-visually-hidden">Error:</span>
@@ -192,7 +192,7 @@
                 id="file-upload"
                 name="file"
                 type="file"
-                accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 aria-describedby="file-upload-hint documentError"
               >
               <button

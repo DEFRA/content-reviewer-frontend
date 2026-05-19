@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto'
+import { config } from '../../config/config.js'
 import {
   initiateUpload,
   getUploadStatus
@@ -6,30 +8,6 @@ import {
 // HTTP Status Codes
 const HTTP_STATUS_OK = 200
 const HTTP_STATUS_SERVER_ERROR = 500
-
-// Upload Status Values
-const UPLOAD_STATUS_READY = 'ready'
-const REJECTED_FILES_THRESHOLD = 0
-
-// File Details Keys
-const FILE_STATUS_PENDING = 'Uploaded (Review pending)'
-
-/**
- * Create file details object for view
- * @param {object} fileDetails - Raw file details
- * @returns {object} Formatted file details
- */
-function createFileDetailsForView(fileDetails) {
-  return {
-    filename: fileDetails.filename,
-    contentLength: fileDetails.contentLength,
-    detectedContentType: fileDetails.detectedContentType,
-    fileId: fileDetails.fileId,
-    s3Bucket: fileDetails.s3Bucket,
-    s3Key: fileDetails.s3Key,
-    fileStatus: FILE_STATUS_PENDING
-  }
-}
 
 const uploadController = {
   /**
@@ -46,55 +24,131 @@ const uploadController = {
   },
 
   /**
-   * Initiate upload and redirect to CDP uploader
+   * Initiate upload with CDP Uploader and return the upload URL to the browser.
+   * The browser will then submit the file directly to the CDP Uploader via a
+   * hidden form POST (POST /upload-and-scan/{uploadId}), which scans the file
+   * and stores it in S3. Once the status-poller detects the scan is complete it
+   * explicitly calls /upload/trigger-review with the S3 details (step c).
+   * No automatic webhook callback is registered — the frontend orchestrates the
+   * backend processing after polling confirms the file is ready.
    */
   async initiateUpload(request, h) {
     try {
+      const reviewId = randomUUID()
       const host = `${request.server.info.protocol}://${request.info.host}`
-      const redirectUrl = `${host}/upload/status-poller`
-      const callbackUrl = `${host}/upload/callback`
 
-      // Get metadata from form if any
-      const metadata = {
-        userId: request.yar?.id || 'unknown',
-        timestamp: new Date().toISOString()
-      }
+      // CDP Uploader redirects the browser here after the upload is complete.
+      // reviewId is embedded so the status-poller page knows which review to track.
+      const redirectUrl = `${host}/upload/status-poller?reviewId=${encodeURIComponent(reviewId)}`
 
+      const userId = request.yar?.id || 'unknown'
+      // No callbackUrl — the frontend status-poller will explicitly call the
+      // backend with the S3 URL once CDP Uploader confirms the scan is ready.
       const uploadSession = await initiateUpload({
         redirect: redirectUrl,
-        callback: callbackUrl,
-        metadata
+        metadata: { reviewId, userId }
       })
 
-      // Store uploadId in session
+      // Persist both IDs so the status-poller controller can look them up from session
       request.yar.set('currentUploadId', uploadSession.uploadId)
+      request.yar.set('currentReviewId', reviewId)
 
-      // Redirect to CDP uploader upload page
-      return h.redirect(uploadSession.uploadUrl)
+      // CDP Uploader returns a relative uploadUrl (e.g. /upload-and-scan/{uploadId}).
+      // Resolve it to an absolute URL so the browser form action targets the
+      // correct CDP Uploader service rather than our own server.
+      const cdpUploaderBaseUrl = config.get('cdpUploader.url')
+      const absoluteUploadUrl = new URL(
+        uploadSession.uploadUrl,
+        cdpUploaderBaseUrl
+      ).href
+
+      return h.response({ uploadUrl: absoluteUploadUrl }).code(HTTP_STATUS_OK)
     } catch (error) {
       request.logger.error(error, 'Failed to initiate upload')
-      return h.view('upload/index', {
-        pageTitle: 'Upload Document',
-        heading: 'Upload PDF or Word Document',
-        errorMessage: 'Failed to initiate upload. Please try again.'
-      })
+      return h
+        .response({ message: 'Failed to initiate upload. Please try again.' })
+        .code(HTTP_STATUS_SERVER_ERROR)
     }
   },
 
   /**
-   * Handle redirect from CDP uploader and poll for status
+   * Step c: Called by the status-poller page once CDP Uploader confirms the
+   * scanned file is ready in S3. Fetches the full scan result (including S3 key)
+   * from CDP Uploader and forwards it to the backend /upload-callback endpoint,
+   * which extracts text, creates the canonical document, and queues the SQS job
+   * that triggers the Bedrock AI review.
+   */
+  async triggerReview(request, h) {
+    try {
+      const { uploadId, reviewId } = request.payload
+      const backendUrl = config.get('backendUrl')
+      const userId = request.yar?.id || 'unknown'
+
+      // Get the full scan result from CDP Uploader — includes S3 key, contentType, etc.
+      const status = await getUploadStatus(uploadId)
+
+      // Forward to backend in the CDP Uploader callback format so the existing
+      // handler can extract text from S3, create the canonical document, and
+      // queue the review job in SQS.
+      const callbackPayload = {
+        uploadStatus: status.uploadStatus,
+        uploadId,
+        metadata: { reviewId, userId },
+        form: status.form,
+        numberOfRejectedFiles: status.numberOfRejectedFiles
+      }
+
+      const response = await fetch(`${backendUrl}/upload-callback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(callbackPayload)
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(
+          errorData.message || `Backend processing failed: ${response.status}`
+        )
+      }
+
+      request.logger.info(
+        { reviewId, uploadId },
+        'Review triggered successfully'
+      )
+      return h.response({ reviewId }).code(HTTP_STATUS_OK)
+    } catch (error) {
+      request.logger.error(error, 'Failed to trigger review')
+      return h
+        .response({ error: 'Failed to trigger review. Please try again.' })
+        .code(HTTP_STATUS_SERVER_ERROR)
+    }
+  },
+
+  /**
+   * Landing page after CDP Uploader redirects the browser back.
+   * CDP Uploader appends ?reviewId=... to the redirect URL set during /initiate.
+   * The uploadId is retrieved from the session (set during /initiate).
    */
   async statusPoller(request, h) {
+    // reviewId comes from the CDP Uploader redirect query param
+    const reviewId =
+      request.query.reviewId || request.yar.get('currentReviewId')
     const uploadId = request.yar.get('currentUploadId')
 
-    if (!uploadId) {
-      return h.redirect('/upload')
+    if (!reviewId && !uploadId) {
+      return h.redirect('/')
+    }
+
+    // Persist reviewId in session in case the user refreshes the page
+    if (reviewId) {
+      request.yar.set('currentReviewId', reviewId)
     }
 
     return h.view('upload/status-poller', {
       pageTitle: 'Processing Upload',
       heading: 'Processing Your Document',
-      uploadId
+      uploadId: uploadId || '',
+      reviewId: reviewId || ''
     })
   },
 
@@ -115,169 +169,6 @@ const uploadController = {
       request.logger.error(error, 'Failed to get upload status')
       return h
         .response({ error: 'Failed to get upload status' })
-        .code(HTTP_STATUS_SERVER_ERROR)
-    }
-  },
-
-  /**
-   * Initiate AI review in backend
-   * @param {object} fileDetails - File details from upload
-   * @param {string} backendUrl - Backend API URL
-   * @returns {Promise<object>} Review response data
-   */
-  async initiateAiReview(fileDetails, backendUrl) {
-    const reviewPayload = {
-      bucket: fileDetails.s3Bucket,
-      key: fileDetails.s3Key,
-      filename: fileDetails.filename,
-      contentType: fileDetails.detectedContentType,
-      size: fileDetails.contentLength
-    }
-
-    const reviewResponse = await fetch(`${backendUrl}/api/upload`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(reviewPayload)
-    })
-
-    if (!reviewResponse.ok) {
-      throw new Error(`Backend review failed: ${reviewResponse.status}`)
-    }
-
-    return reviewResponse.json()
-  },
-
-  /**
-   * Handle successful upload with AI review
-   * @param {object} request - Hapi request object
-   * @param {object} h - Hapi response toolkit
-   * @param {object} fileDetails - File details from upload
-   * @param {string} backendUrl - Backend API URL
-   * @returns {Promise<object>} Redirect or view response
-   */
-  async handleSuccessfulUpload(request, h, fileDetails, backendUrl) {
-    try {
-      const reviewData = await this.initiateAiReview(fileDetails, backendUrl)
-
-      const reviewId = reviewData.reviewId
-
-      // Store review ID in session
-      request.yar.set('currentReviewId', reviewId)
-      request.yar.set('hasUploadSuccess', true)
-      request.yar.flash(
-        'uploadSuccess',
-        `File "${fileDetails.filename}" uploaded successfully and AI review initiated.`
-      )
-
-      return h.redirect(`/review/status-poller/${reviewId}`)
-    } catch (error) {
-      request.logger.error(error, 'Error triggering AI review')
-
-      // Still set success flag since file uploaded successfully to S3
-      request.yar.set('hasUploadSuccess', true)
-      request.yar.flash(
-        'uploadSuccess',
-        `File "${fileDetails.filename}" uploaded successfully but AI review could not start.`
-      )
-
-      // Ensure this returns a Promise
-      return this.renderUploadSuccessView(h, fileDetails)
-    }
-  },
-
-  /**
-   * Render upload success view
-   * @param {object} h - Hapi response toolkit
-   * @param {object} fileDetails - File details from upload
-   * @returns {object} View response
-   */
-  renderUploadSuccessView(h, fileDetails) {
-    return h.view('upload/success', {
-      pageTitle: 'Upload Successful',
-      heading: 'Upload Successful',
-      fileDetails: createFileDetailsForView(fileDetails)
-    })
-  },
-
-  /**
-   * Handle upload completion
-   * @param {object} request - Hapi request object
-   * @param {object} h - Hapi response toolkit
-   * @returns {object} Redirect or view response
-   */
-  async uploadComplete(request, h) {
-    const uploadId = request.yar.get('currentUploadId')
-    request.logger.info({ uploadId }, 'Upload complete')
-
-    if (!uploadId) {
-      return h.redirect('/')
-    }
-
-    try {
-      const status = await getUploadStatus(uploadId)
-
-      // Clear upload ID from session
-      request.yar.clear('currentUploadId')
-
-      const isUploadReady =
-        status.uploadStatus === UPLOAD_STATUS_READY &&
-        status.numberOfRejectedFiles === REJECTED_FILES_THRESHOLD
-
-      if (isUploadReady) {
-        const fileDetails = status.form?.file || {}
-        const config = request.server.app.config
-        const backendUrl = config.get('backendUrl')
-
-        return await this.handleSuccessfulUpload(
-          request,
-          h,
-          fileDetails,
-          backendUrl
-        )
-      }
-
-      // Handle rejected files
-      request.yar.set('hasUploadSuccess', false)
-      request.yar.flash(
-        'uploadError',
-        status.form?.file?.errorMessage ||
-          'The file could not be uploaded. Please try again.'
-      )
-
-      return h.redirect('/')
-    } catch (error) {
-      request.logger.error(error, 'Failed to process upload completion')
-
-      request.yar.set('hasUploadSuccess', false)
-      request.yar.flash(
-        'uploadError',
-        'An error occurred while processing your upload.'
-      )
-      return h.redirect('/')
-    }
-  },
-
-  /**
-   * Handle callback from CDP uploader
-   * @param {object} request - Hapi request object
-   * @param {object} h - Hapi response toolkit
-   * @returns {object} Response
-   */
-  async handleCallback(request, h) {
-    try {
-      const payload = request.payload
-      request.logger.info({ payload }, 'Received upload callback')
-
-      // Process the callback payload
-      // This could trigger background processing, notifications, etc.
-
-      return h.response({ received: true }).code(HTTP_STATUS_OK)
-    } catch (error) {
-      request.logger.error(error, 'Failed to process callback')
-      return h
-        .response({ error: 'Failed to process callback' })
         .code(HTTP_STATUS_SERVER_ERROR)
     }
   }

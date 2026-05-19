@@ -36,14 +36,9 @@ const upload = {
           handler: uploadController.getStatus
         },
         {
-          method: 'GET',
-          path: '/upload/complete',
-          handler: uploadController.uploadComplete
-        },
-        {
           method: 'POST',
-          path: '/upload/callback',
-          handler: uploadController.handleCallback
+          path: '/upload/trigger-review',
+          handler: uploadController.triggerReview
         }
       ])
     }

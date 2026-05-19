@@ -10,7 +10,6 @@ import { cookies } from './cookies/index.js'
 import { privacy } from './privacy/index.js'
 import { accessibility } from './accessibility/index.js'
 import { contact } from './contact/index.js'
-import { uploadApiController } from './api/upload.js'
 import { textReviewApiController } from './api/text-review.js'
 import { getReviewsController } from './api/reviews.js'
 import { deleteReviewRoute } from './api/delete-review.js'
@@ -24,20 +23,6 @@ import { loginController } from './auth/login/controller.js'
  * Extracted to keep the main register function within SonarQube line limits.
  */
 function registerApiRoutes(server) {
-  server.route({
-    method: 'POST',
-    path: '/api/upload',
-    handler: async (request, h) => uploadApiController.uploadFile(request, h),
-    options: {
-      payload: {
-        output: 'stream',
-        parse: false,
-        maxBytes: 10 * 1024 * 1024, // 10MB
-        allow: 'application/octet-stream' // Expect raw binary with metadata in headers, not multipart
-      }
-    }
-  })
-
   server.route({
     method: 'GET',
     path: '/api/reviews',
