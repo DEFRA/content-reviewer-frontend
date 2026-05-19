@@ -22,10 +22,9 @@ export const ARIA_DISABLED_ATTR = 'aria-disabled'
 // Accepted file types for document upload
 export const ACCEPTED_FILE_TYPES = [
   'application/pdf',
-  'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 ]
-export const ACCEPTED_FILE_EXTENSIONS = ['.pdf', '.doc', '.docx']
+export const ACCEPTED_FILE_EXTENSIONS = ['.pdf', '.docx']
 
 export function isValidFileType(file) {
   if (!file) {
