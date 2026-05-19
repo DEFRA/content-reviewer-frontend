@@ -294,7 +294,6 @@ export const config = convict({
       format: Array,
       default: [
         'application/pdf',
-        'application/msword',
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
       ],
       env: 'CDP_UPLOADER_MIME_TYPES'

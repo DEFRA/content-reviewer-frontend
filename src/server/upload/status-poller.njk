@@ -5,28 +5,17 @@
     <div class="govuk-grid-column-two-thirds">
       <h1 class="govuk-heading-l">{{ heading }}</h1>
 
-      <div class="govuk-panel govuk-panel--confirmation display-none" id="processing-panel">
-        <h2 class="govuk-panel__title">Processing</h2>
-        <div class="govuk-panel__body">
-          <span class="govuk-!-font-size-27">
-            Scanning your document...
-          </span>
-        </div>
-      </div>
-
       <div class="govuk-inset-text" id="status-message">
         <p class="govuk-body">
-          Please wait while we process your document. This may take a few moments.
+          Please wait while we scan and process your document. This may take a few moments.
         </p>
       </div>
 
-      <div class="spinner display-none" id="spinner">
-        <div class="govuk-!-margin-bottom-4">
-          <p class="govuk-body">Checking upload status...</p>
-        </div>
+      <div id="spinner" class="govuk-!-margin-bottom-4">
+        <p class="govuk-body">Checking upload status...</p>
       </div>
 
-      <div id="error-container" class="display-none">
+      <div id="error-container" hidden>
         <div class="govuk-error-summary" aria-labelledby="error-summary-title" role="alert">
           <h2 class="govuk-error-summary__title" id="error-summary-title">
             There is a problem
@@ -36,7 +25,7 @@
           </div>
         </div>
         <p class="govuk-body">
-          <a href="/upload" class="govuk-link">Try again</a>
+          <a href="/" class="govuk-link">Back to home</a>
         </p>
       </div>
     </div>
@@ -44,45 +33,64 @@
 
   <script nonce="{{ cspNonce }}">
     (function() {
-      const uploadId = '{{ uploadId }}';
+      const uploadId = '{{ uploadId | safe }}';
+      const reviewId = '{{ reviewId | safe }}';
       const maxAttempts = 30;
-      const pollInterval = 2000; // 2 seconds
+      const pollInterval = 2000;
       let attempts = 0;
 
       function showError(message) {
-        document.getElementById('spinner').style.display = 'none';
-        document.getElementById('processing-panel').style.display = 'none';
-        document.getElementById('status-message').style.display = 'none';
+        document.getElementById('spinner').hidden = true;
+        document.getElementById('status-message').hidden = true;
         document.getElementById('error-message').textContent = message;
-        document.getElementById('error-container').style.display = 'block';
+        document.getElementById('error-container').hidden = false;
+      }
+
+      function goToReview() {
+        var reviewUrl = '/review/status-poller/' + encodeURIComponent(reviewId);
+        if (!uploadId) {
+          // Session lost — cannot call trigger-review without uploadId; navigate
+          // directly and let the review poller handle the missing state.
+          window.location.href = reviewUrl;
+          return;
+        }
+        // Step c: call our server with the uploadId so it can fetch the S3 URL
+        // from CDP Uploader status and forward it to the backend for canonical
+        // document creation, SQS queuing, and Bedrock AI review.
+        fetch('/upload/trigger-review', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ uploadId: uploadId, reviewId: reviewId })
+        }).then(function() {
+          window.location.href = reviewUrl;
+        }).catch(function() {
+          // Still navigate even if the trigger call fails — the review poller
+          // will surface any processing errors to the user.
+          window.location.href = reviewUrl;
+        });
       }
 
       function pollStatus() {
-        fetch('/upload/status/' + uploadId)
-          .then(response => {
+        fetch('/upload/status/' + encodeURIComponent(uploadId), { credentials: 'same-origin' })
+          .then(function(response) {
             if (!response.ok) {
               throw new Error('Failed to check upload status');
             }
             return response.json();
           })
-          .then(data => {
+          .then(function(data) {
             if (data.uploadStatus === 'ready') {
-              // Upload complete, redirect to completion page
-              window.location.href = '/upload/complete';
+              // CDP Uploader has scanned the file and stored it in S3.
+              // goToReview calls /upload/trigger-review (step c) which forwards
+              // the S3 URL to the backend to start the processing pipeline.
+              goToReview();
             } else if (data.uploadStatus === 'rejected') {
-              showError('Your document was rejected. Please check the file and try again.');
-            } else if (data.uploadStatus === 'pending') {
-              // Still processing
-              attempts++;
-              if (attempts < maxAttempts) {
-                document.getElementById('processing-panel').style.display = 'block';
-                document.getElementById('spinner').style.display = 'block';
-                setTimeout(pollStatus, pollInterval);
-              } else {
-                showError('Upload processing timed out. Please try again.');
-              }
+              var errorMsg = (data.form && data.form.file && data.form.file.errorMessage)
+                ? data.form.file.errorMessage
+                : 'Your document was rejected. Please check the file type and size and try again.';
+              showError(errorMsg);
             } else {
-              // Initiated or other status, keep polling
               attempts++;
               if (attempts < maxAttempts) {
                 setTimeout(pollStatus, pollInterval);
@@ -91,13 +99,24 @@
               }
             }
           })
-          .catch(error => {
-            showError('An error occurred while checking upload status.');
+          .catch(function() {
+            showError('An error occurred while checking upload status. Please try again.');
           });
       }
 
-      // Start polling after a short delay
-      setTimeout(pollStatus, 1000);
+      if (!uploadId) {
+        // Session was lost (e.g. page refresh after session expiry).
+        // If we still have the reviewId, go straight to the review poller —
+        // the backend callback will have already queued the job.
+        if (reviewId) {
+          goToReview();
+        } else {
+          showError('Upload session not found. Please try uploading again.');
+        }
+      } else {
+        // Start polling after a short delay to give CDP Uploader time to process
+        setTimeout(pollStatus, 1000);
+      }
     })();
   </script>
 {% endblock %}

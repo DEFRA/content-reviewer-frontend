@@ -91,8 +91,8 @@ describe('upload/constants - isValidFileType', () => {
     expect(isValidFileType({ name: 'doc.docx', type: '' })).toBe(true)
   })
 
-  it('returns true for a file with a valid extension (.doc)', () => {
-    expect(isValidFileType({ name: 'old.doc', type: '' })).toBe(true)
+  it('returns false for a .doc file (only .pdf and .docx are accepted)', () => {
+    expect(isValidFileType({ name: 'old.doc', type: '' })).toBe(false)
   })
 
   it('returns true when MIME type is valid even if extension is not recognised', () => {
@@ -102,10 +102,10 @@ describe('upload/constants - isValidFileType', () => {
     )
   })
 
-  it('returns true when MIME type is application/msword', () => {
+  it('returns false when MIME type is application/msword (legacy .doc not accepted)', () => {
     expect(
       isValidFileType({ name: 'upload', type: 'application/msword' })
-    ).toBe(true)
+    ).toBe(false)
   })
 
   it('returns false when both extension and MIME type are invalid', () => {

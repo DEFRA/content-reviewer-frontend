@@ -61,14 +61,6 @@ describe('router plugin - register', () => {
     expect(loginRoute.options.auth).toBe(false)
   })
 
-  it('should define the POST /api/upload route', async () => {
-    await router.plugin.register(server)
-
-    const uploadRoute = server._routes.find((r) => r.path === '/api/upload')
-    expect(uploadRoute).toBeDefined()
-    expect(uploadRoute.method).toBe('POST')
-  })
-
   it('should define the GET /api/reviews route', async () => {
     await router.plugin.register(server)
 
@@ -93,32 +85,6 @@ describe('router plugin - register', () => {
     )
     expect(fetchUrlRoute).toBeDefined()
     expect(fetchUrlRoute.options.auth).toBe(false)
-  })
-
-  it('should call upload route handler', async () => {
-    await router.plugin.register(server)
-
-    const uploadRoute = server._routes.find((r) => r.path === '/api/upload')
-    expect(typeof uploadRoute.handler).toBe('function')
-  })
-
-  it('should invoke uploadApiController.uploadFile when POST /api/upload handler is called', async () => {
-    await router.plugin.register(server)
-
-    const uploadRoute = server._routes.find((r) => r.path === '/api/upload')
-    const mockRequest = { payload: {} }
-    const mockH = { response: vi.fn().mockReturnValue({ code: vi.fn() }) }
-
-    // The handler is a thin wrapper — it may throw if uploadApiController is not
-    // configured, but it must call through. We just confirm the handler is callable.
-    try {
-      await uploadRoute.handler(mockRequest, mockH)
-    } catch {
-      // expected if backend not available in test environment
-    }
-
-    // Handler is a function that delegates to uploadApiController.uploadFile
-    expect(typeof uploadRoute.handler).toBe('function')
   })
 
   it('should invoke textReviewApiController.reviewText when POST /api/review/text handler is called', async () => {

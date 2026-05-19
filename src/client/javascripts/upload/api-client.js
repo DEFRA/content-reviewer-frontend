@@ -8,7 +8,7 @@ import {
   CREDENTIALS_SAME_ORIGIN,
   SLUG_MAX_LENGTH
 } from './constants.js'
-import { getElements, getFileInput } from './dom-elements.js'
+import { getElements } from './dom-elements.js'
 import { updateCharacterCount } from './character-counter.js'
 import { updateMutualExclusion } from './input-controls.js'
 import {
@@ -170,42 +170,56 @@ export async function submitTextReview(textContent) {
 export async function submitFileUpload(file) {
   const elements = getElements()
   try {
-    showProgress('Uploading to server...', PROGRESS_INITIAL)
-    const arrayBuffer = await file.arrayBuffer()
+    showProgress('Preparing upload...', PROGRESS_INITIAL)
 
-    const response = await fetch('/api/upload', {
+    // Step 1: Ask our server to initiate a CDP Uploader session.
+    // The server calls the CDP Uploader /initiate endpoint and returns the
+    // URL the browser should POST the file to.
+    const initiateResponse = await fetch('/upload/initiate', {
       method: 'POST',
-      body: arrayBuffer,
-      headers: {
-        'content-type': 'application/octet-stream',
-        'x-file-name': encodeURIComponent(file.name),
-        'x-file-content-type': file.type || 'application/pdf'
-      },
-      credentials: CREDENTIALS_SAME_ORIGIN
+      headers: { 'Content-Type': 'application/json' },
+      credentials: CREDENTIALS_SAME_ORIGIN,
+      body: JSON.stringify({ filename: file.name, mimeType: file.type })
     })
-    showProgress('Processing upload...', PROGRESS_PROCESSING)
-    if (!response.ok) {
-      if (redirectIfUnauthorised(response)) {
+
+    if (!initiateResponse.ok) {
+      if (redirectIfUnauthorised(initiateResponse)) {
         return undefined
       }
-      const errorData = await response.json()
-      throw new Error(errorData.message || 'Upload failed')
+      const errorMessage = await extractJsonErrorMessage(
+        initiateResponse,
+        'Failed to initiate upload'
+      )
+      throw new Error(errorMessage)
     }
-    const data = await response.json()
-    hideProgress()
-    const fileInputEl = getFileInput()
-    if (fileInputEl) {
-      fileInputEl.value = ''
-    }
-    updateMutualExclusion()
-    updateCharacterCount()
-    if (elements.uploadButton) {
-      elements.uploadButton.disabled = false
-    }
-    handleReviewHistory(data, encodeURIComponent(file.name))
-    startAutoRefresh()
-    return data
+
+    const { uploadUrl } = await initiateResponse.json()
+
+    // Step 2: Submit the file directly to the CDP Uploader via a hidden form POST
+    // (multipart/form-data, input name="file") to POST /upload-and-scan/{uploadId}.
+    // The browser navigates to CDP Uploader, which virus-scans the file and stores
+    // it in S3, then redirects the browser to /upload/status-poller.
+    // The status-poller then calls /upload/trigger-review (step c) which fetches
+    // the S3 details from the CDP Uploader status endpoint and forwards them to
+    // the backend to start the processing pipeline.
+    const form = document.createElement('form')
+    form.method = 'POST'
+    form.action = uploadUrl
+    form.enctype = 'multipart/form-data'
+
+    const fileInput = document.createElement('input')
+    fileInput.type = 'file'
+    fileInput.name = 'file'
+    const dt = new globalThis.DataTransfer()
+    dt.items.add(file)
+    fileInput.files = dt.files
+
+    form.appendChild(fileInput)
+    document.body.appendChild(form)
+    form.submit()
+    // Browser navigates away from this point — no further code runs here
   } catch (error) {
+    hideProgress()
     const userMessage = JSON_PARSE_ERROR_PATTERNS.some((p) =>
       error.message.includes(p)
     )

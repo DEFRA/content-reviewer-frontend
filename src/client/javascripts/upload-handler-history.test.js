@@ -142,13 +142,8 @@ describe('upload-handler - createStatusCell variants', () => {
   it('should render a "Processing..." tag for a processing-status review', async () => {
     // The status badge must use govuk-tag--blue for in-progress reviews so
     // users can distinguish them from completed ones at a glance.
-    document.getElementById('action-document').checked = true
-    const fileInput = document.getElementById(FILE_UPLOAD_ID)
-    Object.defineProperty(fileInput, 'files', {
-      value: [new File(['data'], 'test.pdf')],
-      configurable: true
-    })
-    fileInput.dispatchEvent(new Event('change'))
+    document.getElementById('action-text').checked = true
+    document.getElementById(TEXT_CONTENT_ID).value = 'test content for review'
 
     vi.stubGlobal(
       'fetch',
@@ -169,13 +164,8 @@ describe('upload-handler - createStatusCell variants', () => {
   it('should render a "Failed" tag for a failed-status review', async () => {
     // Failed reviews must be clearly distinguishable (govuk-tag--red) so
     // users know they need to resubmit rather than waiting for results.
-    document.getElementById('action-document').checked = true
-    const fileInput = document.getElementById(FILE_UPLOAD_ID)
-    Object.defineProperty(fileInput, 'files', {
-      value: [new File(['data'], 'fail.pdf')],
-      configurable: true
-    })
-    fileInput.dispatchEvent(new Event('change'))
+    document.getElementById('action-text').checked = true
+    document.getElementById(TEXT_CONTENT_ID).value = 'test content for review'
 
     vi.stubGlobal(
       'fetch',
@@ -195,13 +185,8 @@ describe('upload-handler - createStatusCell variants', () => {
     // The statusMap only handles known statuses. For anything else the module
     // falls back to a grey tag with the raw string capitalised. This prevents
     // a blank or broken badge appearing for future status values added server-side.
-    document.getElementById('action-document').checked = true
-    const fileInput = document.getElementById(FILE_UPLOAD_ID)
-    Object.defineProperty(fileInput, 'files', {
-      value: [new File(['data'], 'unknown.pdf')],
-      configurable: true
-    })
-    fileInput.dispatchEvent(new Event('change'))
+    document.getElementById('action-text').checked = true
+    document.getElementById(TEXT_CONTENT_ID).value = 'test content for review'
 
     vi.stubGlobal(
       'fetch',
@@ -268,17 +253,16 @@ describe('upload-handler - updateReviewHistory global', () => {
     expect(startAutoRefreshSpy).toHaveBeenCalled()
   })
 
-  it('should call globalThis.updateReviewHistory after a successful file upload', async () => {
-    // Same delegation check as above but for the submitFileUpload path.
-    // location.reload is also stubbed to avoid jsdom navigation errors that
-    // would occur when the real reload() is called after a successful upload.
+  it('should call globalThis.updateReviewHistory after a successful review submission', async () => {
+    // Verifies the updateReviewHistory delegation path for the text submission
+    // flow. The document upload path navigates the browser away (form.submit)
+    // so updateReviewHistory cannot be verified in that context.
     vi.useFakeTimers()
     setupDOM()
     const updateSpy = vi.fn()
     const startAutoRefreshSpy = vi.fn()
     vi.stubGlobal('updateReviewHistory', updateSpy)
     vi.stubGlobal('startAutoRefresh', startAutoRefreshSpy)
-    vi.stubGlobal('location', { reload: vi.fn() })
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
@@ -288,13 +272,8 @@ describe('upload-handler - updateReviewHistory global', () => {
     )
     await loadModule()
 
-    document.getElementById('action-document').checked = true
-    const fileInput = document.getElementById(FILE_UPLOAD_ID)
-    Object.defineProperty(fileInput, 'files', {
-      value: [new File(['data'], 'doc.pdf')],
-      configurable: true
-    })
-    fileInput.dispatchEvent(new Event('change'))
+    document.getElementById('action-text').checked = true
+    document.getElementById(TEXT_CONTENT_ID).value = 'test content for review'
     document.getElementById('uploadForm').dispatchEvent(new Event('submit'))
 
     await vi.waitFor(() => {

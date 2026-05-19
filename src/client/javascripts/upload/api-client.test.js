@@ -22,7 +22,6 @@ const HTTP_STATUS_SERVER_ERROR = 500
 const TEST_DESCRIPTION_NETWORK_ERRORS = 'should handle network errors'
 const AUTH_LOGIN_PATH = '/auth/login'
 const PROGRESS_INITIAL = 30
-const PROGRESS_PROCESSING = 70
 const HTTP_STATUS_BAD_REQUEST = 400
 
 let mockFetch
@@ -64,6 +63,31 @@ beforeEach(() => {
     getItem: vi.fn(),
     removeItem: vi.fn()
   }
+
+  // Minimal DOM stubs so submitFileUpload can call document.createElement / form.submit
+  // without a browser environment.  Only the file-upload happy path needs these.
+  const mockFormSubmit = vi.fn()
+  globalThis._mockFormSubmit = mockFormSubmit
+  globalThis.document = {
+    createElement: vi.fn((tag) => {
+      if (tag === 'form') {
+        return {
+          method: '',
+          action: '',
+          enctype: '',
+          submit: mockFormSubmit,
+          appendChild: vi.fn()
+        }
+      }
+      return { type: '', name: '', files: null }
+    }),
+    body: { appendChild: vi.fn() }
+  }
+  globalThis.DataTransfer = function MockDataTransfer() {
+    this.items = { add: vi.fn() }
+    this.files = []
+  }
+
   vi.useFakeTimers()
 })
 
@@ -229,39 +253,38 @@ describe('submitUrlReview - errors', () => {
 describe('submitFileUpload - success', () => {
   it('should successfully upload a file', async () => {
     const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
-    const mockResponse = { reviewId: MOCK_REVIEW_ID, status: 'pending' }
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => mockResponse
+      json: async () => ({
+        uploadUrl: 'https://cdp-uploader.example.com/upload/abc'
+      })
     })
     const uploadPromise = apiClient.submitFileUpload(file)
     await vi.advanceTimersByTimeAsync(0)
-    const result = await uploadPromise
+    await uploadPromise
     expect(mockFetch).toHaveBeenCalledWith(
-      '/api/upload',
-      expect.objectContaining({
-        method: 'POST'
-      })
+      '/upload/initiate',
+      expect.objectContaining({ method: 'POST' })
     )
-    expect(result).toEqual(mockResponse)
+    // After initiate, the function submits a hidden form and navigates away —
+    // it does not return a value.
+    expect(globalThis._mockFormSubmit).toHaveBeenCalledOnce()
   })
 
   it('should show progress during file upload', async () => {
     const file = new File(['test'], TEST_FILENAME, { type: TEST_FILE_TYPE })
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ reviewId: MOCK_REVIEW_ID })
+      json: async () => ({
+        uploadUrl: 'https://cdp-uploader.example.com/upload/abc'
+      })
     })
     const uploadPromise = apiClient.submitFileUpload(file)
     await vi.advanceTimersByTimeAsync(0)
     await uploadPromise
     expect(uiFeedback.showProgress).toHaveBeenCalledWith(
-      'Uploading to server...',
+      'Preparing upload...',
       PROGRESS_INITIAL
-    )
-    expect(uiFeedback.showProgress).toHaveBeenCalledWith(
-      'Processing upload...',
-      PROGRESS_PROCESSING
     )
   })
 })

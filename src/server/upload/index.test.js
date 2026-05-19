@@ -6,17 +6,16 @@ vi.mock('./controller.js', () => ({
   uploadController: {
     showUploadForm: vi.fn(),
     initiateUpload: vi.fn(),
+    triggerReview: vi.fn(),
     statusPoller: vi.fn(),
-    getStatus: vi.fn(),
-    uploadComplete: vi.fn(),
-    handleCallback: vi.fn()
+    getStatus: vi.fn()
   }
 }))
 
 describe('upload plugin', () => {
   let server
   let registeredRoutes
-  const EXPECTED_ROUTE_COUNT = 7
+  const EXPECTED_ROUTE_COUNT = 6
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -103,21 +102,12 @@ describe('upload plugin routes', () => {
     expect(route.handler).toBe(uploadController.getStatus)
   })
 
-  it('should register GET /upload/complete route with uploadComplete handler', async () => {
+  it('should register POST /upload/trigger-review route with triggerReview handler', async () => {
     await upload.plugin.register(server)
     const route = registeredRoutes.find(
-      (r) => r.method === 'GET' && r.path === '/upload/complete'
+      (r) => r.method === 'POST' && r.path === '/upload/trigger-review'
     )
     expect(route).toBeDefined()
-    expect(route.handler).toBe(uploadController.uploadComplete)
-  })
-
-  it('should register POST /upload/callback route with handleCallback handler', async () => {
-    await upload.plugin.register(server)
-    const route = registeredRoutes.find(
-      (r) => r.method === 'POST' && r.path === '/upload/callback'
-    )
-    expect(route).toBeDefined()
-    expect(route.handler).toBe(uploadController.handleCallback)
+    expect(route.handler).toBe(uploadController.triggerReview)
   })
 })
