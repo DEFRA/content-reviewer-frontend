@@ -8,8 +8,11 @@
 import { execSync } from 'node:child_process'
 
 try {
-  execSync('npm audit --audit-level=high', { stdio: 'inherit' })
+  const result = execSync('npm audit --audit-level=high', { stdio: 'pipe' })
+  process.stdout.write(result)
 } catch (err) {
+  if (err.stdout) process.stdout.write(err.stdout)
+  if (err.stderr) process.stderr.write(err.stderr)
   const output = String(err.stdout ?? '') + String(err.stderr ?? '')
   const isNetworkError =
     output.includes('audit endpoint returned an error') ||

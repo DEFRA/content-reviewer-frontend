@@ -183,14 +183,14 @@ export async function submitFileUpload(file) {
     })
 
     if (!initiateResponse.ok) {
-      if (redirectIfUnauthorised(initiateResponse)) {
-        return undefined
+      if (!redirectIfUnauthorised(initiateResponse)) {
+        const errorMessage = await extractJsonErrorMessage(
+          initiateResponse,
+          'Failed to initiate upload'
+        )
+        throw new Error(errorMessage)
       }
-      const errorMessage = await extractJsonErrorMessage(
-        initiateResponse,
-        'Failed to initiate upload'
-      )
-      throw new Error(errorMessage)
+      return
     }
 
     const { uploadUrl } = await initiateResponse.json()
