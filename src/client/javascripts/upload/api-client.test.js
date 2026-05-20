@@ -70,18 +70,27 @@ beforeEach(() => {
   globalThis._mockFormSubmit = mockFormSubmit
   globalThis.document = {
     createElement: vi.fn((tag) => {
+      if (tag === 'iframe') {
+        return {
+          name: '',
+          style: { display: '' },
+          addEventListener: vi.fn(),
+          contentWindow: { location: { href: 'http://localhost/' } }
+        }
+      }
       if (tag === 'form') {
         return {
           method: '',
           action: '',
           enctype: '',
+          target: '',
           submit: mockFormSubmit,
           appendChild: vi.fn()
         }
       }
       return { type: '', name: '', files: null }
     }),
-    body: { appendChild: vi.fn() }
+    body: { appendChild: vi.fn(), removeChild: vi.fn() }
   }
   globalThis.DataTransfer = function MockDataTransfer() {
     this.items = { add: vi.fn() }

@@ -5,17 +5,14 @@ import { uploadController } from './controller.js'
 vi.mock('./controller.js', () => ({
   uploadController: {
     showUploadForm: vi.fn(),
-    initiateUpload: vi.fn(),
-    triggerReview: vi.fn(),
-    statusPoller: vi.fn(),
-    getStatus: vi.fn()
+    initiateUpload: vi.fn()
   }
 }))
 
 describe('upload plugin', () => {
   let server
   let registeredRoutes
-  const EXPECTED_ROUTE_COUNT = 6
+  const EXPECTED_ROUTE_COUNT = 3
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -82,32 +79,5 @@ describe('upload plugin routes', () => {
       pageTitle: 'Upload Document',
       heading: 'Upload Your Document'
     })
-  })
-
-  it('should register GET /upload/status-poller route with statusPoller handler', async () => {
-    await upload.plugin.register(server)
-    const route = registeredRoutes.find(
-      (r) => r.method === 'GET' && r.path === '/upload/status-poller'
-    )
-    expect(route).toBeDefined()
-    expect(route.handler).toBe(uploadController.statusPoller)
-  })
-
-  it('should register GET /upload/status/{uploadId} route with getStatus handler', async () => {
-    await upload.plugin.register(server)
-    const route = registeredRoutes.find(
-      (r) => r.method === 'GET' && r.path === '/upload/status/{uploadId}'
-    )
-    expect(route).toBeDefined()
-    expect(route.handler).toBe(uploadController.getStatus)
-  })
-
-  it('should register POST /upload/trigger-review route with triggerReview handler', async () => {
-    await upload.plugin.register(server)
-    const route = registeredRoutes.find(
-      (r) => r.method === 'POST' && r.path === '/upload/trigger-review'
-    )
-    expect(route).toBeDefined()
-    expect(route.handler).toBe(uploadController.triggerReview)
   })
 })

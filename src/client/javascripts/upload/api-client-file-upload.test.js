@@ -6,21 +6,27 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import * as apiClient from './api-client.js'
 import * as uiFeedback from './ui-feedback.js'
 import * as domElements from './dom-elements.js'
-import { PROGRESS_INITIAL } from './constants.js'
+import * as reviewHistory from './review-history.js'
+import { PROGRESS_INITIAL, PROGRESS_SCANNING } from './constants.js'
 
 const TEST_FILE_TYPE = 'application/pdf'
 const TEST_FILENAME = 'test.pdf'
 const MOCK_UPLOAD_URL =
   'https://cdp-uploader.example.com/upload-and-scan/abc123'
+const MOCK_REVIEW_ID = 'mock-review-id-123'
 const ERROR_MSG_NETWORK = 'Network error'
 const ERROR_MSG_UPLOAD = 'Server rejected the file'
 
 let mockFetch
 let mockFormSubmit
+let mockIframe
+let iframeLoadHandler
 
 beforeEach(() => {
   mockFetch = vi.fn()
   globalThis.fetch = mockFetch
+  mockIframe = null
+  iframeLoadHandler = null
 
   // Spy on form.submit to prevent real navigation in jsdom
   mockFormSubmit = vi
@@ -38,8 +44,19 @@ beforeEach(() => {
   // jsdom's HTMLInputElement.files setter requires a proper FileList, which our
   // mock DataTransfer does not produce. Override the descriptor so the property
   // is writable, while keeping a real DOM Node so that appendChild() works.
+  // Also intercept iframe creation to capture the load handler for test assertions.
   const realCreateElement = document.createElement.bind(document)
   vi.spyOn(document, 'createElement').mockImplementation((tag) => {
+    if (tag === 'iframe') {
+      const iframe = realCreateElement('iframe')
+      const origAddEventListener = iframe.addEventListener.bind(iframe)
+      iframe.addEventListener = vi.fn((event, handler) => {
+        if (event === 'load') iframeLoadHandler = handler
+        return origAddEventListener(event, handler)
+      })
+      mockIframe = iframe
+      return iframe
+    }
     if (tag === 'input') {
       const input = realCreateElement('input')
       Object.defineProperty(input, 'files', {
@@ -58,8 +75,10 @@ beforeEach(() => {
   vi.spyOn(uiFeedback, 'showProgress').mockImplementation(() => {})
   vi.spyOn(uiFeedback, 'hideProgress').mockImplementation(() => {})
   vi.spyOn(uiFeedback, 'showDocumentError').mockImplementation(() => {})
+  vi.spyOn(reviewHistory, 'addReviewToHistory').mockImplementation(() => {})
 
-  globalThis.location = { assign: vi.fn() }
+  globalThis.location = { assign: vi.fn(), reload: vi.fn() }
+  globalThis.forceStartAutoRefresh = vi.fn()
 })
 
 afterEach(() => {
@@ -72,7 +91,10 @@ describe('submitFileUpload - initiating upload', () => {
   it('calls /upload/initiate with filename and mimeType', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ uploadUrl: MOCK_UPLOAD_URL })
+      json: async () => ({
+        uploadUrl: MOCK_UPLOAD_URL,
+        reviewId: MOCK_REVIEW_ID
+      })
     })
     const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
 
@@ -96,7 +118,10 @@ describe('submitFileUpload - initiating upload', () => {
   it('shows "Preparing upload..." progress before initiating', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ uploadUrl: MOCK_UPLOAD_URL })
+      json: async () => ({
+        uploadUrl: MOCK_UPLOAD_URL,
+        reviewId: MOCK_REVIEW_ID
+      })
     })
     const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
 
@@ -111,7 +136,10 @@ describe('submitFileUpload - initiating upload', () => {
   it('submits a hidden form to the CDP Uploader URL after successful initiate', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ uploadUrl: MOCK_UPLOAD_URL })
+      json: async () => ({
+        uploadUrl: MOCK_UPLOAD_URL,
+        reviewId: MOCK_REVIEW_ID
+      })
     })
     const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
 
@@ -123,7 +151,10 @@ describe('submitFileUpload - initiating upload', () => {
   it('sets the form action to the CDP Uploader upload URL', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ uploadUrl: MOCK_UPLOAD_URL })
+      json: async () => ({
+        uploadUrl: MOCK_UPLOAD_URL,
+        reviewId: MOCK_REVIEW_ID
+      })
     })
     const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
     const createElementSpy = vi.spyOn(document, 'createElement')
@@ -233,6 +264,211 @@ describe('submitFileUpload - errors', () => {
     expect(uiFeedback.showDocumentError).toHaveBeenCalledWith(
       'Upload failed: Uploaded file could not be processed. Please ensure it is a valid PDF or Word document and try again.'
     )
+  })
+})
+
+// ── History and auto-refresh ──────────────────────────────────────────────────
+
+describe('submitFileUpload - history and auto-refresh', () => {
+  it('adds a pending history entry with the reviewId before form submission', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        uploadUrl: MOCK_UPLOAD_URL,
+        reviewId: MOCK_REVIEW_ID
+      })
+    })
+    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
+
+    await apiClient.submitFileUpload(file)
+
+    expect(reviewHistory.addReviewToHistory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: MOCK_REVIEW_ID,
+        status: 'pending'
+      })
+    )
+  })
+
+  it('uses the filename as display name for short filenames', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        uploadUrl: MOCK_UPLOAD_URL,
+        reviewId: MOCK_REVIEW_ID
+      })
+    })
+    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
+
+    await apiClient.submitFileUpload(file)
+
+    expect(reviewHistory.addReviewToHistory).toHaveBeenCalledWith(
+      expect.objectContaining({ fileName: TEST_FILENAME })
+    )
+  })
+
+  it('truncates long filenames to first 3 word-segments with ellipsis and extension', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        uploadUrl: MOCK_UPLOAD_URL,
+        reviewId: MOCK_REVIEW_ID
+      })
+    })
+    const file = new File(
+      ['content'],
+      'My Very Long Document Report Extra.pdf',
+      { type: TEST_FILE_TYPE }
+    )
+
+    await apiClient.submitFileUpload(file)
+
+    expect(reviewHistory.addReviewToHistory).toHaveBeenCalledWith(
+      expect.objectContaining({ fileName: 'My Very Long....pdf' })
+    )
+  })
+
+  it('truncates underscore-separated long filenames', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        uploadUrl: MOCK_UPLOAD_URL,
+        reviewId: MOCK_REVIEW_ID
+      })
+    })
+    const file = new File(['content'], 'my_long_file_name.pdf', {
+      type: TEST_FILE_TYPE
+    })
+
+    await apiClient.submitFileUpload(file)
+
+    expect(reviewHistory.addReviewToHistory).toHaveBeenCalledWith(
+      expect.objectContaining({ fileName: 'my long file....pdf' })
+    )
+  })
+
+  it('calls forceStartAutoRefresh after initiating upload', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        uploadUrl: MOCK_UPLOAD_URL,
+        reviewId: MOCK_REVIEW_ID
+      })
+    })
+    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
+
+    await apiClient.submitFileUpload(file)
+
+    expect(globalThis.forceStartAutoRefresh).toHaveBeenCalled()
+  })
+})
+
+// ── Iframe scanning (user stays on homepage) ──────────────────────────────────
+
+describe('submitFileUpload - iframe scanning', () => {
+  it('targets the form at the hidden iframe, not the main window', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        uploadUrl: MOCK_UPLOAD_URL,
+        reviewId: MOCK_REVIEW_ID
+      })
+    })
+    const createElementSpy = vi.spyOn(document, 'createElement')
+    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
+
+    await apiClient.submitFileUpload(file)
+
+    const formCall = createElementSpy.mock.results.find(
+      (r) => r.value?.tagName === 'FORM'
+    )
+    expect(formCall?.value.target).toBe('cdp-upload-frame')
+  })
+
+  it('shows "Uploading and scanning" progress after form submission', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        uploadUrl: MOCK_UPLOAD_URL,
+        reviewId: MOCK_REVIEW_ID
+      })
+    })
+    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
+
+    await apiClient.submitFileUpload(file)
+
+    expect(uiFeedback.showProgress).toHaveBeenCalledWith(
+      'Uploading and scanning document — please wait...',
+      PROGRESS_SCANNING
+    )
+  })
+
+  it('registers a load listener on the hidden iframe', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        uploadUrl: MOCK_UPLOAD_URL,
+        reviewId: MOCK_REVIEW_ID
+      })
+    })
+    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
+
+    await apiClient.submitFileUpload(file)
+
+    expect(mockIframe.addEventListener).toHaveBeenCalledWith(
+      'load',
+      expect.any(Function)
+    )
+  })
+
+  it('calls location.reload() when iframe load fires with a same-origin URL', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        uploadUrl: MOCK_UPLOAD_URL,
+        reviewId: MOCK_REVIEW_ID
+      })
+    })
+    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
+
+    await apiClient.submitFileUpload(file)
+
+    // Simulate CDP Uploader redirect completing — iframe is now same-origin
+    Object.defineProperty(mockIframe, 'contentWindow', {
+      get: () => ({ location: { href: 'http://localhost/' } }),
+      configurable: true
+    })
+    iframeLoadHandler()
+
+    expect(globalThis.location.reload).toHaveBeenCalled()
+  })
+
+  it('does not call location.reload() when iframe load fires while still cross-origin', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        uploadUrl: MOCK_UPLOAD_URL,
+        reviewId: MOCK_REVIEW_ID
+      })
+    })
+    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
+
+    await apiClient.submitFileUpload(file)
+
+    // Simulate iframe still on CDP Uploader (cross-origin access throws)
+    Object.defineProperty(mockIframe, 'contentWindow', {
+      get: () => {
+        throw new DOMException('cross-origin')
+      },
+      configurable: true
+    })
+    iframeLoadHandler()
+
+    expect(globalThis.location.reload).not.toHaveBeenCalled()
+
+    // Remove the override so jsdom's original contentWindow getter is restored
+    // for teardown — otherwise jsdom throws when closing the iframe window
+    delete mockIframe.contentWindow
   })
 })
 
