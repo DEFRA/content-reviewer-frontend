@@ -49,6 +49,7 @@ export function isValidFileSize(file) {
 
 // Progress values
 export const PROGRESS_INITIAL = 30
+export const PROGRESS_SCANNING = 60
 export const PROGRESS_PROCESSING = 70
 
 // Delays (milliseconds)
@@ -59,6 +60,9 @@ export const HISTORY_UPDATE_DELAY = 500
 // Preview limits
 export const PREVIEW_WORDS_LIMIT = 3
 export const PREVIEW_CHARS_LIMIT = 50
+
+// Filename display limits
+export const FILENAME_WORDS_LIMIT = 3
 
 // Fetch options
 export const CREDENTIALS_SAME_ORIGIN = 'same-origin'

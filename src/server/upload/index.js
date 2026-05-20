@@ -24,21 +24,6 @@ const upload = {
               heading: 'Upload Your Document'
             })
           }
-        },
-        {
-          method: 'GET',
-          path: '/upload/status-poller',
-          handler: uploadController.statusPoller
-        },
-        {
-          method: 'GET',
-          path: '/upload/status/{uploadId}',
-          handler: uploadController.getStatus
-        },
-        {
-          method: 'POST',
-          path: '/upload/trigger-review',
-          handler: uploadController.triggerReview
         }
       ])
     }
