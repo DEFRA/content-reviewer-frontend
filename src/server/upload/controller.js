@@ -36,10 +36,7 @@ const uploadController = {
 
       const userId = request.yar?.id || 'unknown'
       const uploadSession = await initiateUpload({
-        // Relative path redirect — matches the PAFS portal pattern used by other
-        // DEFRA services. CDP Uploader resolves it back to our service in production
-        // (same-host routing). Locally, CDP Uploader dev mode converts it via Referer.
-        redirect: `/upload/complete?reviewId=${encodeURIComponent(reviewId)}`,
+        redirect: '/',
         callback: callbackUrl,
         metadata: { reviewId, userId }
       })
