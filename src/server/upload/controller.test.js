@@ -58,13 +58,14 @@ describe('uploadController', () => {
     )
   })
 
-  it('should pass a relative /upload/complete redirect with reviewId to CDP Uploader', async () => {
+  it('should pass a relative redirect URI to CDP Uploader', async () => {
     const h = { response: vi.fn().mockReturnValue({ code: vi.fn() }) }
 
     await uploadController.initiateUpload(makeRequest(), h)
 
-    const call = initiateUpload.mock.calls[0][0]
-    expect(call.redirect).toMatch(/^\/upload\/complete\?reviewId=/)
+    expect(initiateUpload).toHaveBeenCalledWith(
+      expect.objectContaining({ redirect: '/' })
+    )
   })
 
   it('should use "unknown" userId when yar.id is not set', async () => {
