@@ -5,6 +5,7 @@ const backendUrl = config.get('backendUrl')
 const wsUrl = backendUrl
   .replace('http://', 'ws://')
   .replace('https://', 'wss://')
+const cdpUploaderUrl = config.get('cdpUploader.url')
 
 /**
  * Manage content security policies.
@@ -25,10 +26,10 @@ const contentSecurityPolicy = {
       "'sha256-GUQ5ad8JK5KmEWmROf3LZd9ge94daqNvd8xy9YS1iDw='"
     ],
     imgSrc: ['self', 'data:'],
-    frameSrc: ['self', 'data:'],
+    frameSrc: ['self', 'data:', cdpUploaderUrl],
     objectSrc: ['none'],
     frameAncestors: ['none'],
-    formAction: ['self'],
+    formAction: ['self', cdpUploaderUrl],
     manifestSrc: ['self'],
     generateNonces: 'script' // Only generate nonces for scripts, not styles, to allow 'unsafe-inline' for CSS
   }
