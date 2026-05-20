@@ -36,10 +36,10 @@ const uploadController = {
 
       const userId = request.yar?.id || 'unknown'
       const uploadSession = await initiateUpload({
-        // Relative redirect URL — CDP docs confirm this is correct:
-        // - In production: all services share the same host so '/' resolves to our app
-        // - Locally: CDP Uploader dev mode converts relative URLs to absolute using the Referer header
-        redirect: '/',
+        // Relative path redirect — matches the PAFS portal pattern used by other
+        // DEFRA services. CDP Uploader resolves it back to our service in production
+        // (same-host routing). Locally, CDP Uploader dev mode converts it via Referer.
+        redirect: `/upload/complete?reviewId=${encodeURIComponent(reviewId)}`,
         callback: callbackUrl,
         metadata: { reviewId, userId }
       })

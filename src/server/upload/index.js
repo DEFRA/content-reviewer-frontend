@@ -24,6 +24,13 @@ const upload = {
               heading: 'Upload Your Document'
             })
           }
+        },
+        {
+          // CDP Uploader redirects here after scanning completes.
+          // reviewId is available as a query param if needed in future.
+          method: 'GET',
+          path: '/upload/complete',
+          handler: (_request, h) => h.redirect('/')
         }
       ])
     }
