@@ -12,7 +12,7 @@ vi.mock('./controller.js', () => ({
 describe('upload plugin', () => {
   let server
   let registeredRoutes
-  const EXPECTED_ROUTE_COUNT = 3
+  const EXPECTED_ROUTE_COUNT = 4
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -79,5 +79,16 @@ describe('upload plugin routes', () => {
       pageTitle: 'Upload Document',
       heading: 'Upload Your Document'
     })
+  })
+
+  it('should register GET /upload/complete route that redirects to /', async () => {
+    await upload.plugin.register(server)
+    const route = registeredRoutes.find(
+      (r) => r.method === 'GET' && r.path === '/upload/complete'
+    )
+    expect(route).toBeDefined()
+    const h = { redirect: vi.fn() }
+    route.handler({}, h)
+    expect(h.redirect).toHaveBeenCalledWith('/')
   })
 })
