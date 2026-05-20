@@ -26,7 +26,7 @@ const contentSecurityPolicy = {
       "'sha256-GUQ5ad8JK5KmEWmROf3LZd9ge94daqNvd8xy9YS1iDw='"
     ],
     imgSrc: ['self', 'data:'],
-    frameSrc: ['self', 'data:', cdpUploaderUrl],
+    frameSrc: ['self', 'data:'],
     objectSrc: ['none'],
     frameAncestors: ['none'],
     formAction: ['self', cdpUploaderUrl],
