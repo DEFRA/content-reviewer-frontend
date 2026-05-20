@@ -351,7 +351,10 @@ describe('createServer - security headers', () => {
     const header = vi.fn()
     const h = { continue: Symbol('continue') }
     headersHandler({ response: { isBoom: false, header } }, h)
-    expect(header).toHaveBeenCalledWith('Referrer-Policy', 'no-referrer')
+    expect(header).toHaveBeenCalledWith(
+      'Referrer-Policy',
+      'strict-origin-when-cross-origin'
+    )
   })
 
   it('should add Permissions-Policy header to normal responses', () => {
@@ -368,7 +371,9 @@ describe('createServer - security headers', () => {
     const response = { isBoom: true, output: { headers: {} } }
     const h = { continue: Symbol('continue') }
     headersHandler({ response }, h)
-    expect(response.output.headers['Referrer-Policy']).toBe('no-referrer')
+    expect(response.output.headers['Referrer-Policy']).toBe(
+      'strict-origin-when-cross-origin'
+    )
     expect(response.output.headers['Permissions-Policy']).toBe(
       'geolocation=(), camera=(), microphone=()'
     )

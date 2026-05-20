@@ -265,7 +265,7 @@ function registerSecurityHeaders(server) {
   server.ext('onPreResponse', (request, h) => {
     const { response } = request
     const headers = {
-      'Referrer-Policy': 'no-referrer',
+      'Referrer-Policy': 'strict-origin-when-cross-origin',
       'Permissions-Policy': 'geolocation=(), camera=(), microphone=()'
     }
     if (response.isBoom) {
