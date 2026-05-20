@@ -63,6 +63,8 @@ describe('uploadController', () => {
 
     await uploadController.initiateUpload(makeRequest(), h)
 
+    // Relative URL per CDP docs: same-host routing resolves it in production;
+    // CDP Uploader dev mode converts it via Referer header locally.
     expect(initiateUpload).toHaveBeenCalledWith(
       expect.objectContaining({ redirect: '/' })
     )

@@ -29,11 +29,6 @@ const uploadController = {
       const reviewId = randomUUID()
       const backendUrl = config.get('backendUrl')
 
-      // CDP Uploader requires a relative URI for redirect (it resolves against
-      // the originating service's Origin/Referer). Absolute URLs are rejected
-      // with ValidationError: "redirect" must be a valid relative uri.
-      const redirectUrl = '/'
-
       // CDP Uploader calls this server-to-server after the virus scan completes.
       // The backend extracts text from S3, creates the canonical document, and
       // queues the SQS job that triggers the Bedrock AI review.
@@ -41,7 +36,10 @@ const uploadController = {
 
       const userId = request.yar?.id || 'unknown'
       const uploadSession = await initiateUpload({
-        redirect: redirectUrl,
+        // Relative redirect URL — CDP docs confirm this is correct:
+        // - In production: all services share the same host so '/' resolves to our app
+        // - Locally: CDP Uploader dev mode converts relative URLs to absolute using the Referer header
+        redirect: '/',
         callback: callbackUrl,
         metadata: { reviewId, userId }
       })
