@@ -18,7 +18,7 @@ const contentSecurityPolicy = {
     // https://frontend.design-system.service.gov.uk/import-javascript/#if-our-inline-javascript-snippet-is-blocked-by-a-content-security-policy
     defaultSrc: ['self'],
     fontSrc: ['self', 'data:'],
-    connectSrc: ['self', 'data:', backendUrl, wsUrl],
+    connectSrc: ['self', 'data:', backendUrl, wsUrl, cdpUploaderUrl],
     mediaSrc: ['self'],
     styleSrc: ['self', "'unsafe-inline'"],
     scriptSrc: [
