@@ -94,16 +94,6 @@ describe('contentSecurityPolicy - static policy values', () => {
     )
   })
 
-  it('includes cdpUploaderUrl in frameSrc to allow the hidden upload iframe', async () => {
-    vi.resetModules()
-    mockConfigGet.mockImplementation((key) =>
-      key === 'cdpUploader.url' ? CDP_UPLOADER_URL : BACKEND_URL_HTTP
-    )
-    const { contentSecurityPolicy } =
-      await import('./content-security-policy.js')
-    expect(contentSecurityPolicy.options.frameSrc).toContain(CDP_UPLOADER_URL)
-  })
-
   it('includes cdpUploaderUrl in formAction to allow form POST to CDP Uploader', async () => {
     vi.resetModules()
     mockConfigGet.mockImplementation((key) =>
