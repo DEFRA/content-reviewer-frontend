@@ -15,6 +15,7 @@ import { getReviewsController } from './api/reviews.js'
 import { deleteReviewRoute } from './api/delete-review.js'
 import { fetchUrlController } from './api/fetch-url.js'
 import { urlReviewController } from './api/url-review.js'
+import { fileReviewHandler } from './api/file-review.js'
 import { serveStaticFiles } from './common/helpers/serve-static-files.js'
 import { loginController } from './auth/login/controller.js'
 
@@ -56,6 +57,20 @@ function registerApiRoutes(server) {
       // fetch + content extraction + backend submission in one request.
       // Sourced from `routes.socketTimeoutLongMs` (ROUTE_SOCKET_TIMEOUT_LONG_MS).
       timeout: { socket: config.get('routes.socketTimeoutLongMs') }
+    }
+  })
+
+  server.route({
+    method: 'POST',
+    path: '/api/review/file',
+    handler: fileReviewHandler,
+    options: {
+      payload: {
+        output: 'stream',
+        parse: true,
+        allow: 'multipart/form-data',
+        maxBytes: config.get('cdpUploader.maxFileSize')
+      }
     }
   })
 
