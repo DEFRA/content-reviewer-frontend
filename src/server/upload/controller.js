@@ -27,11 +27,12 @@ const uploadController = {
   async initiateUpload(request, h) {
     try {
       const reviewId = randomUUID()
-      const appBaseUrl = config.get('appBaseUrl')
       const backendUrl = config.get('backendUrl')
 
-      // After scanning, CDP Uploader redirects the browser back to the homepage
-      const redirectUrl = `${appBaseUrl}/`
+      // CDP Uploader requires a relative URI for redirect (it resolves against
+      // the originating service's Origin/Referer). Absolute URLs are rejected
+      // with ValidationError: "redirect" must be a valid relative uri.
+      const redirectUrl = '/'
 
       // CDP Uploader calls this server-to-server after the virus scan completes.
       // The backend extracts text from S3, creates the canonical document, and
