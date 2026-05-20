@@ -6,6 +6,7 @@ import {
   HISTORY_UPDATE_DELAY,
   PREVIEW_WORDS_LIMIT,
   PREVIEW_CHARS_LIMIT,
+  FILENAME_WORDS_LIMIT,
   CREDENTIALS_SAME_ORIGIN,
   SLUG_MAX_LENGTH
 } from './constants.js'
@@ -173,8 +174,10 @@ function getDisplayFileName(fileName) {
   const base = lastDot > 0 ? fileName.slice(0, lastDot) : fileName
   const ext = lastDot > 0 ? fileName.slice(lastDot) : ''
   const words = base.split(/[\s_-]+/).filter(Boolean)
-  if (words.length <= 3) return fileName
-  return `${words.slice(0, 3).join(' ')}...${ext}`
+  if (words.length <= FILENAME_WORDS_LIMIT) {
+    return fileName
+  }
+  return `${words.slice(0, FILENAME_WORDS_LIMIT).join(' ')}...${ext}`
 }
 
 export async function submitFileUpload(file) {
@@ -253,8 +256,8 @@ export async function submitFileUpload(file) {
         // iframe is on CDP Uploader (cross-origin) this throws — we just wait.
         const redirectedTo = iframe.contentWindow.location.href
         if (redirectedTo) {
-          document.body.removeChild(iframe)
-          document.body.removeChild(form)
+          iframe.remove()
+          form.remove()
           globalThis.location.reload()
         }
       } catch {

@@ -61,6 +61,9 @@ export const HISTORY_UPDATE_DELAY = 500
 export const PREVIEW_WORDS_LIMIT = 3
 export const PREVIEW_CHARS_LIMIT = 50
 
+// Filename display limits
+export const FILENAME_WORDS_LIMIT = 3
+
 // Fetch options
 export const CREDENTIALS_SAME_ORIGIN = 'same-origin'
 
