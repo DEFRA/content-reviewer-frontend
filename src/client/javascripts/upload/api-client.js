@@ -1,6 +1,7 @@
 // API client for upload and review operations
 import {
   PROGRESS_INITIAL,
+  PROGRESS_SCANNING,
   PROGRESS_PROCESSING,
   HISTORY_UPDATE_DELAY,
   PREVIEW_WORDS_LIMIT,
@@ -167,14 +168,24 @@ export async function submitTextReview(textContent) {
   }
 }
 
+function getDisplayFileName(fileName) {
+  const lastDot = fileName.lastIndexOf('.')
+  const base = lastDot > 0 ? fileName.slice(0, lastDot) : fileName
+  const ext = lastDot > 0 ? fileName.slice(lastDot) : ''
+  const words = base.split(/[\s_-]+/).filter(Boolean)
+  if (words.length <= 3) return fileName
+  return `${words.slice(0, 3).join(' ')}...${ext}`
+}
+
 export async function submitFileUpload(file) {
   const elements = getElements()
   try {
     showProgress('Preparing upload...', PROGRESS_INITIAL)
 
     // Step 1: Ask our server to initiate a CDP Uploader session.
-    // The server calls the CDP Uploader /initiate endpoint and returns the
-    // URL the browser should POST the file to.
+    // Returns { uploadUrl, reviewId }. The server registers a callbackUrl so
+    // CDP Uploader calls the backend /upload-callback automatically after
+    // scanning — no frontend status-poller step is needed.
     const initiateResponse = await fetch('/upload/initiate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -193,19 +204,32 @@ export async function submitFileUpload(file) {
       return
     }
 
-    const { uploadUrl } = await initiateResponse.json()
+    const { uploadUrl, reviewId } = await initiateResponse.json()
 
-    // Step 2: Submit the file directly to the CDP Uploader via a hidden form POST
-    // (multipart/form-data, input name="file") to POST /upload-and-scan/{uploadId}.
-    // The browser navigates to CDP Uploader, which virus-scans the file and stores
-    // it in S3, then redirects the browser to /upload/status-poller.
-    // The status-poller then calls /upload/trigger-review (step c) which fetches
-    // the S3 details from the CDP Uploader status endpoint and forwards them to
-    // the backend to start the processing pipeline.
+    // Add a pending history entry immediately so the user sees the review
+    // listed as Pending when they return to the homepage after the upload.
+    // Auto-refresh updates the status once the backend has processed the file.
+    const displayName = getDisplayFileName(file.name)
+    handleReviewHistory({ reviewId }, displayName)
+    startAutoRefresh()
+
+    // Step 2: Submit the file directly to CDP Uploader via a hidden iframe form POST.
+    // Using an iframe keeps the user on the homepage — they see our progress message
+    // instead of CDP Uploader's blank loading page. The file bytes go directly from
+    // the browser to CDP Uploader (no data touches our server before virus scanning).
+    // CDP Uploader scans it, calls the backend /upload-callback (server-to-server),
+    // then redirects the iframe to the homepage (same-origin). We detect that redirect,
+    // clean up, and reload the main page to show the updated review history.
+    const iframe = document.createElement('iframe')
+    iframe.name = 'cdp-upload-frame'
+    iframe.style.display = 'none'
+    document.body.appendChild(iframe)
+
     const form = document.createElement('form')
     form.method = 'POST'
     form.action = uploadUrl
     form.enctype = 'multipart/form-data'
+    form.target = 'cdp-upload-frame'
 
     const fileInput = document.createElement('input')
     fileInput.type = 'file'
@@ -216,8 +240,29 @@ export async function submitFileUpload(file) {
 
     form.appendChild(fileInput)
     document.body.appendChild(form)
+
+    showProgress(
+      'Uploading and scanning document — please wait...',
+      PROGRESS_SCANNING
+    )
+
+    iframe.addEventListener('load', () => {
+      try {
+        // When CDP Uploader finishes and redirects back to our app the iframe
+        // becomes same-origin and contentWindow.location is readable. While the
+        // iframe is on CDP Uploader (cross-origin) this throws — we just wait.
+        const redirectedTo = iframe.contentWindow.location.href
+        if (redirectedTo) {
+          document.body.removeChild(iframe)
+          document.body.removeChild(form)
+          globalThis.location.reload()
+        }
+      } catch {
+        // Still on CDP Uploader (cross-origin) — redirect not yet complete
+      }
+    })
+
     form.submit()
-    // Browser navigates away from this point — no further code runs here
   } catch (error) {
     hideProgress()
     const userMessage = JSON_PARSE_ERROR_PATTERNS.some((p) =>

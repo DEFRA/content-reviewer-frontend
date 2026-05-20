@@ -35,6 +35,12 @@ export const config = convict({
     default: 3000,
     env: 'PORT'
   },
+  appBaseUrl: {
+    doc: 'The public base URL of this service, used to build absolute redirect URLs (e.g. for CDP Uploader callbacks). Set APP_BASE_URL in the CDP environment config.',
+    format: String,
+    default: 'http://localhost:3000',
+    env: 'APP_BASE_URL'
+  },
   staticCacheTimeout: {
     doc: 'Static cache timeout in milliseconds',
     format: Number,

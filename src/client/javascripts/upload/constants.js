@@ -49,6 +49,7 @@ export function isValidFileSize(file) {
 
 // Progress values
 export const PROGRESS_INITIAL = 30
+export const PROGRESS_SCANNING = 60
 export const PROGRESS_PROCESSING = 70
 
 // Delays (milliseconds)
