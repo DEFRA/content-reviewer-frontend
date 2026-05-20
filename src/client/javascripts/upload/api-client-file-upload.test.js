@@ -1,13 +1,12 @@
 /**
  * @vitest-environment jsdom
  */
-/* global HTMLFormElement */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import * as apiClient from './api-client.js'
 import * as uiFeedback from './ui-feedback.js'
 import * as domElements from './dom-elements.js'
 import * as reviewHistory from './review-history.js'
-import { PROGRESS_INITIAL } from './constants.js'
+import { PROGRESS_INITIAL, PROGRESS_PROCESSING } from './constants.js'
 
 const TEST_FILE_TYPE = 'application/pdf'
 const TEST_FILENAME = 'test.pdf'
@@ -16,43 +15,14 @@ const MOCK_UPLOAD_URL =
 const MOCK_REVIEW_ID = 'mock-review-id-123'
 const ERROR_MSG_NETWORK = 'Network error'
 const ERROR_MSG_UPLOAD = 'Server rejected the file'
+// CDP Uploader responds with an opaque redirect (302 intercepted by redirect:'manual')
+const MOCK_CDP_RESPONSE = { type: 'opaqueredirect', ok: false, status: 0 }
 
 let mockFetch
-let mockFormSubmit
 
 beforeEach(() => {
   mockFetch = vi.fn()
   globalThis.fetch = mockFetch
-
-  // Spy on form.submit to prevent real navigation in jsdom
-  mockFormSubmit = vi
-    .spyOn(HTMLFormElement.prototype, 'submit')
-    .mockImplementation(function () {})
-
-  // jsdom does not include DataTransfer — provide a minimal constructor stub
-  globalThis.DataTransfer = class {
-    constructor() {
-      this.items = { add: () => {} }
-      this.files = []
-    }
-  }
-
-  // jsdom's HTMLInputElement.files setter requires a proper FileList, which our
-  // mock DataTransfer does not produce. Override the descriptor so the property
-  // is writable, while keeping a real DOM Node so that appendChild() works.
-  const realCreateElement = document.createElement.bind(document)
-  vi.spyOn(document, 'createElement').mockImplementation((tag) => {
-    if (tag === 'input') {
-      const input = realCreateElement('input')
-      Object.defineProperty(input, 'files', {
-        writable: true,
-        configurable: true,
-        value: null
-      })
-      return input
-    }
-    return realCreateElement(tag)
-  })
 
   vi.spyOn(domElements, 'getElements').mockReturnValue({
     uploadButton: { disabled: false }
@@ -74,13 +44,15 @@ afterEach(() => {
 
 describe('submitFileUpload - initiating upload', () => {
   it('calls /upload/initiate with filename and mimeType', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        uploadUrl: MOCK_UPLOAD_URL,
-        reviewId: MOCK_REVIEW_ID
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          uploadUrl: MOCK_UPLOAD_URL,
+          reviewId: MOCK_REVIEW_ID
+        })
       })
-    })
+      .mockResolvedValueOnce(MOCK_CDP_RESPONSE)
     const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
 
     await apiClient.submitFileUpload(file)
@@ -101,13 +73,15 @@ describe('submitFileUpload - initiating upload', () => {
   })
 
   it('shows "Preparing upload..." progress before initiating', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        uploadUrl: MOCK_UPLOAD_URL,
-        reviewId: MOCK_REVIEW_ID
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          uploadUrl: MOCK_UPLOAD_URL,
+          reviewId: MOCK_REVIEW_ID
+        })
       })
-    })
+      .mockResolvedValueOnce(MOCK_CDP_RESPONSE)
     const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
 
     await apiClient.submitFileUpload(file)
@@ -118,42 +92,48 @@ describe('submitFileUpload - initiating upload', () => {
     )
   })
 
-  it('submits a hidden form to the CDP Uploader URL after successful initiate', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        uploadUrl: MOCK_UPLOAD_URL,
-        reviewId: MOCK_REVIEW_ID
+  it('sends FormData to CDP Uploader URL via fetch with redirect:manual', async () => {
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          uploadUrl: MOCK_UPLOAD_URL,
+          reviewId: MOCK_REVIEW_ID
+        })
       })
-    })
+      .mockResolvedValueOnce(MOCK_CDP_RESPONSE)
     const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
 
     await apiClient.submitFileUpload(file)
 
-    expect(mockFormSubmit).toHaveBeenCalledOnce()
+    expect(mockFetch).toHaveBeenCalledWith(
+      MOCK_UPLOAD_URL,
+      expect.objectContaining({
+        method: 'POST',
+        redirect: 'manual',
+        body: expect.any(FormData)
+      })
+    )
   })
 
-  it('sets the form action to the CDP Uploader upload URL', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        uploadUrl: MOCK_UPLOAD_URL,
-        reviewId: MOCK_REVIEW_ID
+  it('shows uploading progress when sending file to CDP Uploader', async () => {
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          uploadUrl: MOCK_UPLOAD_URL,
+          reviewId: MOCK_REVIEW_ID
+        })
       })
-    })
+      .mockResolvedValueOnce(MOCK_CDP_RESPONSE)
     const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
-    const createElementSpy = vi.spyOn(document, 'createElement')
 
     await apiClient.submitFileUpload(file)
 
-    const formCall = createElementSpy.mock.results.find(
-      (r) => r.value?.tagName === 'FORM'
+    expect(uiFeedback.showProgress).toHaveBeenCalledWith(
+      'Uploading and scanning document — please wait...',
+      PROGRESS_PROCESSING
     )
-    if (formCall) {
-      expect(formCall.value.action).toBe(MOCK_UPLOAD_URL)
-    }
-    // If we couldn't introspect the form, at least confirm submit was called
-    expect(mockFormSubmit).toHaveBeenCalledOnce()
   })
 })
 
@@ -255,14 +235,20 @@ describe('submitFileUpload - errors', () => {
 // ── History and auto-refresh ──────────────────────────────────────────────────
 
 describe('submitFileUpload - history and auto-refresh', () => {
-  it('adds a pending history entry with the reviewId before form submission', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        uploadUrl: MOCK_UPLOAD_URL,
-        reviewId: MOCK_REVIEW_ID
+  function mockHappyPath() {
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          uploadUrl: MOCK_UPLOAD_URL,
+          reviewId: MOCK_REVIEW_ID
+        })
       })
-    })
+      .mockResolvedValueOnce(MOCK_CDP_RESPONSE)
+  }
+
+  it('adds a pending history entry with the reviewId before sending to CDP Uploader', async () => {
+    mockHappyPath()
     const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
 
     await apiClient.submitFileUpload(file)
@@ -276,13 +262,7 @@ describe('submitFileUpload - history and auto-refresh', () => {
   })
 
   it('uses the filename as display name for short filenames', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        uploadUrl: MOCK_UPLOAD_URL,
-        reviewId: MOCK_REVIEW_ID
-      })
-    })
+    mockHappyPath()
     const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
 
     await apiClient.submitFileUpload(file)
@@ -293,13 +273,7 @@ describe('submitFileUpload - history and auto-refresh', () => {
   })
 
   it('truncates long filenames to first 3 word-segments with ellipsis and extension', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        uploadUrl: MOCK_UPLOAD_URL,
-        reviewId: MOCK_REVIEW_ID
-      })
-    })
+    mockHappyPath()
     const file = new File(
       ['content'],
       'My Very Long Document Report Extra.pdf',
@@ -314,13 +288,7 @@ describe('submitFileUpload - history and auto-refresh', () => {
   })
 
   it('truncates underscore-separated long filenames', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        uploadUrl: MOCK_UPLOAD_URL,
-        reviewId: MOCK_REVIEW_ID
-      })
-    })
+    mockHappyPath()
     const file = new File(['content'], 'my_long_file_name.pdf', {
       type: TEST_FILE_TYPE
     })
@@ -333,13 +301,7 @@ describe('submitFileUpload - history and auto-refresh', () => {
   })
 
   it('calls forceStartAutoRefresh after initiating upload', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        uploadUrl: MOCK_UPLOAD_URL,
-        reviewId: MOCK_REVIEW_ID
-      })
-    })
+    mockHappyPath()
     const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
 
     await apiClient.submitFileUpload(file)
