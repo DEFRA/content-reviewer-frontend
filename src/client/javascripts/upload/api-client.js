@@ -209,34 +209,36 @@ export async function submitFileUpload(file) {
     const { uploadUrl, reviewId } = await initiateResponse.json()
 
     // Add a pending history entry immediately so the user sees the review
-    // listed as Pending when they return to the homepage after the upload.
+    // listed as Pending while the upload and scan are in progress.
     // Auto-refresh updates the status once the backend has processed the file.
     const displayName = getDisplayFileName(file.name)
     handleReviewHistory({ reviewId }, displayName)
     startAutoRefresh()
 
-    // Step 2: Submit the file directly to CDP Uploader via a form POST.
-    // The file bytes go directly from the browser to CDP Uploader — no data
-    // touches our server before virus scanning. CDP Uploader scans the file,
-    // calls the backend /upload-callback (server-to-server), then redirects
-    // the browser back to the homepage. CDP Uploader sets X-Frame-Options: deny
-    // so an iframe cannot be used — the browser must navigate via the main window.
-    const form = document.createElement('form')
-    form.method = 'POST'
-    form.action = uploadUrl
-    form.enctype = 'multipart/form-data'
+    // Step 2: POST the file directly to CDP Uploader using fetch with redirect: 'manual'.
+    // - File bytes go directly browser → CDP Uploader, no server hop before virus scanning.
+    // - multipart/form-data is a CORS simple request — no preflight needed.
+    // - redirect: 'manual' intercepts CDP Uploader's 302 response so the user
+    //   stays on our page rather than navigating away. CDP Uploader scans the
+    //   file and calls the backend /upload-callback server-to-server automatically.
+    showProgress(
+      'Uploading and scanning document — please wait...',
+      PROGRESS_PROCESSING
+    )
 
-    const fileInput = document.createElement('input')
-    fileInput.type = 'file'
-    fileInput.name = 'file'
-    const dt = new globalThis.DataTransfer()
-    dt.items.add(file)
-    fileInput.files = dt.files
+    const formData = new FormData()
+    formData.append('file', file)
 
-    form.appendChild(fileInput)
-    document.body.appendChild(form)
-    form.submit()
-    // Browser navigates to CDP Uploader — it scans the file and redirects back to /upload/complete
+    await fetch(uploadUrl, {
+      method: 'POST',
+      body: formData,
+      redirect: 'manual'
+    })
+
+    hideProgress()
+    if (elements.uploadButton) {
+      elements.uploadButton.disabled = false
+    }
   } catch (error) {
     hideProgress()
     const userMessage = JSON_PARSE_ERROR_PATTERNS.some((p) =>

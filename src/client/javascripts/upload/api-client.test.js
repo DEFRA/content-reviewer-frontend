@@ -261,13 +261,14 @@ describe('submitUrlReview - errors', () => {
 
 describe('submitFileUpload - success', () => {
   it('should successfully upload a file', async () => {
+    const MOCK_CDP_URL = 'https://cdp-uploader.example.com/upload/abc'
     const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        uploadUrl: 'https://cdp-uploader.example.com/upload/abc'
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ uploadUrl: MOCK_CDP_URL })
       })
-    })
+      .mockResolvedValueOnce({ type: 'opaqueredirect', ok: false, status: 0 })
     const uploadPromise = apiClient.submitFileUpload(file)
     await vi.advanceTimersByTimeAsync(0)
     await uploadPromise
@@ -275,9 +276,12 @@ describe('submitFileUpload - success', () => {
       '/upload/initiate',
       expect.objectContaining({ method: 'POST' })
     )
-    // After initiate, the function submits a hidden form and navigates away —
-    // it does not return a value.
-    expect(globalThis._mockFormSubmit).toHaveBeenCalledOnce()
+    // After initiate, the file is POSTed directly to CDP Uploader via fetch
+    // with redirect:'manual' so the user stays on the page.
+    expect(mockFetch).toHaveBeenCalledWith(
+      MOCK_CDP_URL,
+      expect.objectContaining({ method: 'POST', redirect: 'manual' })
+    )
   })
 
   it('should show progress during file upload', async () => {
