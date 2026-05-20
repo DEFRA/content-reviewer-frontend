@@ -6,17 +6,13 @@ import * as apiClient from './api-client.js'
 import * as uiFeedback from './ui-feedback.js'
 import * as domElements from './dom-elements.js'
 import * as reviewHistory from './review-history.js'
-import { PROGRESS_INITIAL, PROGRESS_PROCESSING } from './constants.js'
+import { PROGRESS_INITIAL } from './constants.js'
 
 const TEST_FILE_TYPE = 'application/pdf'
 const TEST_FILENAME = 'test.pdf'
-const MOCK_UPLOAD_URL =
-  'https://cdp-uploader.example.com/upload-and-scan/abc123'
 const MOCK_REVIEW_ID = 'mock-review-id-123'
 const ERROR_MSG_NETWORK = 'Network error'
 const ERROR_MSG_UPLOAD = 'Server rejected the file'
-// CDP Uploader responds with an opaque redirect (302 intercepted by redirect:'manual')
-const MOCK_CDP_RESPONSE = { type: 'opaqueredirect', ok: false, status: 0 }
 
 let mockFetch
 
@@ -42,105 +38,71 @@ afterEach(() => {
 
 // ── Happy path ────────────────────────────────────────────────────────────────
 
-describe('submitFileUpload - initiating upload', () => {
-  it('calls /upload/initiate with filename and mimeType', async () => {
-    mockFetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          uploadUrl: MOCK_UPLOAD_URL,
-          reviewId: MOCK_REVIEW_ID
-        })
-      })
-      .mockResolvedValueOnce(MOCK_CDP_RESPONSE)
+describe('submitFileUpload - uploading', () => {
+  it('POSTs FormData to /api/review/file', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ reviewId: MOCK_REVIEW_ID })
+    })
     const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
 
     await apiClient.submitFileUpload(file)
 
     expect(mockFetch).toHaveBeenCalledWith(
-      '/upload/initiate',
+      '/api/review/file',
       expect.objectContaining({
         method: 'POST',
-        headers: expect.objectContaining({
-          'Content-Type': 'application/json'
-        }),
-        body: JSON.stringify({
-          filename: TEST_FILENAME,
-          mimeType: TEST_FILE_TYPE
-        })
-      })
-    )
-  })
-
-  it('shows "Preparing upload..." progress before initiating', async () => {
-    mockFetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          uploadUrl: MOCK_UPLOAD_URL,
-          reviewId: MOCK_REVIEW_ID
-        })
-      })
-      .mockResolvedValueOnce(MOCK_CDP_RESPONSE)
-    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
-
-    await apiClient.submitFileUpload(file)
-
-    expect(uiFeedback.showProgress).toHaveBeenCalledWith(
-      'Preparing upload...',
-      PROGRESS_INITIAL
-    )
-  })
-
-  it('sends FormData to CDP Uploader URL via fetch with redirect:manual', async () => {
-    mockFetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          uploadUrl: MOCK_UPLOAD_URL,
-          reviewId: MOCK_REVIEW_ID
-        })
-      })
-      .mockResolvedValueOnce(MOCK_CDP_RESPONSE)
-    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
-
-    await apiClient.submitFileUpload(file)
-
-    expect(mockFetch).toHaveBeenCalledWith(
-      MOCK_UPLOAD_URL,
-      expect.objectContaining({
-        method: 'POST',
-        redirect: 'manual',
         body: expect.any(FormData)
       })
     )
   })
 
-  it('shows uploading progress when sending file to CDP Uploader', async () => {
-    mockFetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          uploadUrl: MOCK_UPLOAD_URL,
-          reviewId: MOCK_REVIEW_ID
-        })
-      })
-      .mockResolvedValueOnce(MOCK_CDP_RESPONSE)
+  it('shows uploading progress at the start', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ reviewId: MOCK_REVIEW_ID })
+    })
     const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
 
     await apiClient.submitFileUpload(file)
 
     expect(uiFeedback.showProgress).toHaveBeenCalledWith(
       'Uploading and scanning document — please wait...',
-      PROGRESS_PROCESSING
+      PROGRESS_INITIAL
     )
+  })
+
+  it('hides progress on success', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ reviewId: MOCK_REVIEW_ID })
+    })
+    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
+
+    await apiClient.submitFileUpload(file)
+
+    expect(uiFeedback.hideProgress).toHaveBeenCalled()
+  })
+
+  it('re-enables the upload button on success', async () => {
+    const uploadButton = { disabled: false }
+    vi.spyOn(domElements, 'getElements').mockReturnValue({ uploadButton })
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ reviewId: MOCK_REVIEW_ID })
+    })
+    const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
+
+    await apiClient.submitFileUpload(file)
+
+    expect(uploadButton.disabled).toBe(false)
   })
 })
 
 // ── Error paths ───────────────────────────────────────────────────────────────
 
 describe('submitFileUpload - errors', () => {
-  it('shows document error when /upload/initiate returns non-OK response', async () => {
+  it('shows document error when /api/review/file returns non-OK response', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
       status: 500,
@@ -155,7 +117,7 @@ describe('submitFileUpload - errors', () => {
     )
   })
 
-  it('uses "Failed to initiate upload" fallback when error response has no message', async () => {
+  it('uses "File upload failed" fallback when error response has no message', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
       status: 500,
@@ -166,7 +128,7 @@ describe('submitFileUpload - errors', () => {
     await apiClient.submitFileUpload(file).catch(() => {})
 
     expect(uiFeedback.showDocumentError).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to initiate upload')
+      expect.stringContaining('File upload failed')
     )
   })
 
@@ -236,18 +198,13 @@ describe('submitFileUpload - errors', () => {
 
 describe('submitFileUpload - history and auto-refresh', () => {
   function mockHappyPath() {
-    mockFetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          uploadUrl: MOCK_UPLOAD_URL,
-          reviewId: MOCK_REVIEW_ID
-        })
-      })
-      .mockResolvedValueOnce(MOCK_CDP_RESPONSE)
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ reviewId: MOCK_REVIEW_ID })
+    })
   }
 
-  it('adds a pending history entry with the reviewId before sending to CDP Uploader', async () => {
+  it('adds a pending history entry with the reviewId after successful upload', async () => {
     mockHappyPath()
     const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
 
@@ -300,7 +257,7 @@ describe('submitFileUpload - history and auto-refresh', () => {
     )
   })
 
-  it('calls forceStartAutoRefresh after initiating upload', async () => {
+  it('calls forceStartAutoRefresh after successful upload', async () => {
     mockHappyPath()
     const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
 
@@ -313,7 +270,7 @@ describe('submitFileUpload - history and auto-refresh', () => {
 // ── 401 redirect ──────────────────────────────────────────────────────────────
 
 describe('submitFileUpload - authentication', () => {
-  it('redirects to /auth/login and returns undefined when /upload/initiate returns 401', async () => {
+  it('redirects to /auth/login and returns undefined when /api/review/file returns 401', async () => {
     mockFetch.mockResolvedValueOnce({ ok: false, status: 401 })
     const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
 

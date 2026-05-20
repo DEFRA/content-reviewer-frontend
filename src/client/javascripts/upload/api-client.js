@@ -182,63 +182,45 @@ function getDisplayFileName(fileName) {
 export async function submitFileUpload(file) {
   const elements = getElements()
   try {
-    showProgress('Preparing upload...', PROGRESS_INITIAL)
-
-    // Step 1: Ask our server to initiate a CDP Uploader session.
-    // Returns { uploadUrl, reviewId }. The server registers a callbackUrl so
-    // CDP Uploader calls the backend /upload-callback automatically after
-    // scanning — no frontend status-poller step is needed.
-    const initiateResponse = await fetch('/upload/initiate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: CREDENTIALS_SAME_ORIGIN,
-      body: JSON.stringify({ filename: file.name, mimeType: file.type })
-    })
-
-    if (!initiateResponse.ok) {
-      if (!redirectIfUnauthorised(initiateResponse)) {
-        const errorMessage = await extractJsonErrorMessage(
-          initiateResponse,
-          'Failed to initiate upload'
-        )
-        throw new Error(errorMessage)
-      }
-      return
-    }
-
-    const { uploadUrl, reviewId } = await initiateResponse.json()
-
-    // Add a pending history entry immediately so the user sees the review
-    // listed as Pending while the upload and scan are in progress.
-    // Auto-refresh updates the status once the backend has processed the file.
-    const displayName = getDisplayFileName(file.name)
-    handleReviewHistory({ reviewId }, displayName)
-    startAutoRefresh()
-
-    // Step 2: POST the file directly to CDP Uploader using fetch with redirect: 'manual'.
-    // - File bytes go directly browser → CDP Uploader, no server hop before virus scanning.
-    // - multipart/form-data is a CORS simple request — no preflight needed.
-    // - redirect: 'manual' intercepts CDP Uploader's 302 response so the user
-    //   stays on our page rather than navigating away. CDP Uploader scans the
-    //   file and calls the backend /upload-callback server-to-server automatically.
     showProgress(
       'Uploading and scanning document — please wait...',
-      PROGRESS_PROCESSING
+      PROGRESS_INITIAL
     )
 
+    // POST the file to our own server as a same-origin multipart request.
+    // The server proxies it to CDP Uploader server-to-server, avoiding the
+    // CORS restriction that blocks direct browser-to-CDP fetch calls.
     const formData = new FormData()
     formData.append('file', file)
 
-    await fetch(uploadUrl, {
+    const response = await fetch('/api/review/file', {
       method: 'POST',
       body: formData,
-      redirect: 'manual'
+      credentials: CREDENTIALS_SAME_ORIGIN
     })
 
+    if (!response.ok) {
+      if (redirectIfUnauthorised(response)) {
+        return undefined
+      }
+      const message = await extractJsonErrorMessage(
+        response,
+        'File upload failed'
+      )
+      throw new Error(message)
+    }
+
+    const data = await response.json()
     hideProgress()
+
+    const displayName = getDisplayFileName(file.name)
+    handleReviewHistory(data, displayName)
+    startAutoRefresh()
+
     if (elements.uploadButton) {
       elements.uploadButton.disabled = false
     }
+    return data
   } catch (error) {
     hideProgress()
     const userMessage = JSON_PARSE_ERROR_PATTERNS.some((p) =>

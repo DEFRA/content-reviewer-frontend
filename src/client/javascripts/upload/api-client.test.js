@@ -260,27 +260,18 @@ describe('submitUrlReview - errors', () => {
 })
 
 describe('submitFileUpload - success', () => {
-  it('should successfully upload a file', async () => {
-    const MOCK_CDP_URL = 'https://cdp-uploader.example.com/upload/abc'
+  it('should successfully upload a file via /api/review/file', async () => {
     const file = new File(['content'], TEST_FILENAME, { type: TEST_FILE_TYPE })
-    mockFetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ uploadUrl: MOCK_CDP_URL })
-      })
-      .mockResolvedValueOnce({ type: 'opaqueredirect', ok: false, status: 0 })
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ reviewId: MOCK_REVIEW_ID })
+    })
     const uploadPromise = apiClient.submitFileUpload(file)
     await vi.advanceTimersByTimeAsync(0)
     await uploadPromise
     expect(mockFetch).toHaveBeenCalledWith(
-      '/upload/initiate',
-      expect.objectContaining({ method: 'POST' })
-    )
-    // After initiate, the file is POSTed directly to CDP Uploader via fetch
-    // with redirect:'manual' so the user stays on the page.
-    expect(mockFetch).toHaveBeenCalledWith(
-      MOCK_CDP_URL,
-      expect.objectContaining({ method: 'POST', redirect: 'manual' })
+      '/api/review/file',
+      expect.objectContaining({ method: 'POST', body: expect.any(FormData) })
     )
   })
 
@@ -288,15 +279,13 @@ describe('submitFileUpload - success', () => {
     const file = new File(['test'], TEST_FILENAME, { type: TEST_FILE_TYPE })
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({
-        uploadUrl: 'https://cdp-uploader.example.com/upload/abc'
-      })
+      json: async () => ({ reviewId: MOCK_REVIEW_ID })
     })
     const uploadPromise = apiClient.submitFileUpload(file)
     await vi.advanceTimersByTimeAsync(0)
     await uploadPromise
     expect(uiFeedback.showProgress).toHaveBeenCalledWith(
-      'Preparing upload...',
+      'Uploading and scanning document — please wait...',
       PROGRESS_INITIAL
     )
   })
