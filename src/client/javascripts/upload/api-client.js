@@ -236,7 +236,7 @@ export async function submitFileUpload(file) {
     form.appendChild(fileInput)
     document.body.appendChild(form)
     form.submit()
-    // Browser navigates to CDP Uploader — it scans the file and redirects back to /
+    // Browser navigates to CDP Uploader — it scans the file and redirects back to /upload/complete
   } catch (error) {
     hideProgress()
     const userMessage = JSON_PARSE_ERROR_PATTERNS.some((p) =>
