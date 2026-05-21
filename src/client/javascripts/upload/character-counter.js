@@ -26,7 +26,7 @@ export function initCharacterCount() {
   if (!elements.textContentInput || !elements.characterCountMessage) {
     return
   }
-  if (elements.textFormGroup && elements.textFormGroup.hidden) {
+  if (elements.textFormGroup?.hidden) {
     return
   }
   const currentLength = elements.textContentInput.value.length
@@ -53,7 +53,7 @@ export function updateCharacterCount() {
   if (!elements.textContentInput || !elements.characterCountMessage) {
     return
   }
-  if (elements.textFormGroup && elements.textFormGroup.hidden) {
+  if (elements.textFormGroup?.hidden) {
     return
   }
   const currentLength = elements.textContentInput.value.length

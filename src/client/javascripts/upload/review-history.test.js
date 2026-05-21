@@ -253,6 +253,50 @@ describe('review-history - action cell rendering', () => {
   })
 })
 
+describe('review-history - formatFilename truncation', () => {
+  beforeEach(() => buildDom())
+
+  it('truncates a filename with more than 3 words to the first 3 words with ellipsis', () => {
+    addReviewToHistory({
+      id: '1',
+      status: 'pending',
+      fileName: 'Assessing the sustainability of fishing catch limits.pdf'
+    })
+    const firstCell = document.querySelector('#reviewHistoryBody td')
+    expect(firstCell.textContent).toBe('Assessing the sustainability...pdf')
+  })
+
+  it('preserves a filename whose base name has exactly 3 words unchanged', () => {
+    addReviewToHistory({
+      id: '1',
+      status: 'pending',
+      fileName: 'one two three.pdf'
+    })
+    const firstCell = document.querySelector('#reviewHistoryBody td')
+    expect(firstCell.textContent).toBe('one two three.pdf')
+  })
+
+  it('truncates a filename with no extension correctly', () => {
+    addReviewToHistory({
+      id: '1',
+      status: 'pending',
+      fileName: 'word one two three four'
+    })
+    const firstCell = document.querySelector('#reviewHistoryBody td')
+    expect(firstCell.textContent).toBe('word one two...')
+  })
+})
+
+describe('review-history - result cell retrying status', () => {
+  beforeEach(() => buildDom())
+
+  it('renders a dash for retrying status', () => {
+    addReviewToHistory({ id: '1', status: 'retrying' })
+    const cells = document.querySelectorAll('#reviewHistoryBody td')
+    expect(cells[3].textContent).toBe('-')
+  })
+})
+
 describe('review-history - enforceTableLimit', () => {
   it('removes rows that exceed the selected limit', () => {
     buildDom('2')

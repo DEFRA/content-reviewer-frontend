@@ -1,20 +1,26 @@
 // Review history table management
 import { GOVUK_TABLE_CELL_CLASS } from './constants.js'
 
+const MAX_FILENAME_WORDS = 3
+
 /**
  * Truncate a filename to the first 3 words of the base name, preserving the
  * file extension. Names with 3 or fewer words are returned unchanged.
  * Also decodes any %20-style URL encoding left in the string.
  */
 function formatFilename(filename) {
-  if (!filename) return 'N/A'
+  if (!filename) {
+    return 'N/A'
+  }
   const decoded = decodeURIComponent(filename)
   const lastDot = decoded.lastIndexOf('.')
   const ext = lastDot !== -1 ? decoded.slice(lastDot + 1) : ''
   const base = lastDot !== -1 ? decoded.slice(0, lastDot) : decoded
   const words = base.trim().split(/\s+/).filter(Boolean)
-  if (words.length <= 3) return decoded
-  return words.slice(0, 3).join(' ') + '...' + ext
+  if (words.length <= MAX_FILENAME_WORDS) {
+    return decoded
+  }
+  return words.slice(0, MAX_FILENAME_WORDS).join(' ') + '...' + ext
 }
 
 export function addReviewToHistory(review) {

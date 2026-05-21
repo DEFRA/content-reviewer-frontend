@@ -342,6 +342,38 @@ describe('upload/character-counter - missing elements and display', () => {
   })
 })
 
+// ─── updateCharacterCount / initCharacterCount: textFormGroup hidden guard ─────
+
+describe('upload/character-counter - textFormGroup hidden guard', () => {
+  function buildDomWithHiddenGroup() {
+    document.body.innerHTML = `
+      <form id="uploadForm">
+        <div id="textFormGroup" hidden>
+          <textarea id="text-content"></textarea>
+          <div id="characterCountMessage"></div>
+        </div>
+      </form>
+    `
+    initializeElements()
+  }
+
+  it('updateCharacterCount returns early and leaves count message unchanged when textFormGroup is hidden', () => {
+    buildDomWithHiddenGroup()
+    const charCountMsg = document.getElementById('characterCountMessage')
+    charCountMsg.textContent = 'sentinel'
+    updateCharacterCount()
+    expect(charCountMsg.textContent).toBe('sentinel')
+  })
+
+  it('initCharacterCount returns early and leaves count message unchanged when textFormGroup is hidden', () => {
+    buildDomWithHiddenGroup()
+    const charCountMsg = document.getElementById('characterCountMessage')
+    charCountMsg.textContent = 'sentinel'
+    initCharacterCount()
+    expect(charCountMsg.textContent).toBe('sentinel')
+  })
+})
+
 // ─── initCharacterCount ───────────────────────────────────────────────────────
 
 describe('upload/character-counter - initCharacterCount', () => {

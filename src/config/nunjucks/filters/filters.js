@@ -28,13 +28,19 @@ export { renderUrlContent, convertNewlines } from './render-url-content.js'
  *     → "Assessing the sustainability...pdf"
  *   "approval_lr448.pdf"  → "approval_lr448.pdf"  (1 word, unchanged)
  */
+const MAX_FILENAME_WORDS = 3
+
 export function truncateFilename(filename) {
-  if (!filename) return ''
+  if (!filename) {
+    return ''
+  }
   const decoded = decodeURIComponent(String(filename))
   const lastDot = decoded.lastIndexOf('.')
-  const ext = lastDot !== -1 ? decoded.slice(lastDot + 1) : ''
-  const base = lastDot !== -1 ? decoded.slice(0, lastDot) : decoded
+  const ext = lastDot === -1 ? '' : decoded.slice(lastDot + 1)
+  const base = lastDot === -1 ? decoded : decoded.slice(0, lastDot)
   const words = base.trim().split(/\s+/).filter(Boolean)
-  if (words.length <= 3) return decoded
-  return words.slice(0, 3).join(' ') + '...' + ext
+  if (words.length <= MAX_FILENAME_WORDS) {
+    return decoded
+  }
+  return words.slice(0, MAX_FILENAME_WORDS).join(' ') + '...' + ext
 }
