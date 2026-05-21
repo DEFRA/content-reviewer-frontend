@@ -18,16 +18,17 @@
         <p>The Content Review Tool helps you:</p>
         <ul class="govuk-list govuk-list--bullet">
           <li>Review content for plain English and GOV.UK style compliance</li>
-          <li>Check compliance with GOV.UK style guidelines</li>
+          <li>Check plain text against key GOV.UK style guidelines</li>
           <li>Identify areas for improvement in readability</li>
           <li>Get AI-powered suggestions for better content</li>
         </ul>
 
         <h2 class="govuk-heading-m">How to use this tool</h2>
-        <p>There are two ways to submit content for review:</p>
+        <p>There are three ways to submit content for review:</p>
         <ul class="govuk-list govuk-list--bullet">
           <li><strong>Paste or type text</strong> — enter your content directly in the text area on the home page</li>
           <li><strong>Paste a GOV.UK URL</strong> — paste the URL of any GOV.UK page and the tool will automatically extract the page text for review</li>
+          <li><strong>Upload a document</strong> — upload a PDF or Word document and the tool will automatically extract the body text for review. If present, table of contents is excluded from review</li>
         </ul>
         <p>The AI will review the content against GOV.UK standards and provide detailed feedback.</p>
 
@@ -51,7 +52,7 @@
           <li>analysis depth required</li>
         </ul>
         
-        <p>The page will automatically update when your review is ready. You can also close the page and come back later - your review will still be waiting for you in the review history.</p>
+        <p>The page will automatically update when your review is ready. You can also close the page and come back later, your review will still be waiting for you in the review history.</p>
 
         <h2 class="govuk-heading-m">Error handling and retry mechanism</h2>
         <p>In the event of temporary service interruptions, the system will automatically retry your review request without requiring user intervention. This ensures reliable processing even during periods of high demand or brief service unavailability.</p>
@@ -64,33 +65,65 @@
         <h3 class="govuk-heading-s">1. Plain English</h3>
         <p>The AI checks for:</p>
         <ul class="govuk-list govuk-list--bullet">
-          <li>Use of clear, simple language and avoidance of unexplained technical terms</li>
-          <li>Sentence length (aiming for 15-20 words average)</li>
-          <li>GOV.UK "words to avoid" (e.g., "utilise", "facilitate", "going forward")</li>
+          <li>Use of clear, simple language</li>
           <li>Complex words that could be simplified</li>
-          <li>Passive voice usage (active voice is preferred)</li>
+          <li>Sentence length (aiming for 15-20 words average)</li>
+          <li>Spelling and grammar errors</li>
+          <li>Content not written in British English</li>
         </ul>
 
         <h3 class="govuk-heading-s">2. GOV.UK Style Compliance</h3>
         <p>The AI checks for:</p>
         <ul class="govuk-list govuk-list--bullet">
-          <li>Adherence to GOV.UK style guide for language and tone</li>
-          <li>Correct use of numerals vs words (e.g., "9am", not "nine o'clock")</li>
-          <li>Appropriate voice and tone for government content</li>
-          <li>Avoidance of corporate speak and buzzwords</li>
+          <li>Passive voice usage (active voice is preferred)</li>
+          <li>Common GOV.UK "words to avoid" (e.g., "utilise", "facilitate", "going forward"), abbreviations and acronyms</li>
+          <li>Adherence to key GOV.UK style guidelines for language, capitalisation, punctuation, contractions, emails and links</li>
+          <li>Correct use of numerals vs words (e.g., "9am", not "nine o'clock"), dates and times</li>
           <li>Use of "please" (GOV.UK style is direct and instructional, not deferential)</li>
         </ul>
 
         <div class="govuk-inset-text">
-          <p><strong>Note:</strong> The AI reviews plain text only. It cannot evaluate visual formatting elements like headings, lists, or links. Focus is on language quality and content structure.</p>
+          <p><strong>Note:</strong> The AI reviews plain text only. It cannot evaluate visual formatting elements like headings, lists, or links. Focus is on language quality.</p>
         </div>
 
         <h2 class="govuk-heading-m">Review output</h2>
         <p>After reviewing your content, the AI provides:</p>
         <ul class="govuk-list govuk-list--bullet">
           <li>A summary with scores for each of the 2 categories</li>
-          <li>Your original content with color-coded highlights showing specific issues</li>
-          <li>Top 5 priority improvements with examples and suggestions</li>
+          <li>Your original content with highlighted areas for improvement</li>
+          <li>List of improvements with examples and suggestions</li>
+        </ul>
+
+        <div class="govuk-inset-text">
+          <p><strong>Note:</strong> Reviews older than 5 days are automatically deleted from the system.</p>
+        </div>
+
+        <h2 class="govuk-heading-m">Content quality indicators</h2>
+
+        <p><strong>Good Content (Score: 4–5)</strong></p>
+        <ul class="govuk-list govuk-list--bullet">
+          <li>Written in plain English with short, clear sentences (under 25 words)</li>
+          <li>Active voice used throughout, no complex language</li>
+          <li>Follows key GOV.UK style guidelines (e.g., numerals, date formats, capitalisation)</li>
+          <li>No common GOV.UK "words-to-avoid" used (e.g., "utilise", "facilitate", "leverage")</li>
+          <li>Accurate abbreviation and acronym usage on first reference</li>
+        </ul>
+
+        <p><strong>Average Content (Score: 2–3)</strong></p>
+        <ul class="govuk-list govuk-list--bullet">
+          <li>Mix of simple and complex language; some sentences exceed 25 words</li>
+          <li>Some passive voice constructions present</li>
+          <li>Partially follows GOV.UK style with minor inconsistencies</li>
+          <li>Occasional use of GOV.UK "words-to-avoid"</li>
+          <li>Minor capitalisation, number, or date formatting issues</li>
+        </ul>
+
+        <p><strong>Poor Content (Score: 1)</strong></p>
+        <ul class="govuk-list govuk-list--bullet">
+          <li>Heavy use of complex language and phrasing throughout</li>
+          <li>Long, convoluted sentences that are difficult to follow</li>
+          <li>Widespread use of GOV.UK "words-to-avoid" and passive voice</li>
+          <li>Text content would not meet the standard required for GOV.UK publication</li>
         </ul>
 
         <h2 class="govuk-heading-m">Important information about AI suggestions</h2>
@@ -99,7 +132,7 @@
 
         <p class="govuk-body">Your submitted content is <strong>not</strong> used to train, fine-tune or improve the AI model in any way.</p>
 
-        <p class="govuk-body">Before your content is processed, it is automatically scanned and any personally identifiable information (PII) is redacted.</p>
+        <p class="govuk-body">Before your content is processed, it is automatically scanned and any personally identifiable information (PII) is redacted. Submissions containing sensitive information cannot be processed.</p>
 
         <h2 class="govuk-heading-m">Access and sign-in</h2>
 
