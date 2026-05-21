@@ -38,7 +38,6 @@ export function initializeElements() {
   )
   // Document upload panel elements
   elements.documentFormGroup = document.getElementById('documentFormGroup')
-  elements.fileNameDisplay = document.getElementById('fileNameDisplay')
   elements.documentError = document.getElementById('documentError')
   elements.documentErrorMessage = document.getElementById(
     'documentErrorMessage'

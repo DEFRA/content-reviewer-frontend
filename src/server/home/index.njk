@@ -180,12 +180,6 @@
                   id="fileBrowseButton"
                   class="govuk-button govuk-button--secondary app-file-browse-btn"
                 >Choose file</button>
-                <div
-                  class="govuk-input app-file-upload-display"
-                  id="fileNameDisplay"
-                  aria-live="polite"
-                  aria-label="Selected file"
-                >No file chosen</div>
               </div>
               <input
                 class="app-file-upload-input"
@@ -298,12 +292,14 @@
           {% if reviewHistory and reviewHistory.length > 0 %}
             {% for review in reviewHistory %}
             <tr class="govuk-table__row" data-review-id="{{ review.reviewId or review.id }}">
-              <td class="govuk-table__cell">{{ review.filename }}</td>
+              <td class="govuk-table__cell app-review-filename">{{ review.filename | truncateFilename }}</td>
               <td class="govuk-table__cell">
                 {% if review.status === 'completed' %}
                   <strong class="govuk-tag govuk-tag--green">Completed</strong>
                 {% elif review.status === 'processing' %}
                   <strong class="govuk-tag govuk-tag--blue">Processing...</strong>
+                {% elif review.status === 'retrying' %}
+                  <strong class="govuk-tag govuk-tag--blue">Retrying...</strong>
                 {% elif review.status === 'pending' %}
                   <strong class="govuk-tag govuk-tag--yellow">Pending...</strong>
                 {% elif review.status === 'failed' %}
@@ -334,6 +330,8 @@
                   {% endif %}
                 {% elif review.status === 'processing' %}
                   <span class="govuk-body">Processing...</span>
+                {% elif review.status === 'retrying' %}
+                  <span class="govuk-body">Retrying...</span>
                 {% elif review.status === 'pending' %}
                   <span class="govuk-body">Pending...</span>
                 {% else %}
@@ -544,7 +542,7 @@
         // Check if there are still active (pending/processing) reviews in the API response
         const activeInApi = normalized.filter(r => {
           const status = (r.status || '').toLowerCase();
-          return status === 'pending' || status === 'processing';
+          return status === 'pending' || status === 'processing' || status === 'retrying';
         });
 
         // Also check the DOM after table update for any remaining pending/processing rows
@@ -795,17 +793,28 @@
       }
     }
     
+    function formatFilenameForDisplay(filename) {
+      if (!filename) return 'N/A';
+      const decoded = decodeURIComponent(filename);
+      const lastDot = decoded.lastIndexOf('.');
+      const ext = lastDot !== -1 ? decoded.slice(lastDot + 1) : '';
+      const base = lastDot !== -1 ? decoded.slice(0, lastDot) : decoded;
+      const words = base.trim().split(/\s+/).filter(Boolean);
+      if (words.length <= 3) return decoded;
+      return words.slice(0, 3).join(' ') + '...' + ext;
+    }
+
     // Helper function to create a complete review row (for new reviews)
     function createReviewRow(review) {
       const row = document.createElement('tr');
       row.className = 'govuk-table__row';
       const reviewId = review.reviewId || review.id;
       row.setAttribute('data-review-id', reviewId);
-      
+
       // Document Name (cell 0)
       const filenameCell = document.createElement('td');
-      filenameCell.className = 'govuk-table__cell';
-      filenameCell.textContent = review.filename || 'N/A';
+      filenameCell.className = 'govuk-table__cell app-review-filename';
+      filenameCell.textContent = formatFilenameForDisplay(review.filename);
       row.appendChild(filenameCell);
       
       // Status (cell 1)
@@ -868,6 +877,9 @@
       } else if (status === 'processing') {
         statusTag.classList.add('govuk-tag--blue');
         createStatusContent(statusTag, 'Processing');
+      } else if (status === 'retrying') {
+        statusTag.classList.add('govuk-tag--blue');
+        createStatusContent(statusTag, 'Retrying');
       } else if (status === 'pending') {
         statusTag.classList.add('govuk-tag--yellow');
         createStatusContent(statusTag, 'Pending');
@@ -916,6 +928,11 @@
         const span = document.createElement('span');
         span.className = 'govuk-body';
         createStatusContent(span, 'Processing');
+        cell.appendChild(span);
+      } else if (status === 'retrying') {
+        const span = document.createElement('span');
+        span.className = 'govuk-body';
+        createStatusContent(span, 'Retrying');
         cell.appendChild(span);
       } else if (status === 'pending') {
         const span = document.createElement('span');

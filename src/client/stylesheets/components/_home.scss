@@ -34,3 +34,13 @@
 .app-review-limit-select {
   width: auto;
 }
+
+// Filename column: cap width so long names never push other columns off-screen.
+// Text is already truncated to 3 words by the server filter / client JS, but
+// this provides a hard CSS safety net for any edge cases.
+.app-review-filename {
+  max-width: 20rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

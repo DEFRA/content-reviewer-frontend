@@ -212,7 +212,6 @@ function buildFileInputDom() {
     <form id="uploadForm">
       <div class="govuk-form-group" id="documentFormGroup">
         <p id="documentError" hidden><span id="documentErrorMessage"></span></p>
-        <div id="fileNameDisplay">No file chosen</div>
         <button type="button" id="fileBrowseButton" class="govuk-button govuk-button--secondary app-file-browse-btn">Choose file</button>
         <input type="file" id="file-upload">
         <button type="button" id="fileClearButton" class="app-clear-button">Clear file</button>
@@ -283,15 +282,6 @@ describe('upload/input-controls - initializeFileInput', () => {
     expect(fileInput.value).toBe('')
   })
 
-  it('should reset fileNameDisplay to "No file chosen" when Clear File is clicked', () => {
-    initializeFileInput()
-    const display = document.getElementById('fileNameDisplay')
-    display.textContent = 'report.pdf'
-    const btn = document.getElementById('fileClearButton')
-    btn.click()
-    expect(display.textContent).toBe('No file chosen')
-  })
-
   it('should show document error when an invalid file type is selected', () => {
     initializeFileInput()
     const fileInput = document.getElementById('file-upload')
@@ -325,32 +315,10 @@ describe('upload/input-controls - initializeFileInput', () => {
     expect(errorEl.hidden).toBe(true)
   })
 
-  it('should show "No file chosen" when change fires with no file selected', () => {
-    initializeFileInput()
-    const fileInput = document.getElementById('file-upload')
-    Object.defineProperty(fileInput, 'files', {
-      value: { length: 0 },
-      configurable: true
-    })
-    fileInput.dispatchEvent(new Event('change'))
-    expect(document.getElementById('fileNameDisplay').textContent).toBe(
-      'No file chosen'
-    )
-  })
-
   it('should not throw when fileClearButton is absent', () => {
     document.getElementById('fileClearButton').remove()
     initializeElements()
     expect(() => initializeFileInput()).not.toThrow()
-  })
-
-  it('should not throw when fileNameDisplay is absent and Clear File is clicked', () => {
-    document.getElementById('fileNameDisplay').remove()
-    initializeElements()
-    initializeFileInput()
-    expect(() =>
-      document.getElementById('fileClearButton').click()
-    ).not.toThrow()
   })
 })
 
@@ -495,50 +463,10 @@ describe('upload/input-controls - URL input', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Null-guard branches for fileNameDisplay and characterCountMessage
+// Null-guard branches for characterCountMessage
 // ---------------------------------------------------------------------------
 
 describe('upload/input-controls - null guard branches', () => {
-  it('should not throw when fileNameDisplay is absent and a file is selected', () => {
-    // DOM without fileNameDisplay — covers the false branch of if (elements.fileNameDisplay)
-    document.body.innerHTML = `
-      <div id="errorSummary" hidden><a id="errorSummaryMessage"></a></div>
-      <form id="uploadForm">
-        <div class="govuk-form-group" id="documentFormGroup">
-          <p id="documentError" hidden><span id="documentErrorMessage"></span></p>
-          <input type="file" id="file-upload">
-          <button type="button" id="fileClearButton" class="app-clear-button">Clear file</button>
-        </div>
-        <div class="govuk-form-group" id="textFormGroup">
-          <div id="textFieldWrapper">
-            <p id="uploadError" hidden><span id="errorMessage"></span></p>
-            <textarea class="govuk-textarea" id="text-content"></textarea>
-          </div>
-        </div>
-        <div id="characterCountMessage"></div>
-        <button id="uploadButton" type="submit">Review content</button>
-        <div id="uploadSuccess" hidden></div>
-        <div id="uploadProgress" hidden>
-          <div id="uploadStatusText"></div>
-          <div id="uploadProgressText"></div>
-          <div id="progressBar" data-progress="0"></div>
-        </div>
-      </form>
-    `
-    initializeElements()
-    initializeFileInput()
-
-    const fileInput = document.getElementById('file-upload')
-    const validFile = new File(['content'], 'report.pdf', {
-      type: 'application/pdf'
-    })
-    Object.defineProperty(fileInput, 'files', {
-      value: { 0: validFile, length: 1 },
-      configurable: true
-    })
-    expect(() => fileInput.dispatchEvent(new Event('change'))).not.toThrow()
-  })
-
   it('should not throw when characterCountMessage has no parentNode in initializeTextInput', () => {
     // DOM where characterCountMessage is detached (no parent) — covers if (countParent) false branch
     document.body.innerHTML = `

@@ -284,9 +284,9 @@ export const config = convict({
       env: 'CDP_UPLOADER_S3_PATH'
     },
     maxFileSize: {
-      doc: 'Maximum file size in bytes (10MB default)',
+      doc: 'Maximum file size in bytes. CDP app config sets 10485760 (10 MiB). Use binary (1024-based) to match the CDP Uploader service expectation.',
       format: Number,
-      default: 10 * 1000 * 1000,
+      default: 10485760,
       env: 'CDP_UPLOADER_MAX_FILE_SIZE'
     },
     allowedMimeTypes: {
@@ -330,9 +330,9 @@ export const config = convict({
   },
   azure: {
     clientId: {
-      doc: 'Azure AD Application Client ID',
+      doc: 'Azure AD Application Client ID for DEFRA OIDC authentication',
       format: String,
-      default: '',
+      default: 'd8244d43-949b-45fa-a0c6-838e434cf0d9',
       env: 'AZURE_CLIENT_ID'
     },
     clientSecret: {
@@ -343,9 +343,9 @@ export const config = convict({
       env: 'AZURE_CLIENT_SECRET'
     },
     tenantId: {
-      doc: 'Azure AD Tenant ID',
+      doc: 'Azure AD Tenant ID for DEFRA organisation',
       format: String,
-      default: '',
+      default: '6f504113-6b64-43f2-ade9-242e05780007',
       env: 'AZURE_TENANT_ID'
     },
     redirectUri: {

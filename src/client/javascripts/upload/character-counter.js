@@ -26,6 +26,9 @@ export function initCharacterCount() {
   if (!elements.textContentInput || !elements.characterCountMessage) {
     return
   }
+  if (elements.textFormGroup?.hidden) {
+    return
+  }
   const currentLength = elements.textContentInput.value.length
   const remaining = CHARACTER_LIMIT - currentLength
   elements.characterCountMessage.style.display = STYLE_DISPLAY_DEFAULT
@@ -48,6 +51,9 @@ export function initCharacterCount() {
 export function updateCharacterCount() {
   const elements = getElements()
   if (!elements.textContentInput || !elements.characterCountMessage) {
+    return
+  }
+  if (elements.textFormGroup?.hidden) {
     return
   }
   const currentLength = elements.textContentInput.value.length

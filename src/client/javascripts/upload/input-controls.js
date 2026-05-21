@@ -35,12 +35,8 @@ export function initializeFileInput() {
   }
   const elements = getElements()
 
-  // Update the file name display when the user picks a file
   fileInput.addEventListener('change', () => {
     const file = fileInput.files?.[0]
-    if (elements.fileNameDisplay) {
-      elements.fileNameDisplay.textContent = file?.name || 'No file chosen'
-    }
     if (file && !isValidFileType(file)) {
       showDocumentError('The selected file must be a PDF or Word document')
     } else {
@@ -59,9 +55,6 @@ export function initializeFileInput() {
   if (elements.fileClearButton) {
     elements.fileClearButton.addEventListener('click', () => {
       fileInput.value = ''
-      if (elements.fileNameDisplay) {
-        elements.fileNameDisplay.textContent = 'No file chosen'
-      }
       hideDocumentError()
     })
   }

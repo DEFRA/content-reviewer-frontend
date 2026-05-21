@@ -202,7 +202,7 @@ export async function submitFileUpload(file) {
     if (elements.uploadButton) {
       elements.uploadButton.disabled = false
     }
-    handleReviewHistory(data, encodeURIComponent(file.name))
+    handleReviewHistory(data, file.name)
     startAutoRefresh()
     return data
   } catch (error) {
