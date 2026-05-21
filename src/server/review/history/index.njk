@@ -61,8 +61,8 @@
                 {{ review.uploadedAt | date('dd MMM yyyy HH:mm') if review.uploadedAt else 'N/A' }}
               </td>
               <td class="govuk-table__cell">
-                {% set statusClass = 'govuk-tag--green' if review.status === 'completed' else 
-                                     ('govuk-tag--blue' if review.status === 'processing' or review.status === 'analyzing' else 
+                {% set statusClass = 'govuk-tag--green' if review.status === 'completed' else
+                                     ('govuk-tag--blue' if review.status === 'processing' or review.status === 'analyzing' or review.status === 'retrying' else
                                      ('govuk-tag--red' if review.status === 'failed' else 'govuk-tag--grey')) %}
                 <strong class="govuk-tag {{ statusClass }}">
                   {{ review.status | replace('_', ' ') | title }}
@@ -146,7 +146,7 @@
     // Use {% if %} block rather than {{ expr | dump }} so the script tag contains
     // only a plain JS boolean literal — avoids the CodeQL "invocation of non-function"
     // false positive that fires when {{ }} template syntax is parsed as JS.
-    const hasProcessing = {% if reviews | selectattr('status', 'in', ['pending', 'processing']) | list | length > 0 %}true{% else %}false{% endif %};
+    const hasProcessing = {% if reviews | selectattr('status', 'in', ['pending', 'processing', 'retrying']) | list | length > 0 %}true{% else %}false{% endif %};
     
     if (hasProcessing) {
       setTimeout(() => {

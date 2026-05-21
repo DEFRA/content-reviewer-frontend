@@ -16,7 +16,11 @@ export const resultsController = {
         reviewId
       )
 
-      if (envelope.status === 'pending' || envelope.status === 'processing') {
+      if (
+        envelope.status === 'pending' ||
+        envelope.status === 'processing' ||
+        envelope.status === 'retrying'
+      ) {
         return renderPendingView(h, envelope)
       }
 
